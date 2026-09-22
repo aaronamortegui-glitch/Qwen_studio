@@ -58,6 +58,9 @@ AJUSTES_DEF = {
     # desactiva. No protege de nada roto: evita que un lote largo se pase la
     # noche estrangulado y tarde el doble
     "limite_c": 80,
+    # afinar con SAM 2 la mascara que sale del texto. Medido: CLIPSeg solo se
+    # comia el pelo que cae sobre la prenda; con SAM 2 el borde la sigue
+    "afinar_mascara": True,
 }
 
 
@@ -93,7 +96,7 @@ registro.registrar("imagen", montado=lambda: motor.listo,
 registro.registrar("vision", montado=VIS.disponible,
                    desmontar=VIS.descargar_de_memoria, vram_gb=7.1, etiqueta="Qwen3-VL")
 registro.registrar("segmenta", montado=SEG.disponible,
-                   desmontar=SEG.descargar_de_memoria, vram_gb=0.6, etiqueta="CLIPSeg")
+                   desmontar=lambda: (SEG.descargar_de_memoria(), SEG.soltar_afinador()), vram_gb=0.9, etiqueta="CLIPSeg + SAM 2")
 
 
 def usar(quien: str) -> list[str]:
@@ -494,10 +497,13 @@ class Handler(BaseHTTPRequestHandler):
                 return None, "paint the area, or describe what to select"
             dev = "cuda" if cfg.get("backend") == "cuda" else "cpu"
             usar("segmentacion")
-            SEG.cargar(dev)
+            SEG.cargar(dev, M.ruta_aux(cfg['ruta_modelos']))
             if not SEG.disponible():
                 return None, SEG.error() or "could not load the segmenter"
             m = SEG.mascara(img, frase, umbral=float(b.get("umbral", 0.5)))
+            if b.get("afinar", leer_ajustes().get("afinar_mascara", True)):
+                if SEG.cargar_afinador(dev, M.ruta_aux(cfg['ruta_modelos'])):
+                    m = SEG.afinar(img, m)
         crecer = int(b.get("crecer", crecer_por_defecto))
         # lo pintado ya es lo que el usuario quiere: crecerlo se lo comeria
         if crecer and not pintada:

@@ -24,15 +24,44 @@ REPO = "Qwen/Qwen-Image-2.1"
 RATIOS = {"1:1": 1.0, "4:3": 4/3, "3:4": 3/4, "3:2": 3/2, "2:3": 2/3, "16:9": 16/9, "9:16": 9/16}
 
 
+# Los tamanos 2K que publica la plantilla oficial del modelo. Calcularlos desde
+# el presupuesto de pixeles daba entre un 1 y un 3 por ciento menos en todos los
+# ratios salvo el cuadrado, y estos son los que el modelo tiene validados, asi
+# que en 2K mandan ellos y no la formula.
+OFICIAL_2K = {
+    "1:1": (2048, 2048), "4:3": (2400, 1792), "3:4": (1792, 2400),
+    "3:2": (2528, 1696), "2:3": (1696, 2528), "16:9": (2752, 1536),
+    "9:16": (1536, 2752),
+}
+
+
 def dimensiones(ratio: str, megapixeles: float) -> tuple[int, int]:
     """Ancho y alto para un ratio y un presupuesto de pixeles, en multiplos de 32
     (que es lo que pide el VAE 16x con bloques de 2x2)."""
     import math
+    if megapixeles >= 4 and ratio in OFICIAL_2K:
+        return OFICIAL_2K[ratio]
     r = RATIOS.get(ratio, 1.0)
     area = megapixeles * 1024 * 1024
     w = round(math.sqrt(area * r) / 32) * 32
     h = round(math.sqrt(area / r) / 32) * 32
     return max(256, w), max(256, h)
+
+
+# Los auxiliares viajan con los pesos y viven en modelos/aux, no en el cache
+# global de HuggingFace: la carpeta de la app tiene que ser autocontenida y
+# despues de la primera descarga nada mas debe necesitar red.
+AUXILIARES = [
+    ("CIDAS/clipseg-rd64-refined", "segmentacion por texto"),
+    ("facebook/sam2.1-hiera-tiny", "afinado del borde"),
+]
+# los dos repos publican los mismos pesos en .bin y en .safetensors; bajar
+# ambos duplicaba 600 MB para nada
+AUX_PATRONES = ["*.json", "*.txt", "*.safetensors", "*.model"]
+
+
+def ruta_aux(ruta_modelos: str) -> str:
+    return os.path.join(ruta_modelos, "aux")
 
 
 # lo que hace falta para inferencia; se deja fuera cualquier cosa suelta del repo
@@ -170,6 +199,20 @@ def descargar(ruta: str, estado: Descarga) -> None:
         estado.mensaje = "descargando pesos..."
         snapshot_download(repo_id=REPO, local_dir=ruta, allow_patterns=PATRONES,
                           max_workers=4)
+
+        # los dos pequenos, al lado y no en el cache del usuario
+        aux = ruta_aux(ruta)
+        os.makedirs(aux, exist_ok=True)
+        for repo, para in AUXILIARES:
+            estado.mensaje = f"descargando {repo.split('/')[-1]} ({para})..."
+            try:
+                snapshot_download(repo_id=repo, cache_dir=aux,
+                                  allow_patterns=AUX_PATRONES, max_workers=4)
+            except Exception as e:
+                # no son imprescindibles para generar: si fallan, la app arranca
+                # igual y lo dice cuando alguien pida una mascara
+                estado.mensaje = f"aviso: {repo} no se pudo bajar ({type(e).__name__})"
+
         estado.lista = True
         estado.mensaje = "pesos listos"
     except Exception as e:
@@ -523,8 +566,20 @@ class Motor:
         prompt = texto.strip()
         if len(refs) > 1:
             extras = ", ".join(f"<image{i+2}>" for i in range(len(refs) - 1))
-            prompt = (f"<image1> is the region being edited. {extras} show what to put there. "
-                      + prompt)
+            una = len(refs) == 2
+            # "show what to put there" era demasiado vago. La regla medida en
+            # este proyecto es que una referencia se ignora si el prompt no
+            # nombra QUE hay que tomar de ella, asi que se nombra.
+            # Medido el 2026-09-22: decir que la referencia "debe aparecer en la
+            # region" hace que el modelo la copie entera, fondo incluido. La
+            # referencia describe COMO es la cosa que pide el texto, no que
+            # pegar: por eso va subordinada al prompt y no al reves.
+            prompt = (f"<image1> is the region being edited. What is built there is what "
+                      f"this text describes: {prompt.strip()} "
+                      f"{extras} {'shows' if una else 'show'} how it should look — take "
+                      f"the colour, the material and the pattern from "
+                      f"{'it' if una else 'them'}, and nothing else. The result keeps the "
+                      f"shape, the lighting, the shadows and the perspective of <image1>.")
 
         gen = torch.Generator(device="cpu").manual_seed(int(seed))
         kw = dict(prompt=prompt, image=refs, num_inference_steps=int(steps),

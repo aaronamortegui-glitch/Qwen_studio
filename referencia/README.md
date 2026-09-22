@@ -73,12 +73,15 @@ advertises 8 GB, and its page explains nothing. The graph does: 81 nodes built
 on `QwenImage21Cache` plus ComfyUI's own memory manager, with `SeedVR2` for
 upscaling, `easy sam3ModelLoader` for masks and `TextGenerateLTX2Prompt` for
 prompt rewriting. **There is no GGUF in it** and no exotic quantisation — the
-8 GB comes from ComfyUI's allocator and the prefix cache, which is the same
-reason ComfyUI is about four times faster than this project for the same image.
+8 GB comes from ComfyUI's allocator and the prefix cache.
 
-That cache is the concrete thing diffusers does not do, and it is named in
-[the PR that added Qwen-Image 2.1 to ComfyUI](https://github.com/Comfy-Org/ComfyUI/pull/16400):
-prefix caching of text and reference tokens, worth roughly 1.7× on edits.
+The cache is worth a correction. [The PR that added Qwen-Image 2.1 to
+ComfyUI](https://github.com/Comfy-Org/ComfyUI/pull/16400) names prefix caching
+of text and reference tokens as worth about 1.7× on edits, and this file used
+to call it the thing diffusers does not do. Checked rather than assumed:
+`QwenImage21Pipeline.__call__` takes `use_kv_cache`, it defaults to `True`, and
+this project has had it since the first run. The four-times gap is the
+`int8_convrot` kernels and the memory manager, not the cache.
 
 ## The prompt enhancer
 
@@ -89,12 +92,27 @@ already resident for describing images — text only, no network, about 19 s —
 with a system prompt built from the rules measured in this project rather than
 a generic "make it better". See `qwenstudio/vision.py`.
 
-## SAM 3 for selection
+## SAM: taken, in the version that exists
 
-The inpainting workflow selects with SAM 3, a better segmenter than the CLIPSeg
-used here. A real improvement, not implemented: another model to download and
-mount, and nothing tested against this pipeline. Written down rather than
-quietly ignored.
+The inpainting workflow selects with SAM 3 through `easy sam3ModelLoader`, and
+SAM 3's headline feature is that it accepts text directly. transformers 5.17
+does not ship it — only SAM 2, which takes points and boxes and no text at all.
+
+So the chain was built instead of skipped: CLIPSeg reads the words and finds
+roughly where the thing is, its bounding box and centre of mass go into SAM 2,
+and SAM 2 returns the object that is actually there. Measured on
+`the yellow sweater`:
+
+| | coverage |
+|---|---|
+| CLIPSeg alone | 28.3% |
+| CLIPSeg + SAM 2 | 22.2% |
+
+The six points are the hair falling across the garment, which CLIPSeg was
+taking in and SAM 2 excludes. See `docs/sam-vs-clipseg.png`. The refiner is
+`sam2.1-hiera-tiny`: 31M parameters, about 150 MB, eight seconds to load. If
+SAM 3 lands in transformers it replaces both halves of this, because then the
+text goes straight in.
 
 ## GGUF
 

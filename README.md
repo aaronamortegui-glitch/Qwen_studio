@@ -68,6 +68,12 @@ The installer downloads **uv**, which brings its own Python 3.12 into this
 folder. Nothing on your system is touched: no system Python, no global
 packages, no PATH changes. Delete the folder and it is gone.
 
+That includes the models. The image weights, Qwen3-VL, CLIPSeg and SAM 2 all
+land in `modelos/`, downloaded on the first run and never again — not in
+`~/.cache/huggingface`, where the two small ones used to go. After that first
+download the app needs no network at all, which was the whole point and was
+quietly untrue until it was checked.
+
 It detects your hardware **before** installing anything and picks the profile
 from it — which PyTorch wheel, which dtype, whether to quantise, how much to
 offload, what resolution to cap at. The model weights (~31 GB) download on the
@@ -105,9 +111,34 @@ spelled correctly. Regenerate the sheet with
 
 <p align="center"><img src="docs/ui-brush.png" width="820" alt="The mask brush: paint over the region to replace"></p>
 
+An edit can also take **a photo of what goes there**, in the optional Reference
+box: paint or name the region, write what it is in a few words, and drop in a
+picture of the material. The reference is subordinate to the text on purpose —
+an earlier version told the model the reference "must appear in the region" and
+it pasted the whole reference photo, landscape and all, into the mask. It now
+says the text describes *what* is built and the reference shows *how it looks*,
+and only the colour, material and pattern come across.
+
 An edit selects its region from **words** or from a **brush**. Painting happens
 at the photo's real resolution; what you leave untouched comes back byte for
 byte, which the test suite checks rather than assumes.
+
+<p align="center"><img src="docs/sam-vs-clipseg.png" width="880" alt="The same selection: original, CLIPSeg alone, and CLIPSeg refined by SAM 2"></p>
+
+When you select by words, **two models do it.** CLIPSeg takes the text and finds
+roughly where the thing is; SAM 2 takes CLIPSeg's box and centre and returns the
+object that is actually there. Above: the original, CLIPSeg alone, and the pair.
+CLIPSeg works at 352×352 and its output, scaled back up, takes in the hair
+falling across the garment — the orange blotches in the middle frame. Asking for
+`the yellow sweater` went from 28.3% of the frame to 22.2%, and the 6 points it
+gave back are the hair.
+
+SAM 2 does not accept text and CLIPSeg does, so each does the half it is good
+at. The refiner is `sam2.1-hiera-tiny`: 31M parameters, about 150 MB, eight
+seconds to load and under a second to run. If it is missing or fails, the
+CLIPSeg mask is used unchanged — a worse mask beats an exception. Turn it off in
+Settings. (SAM **3**, which the ComfyUI workflows use and which does take text,
+is not in transformers 5.17.)
 
 <p align="center"><img src="docs/ui-poses.png" width="820" alt="The pose library: thirty skeletons, filtered by framing and kind"></p>
 
@@ -257,6 +288,16 @@ scene loaded and a neutral prompt, the scene contributed *nothing* — the
 scaffolding clause alone was not enough. The app now describes the scene with
 Qwen3-VL and appends that description, which is what makes the path work.
 
+**Crop-and-stitch is for a local change, not for a garment.** Replacing a
+sweater with a jacket keeps failing, and sharpening the mask made it plainer
+why. The crop taken around the mask still shows the sleeves as context, the
+model harmonises with what it can see, and out comes a jacket painted over a
+sweater whose arms stayed yellow. Recolouring the same sweater in the same
+crop works — 86% of the yellow gone, measured on pixels rather than read off a
+description. The rule is the shape of the edit, not its difficulty: a change
+that stays inside the crop lands, a change to something that leaves the crop
+fights the context. For a whole garment, use the whole-frame path.
+
 **"Replace X" is read as "add X on top of X".** Asking for a denim jacket over
 the mask of a yellow sweater returned the jacket *open*, with the sweater
 underneath. The mask had room for both and the model used it. Saying the
@@ -338,14 +379,17 @@ encoder both resident — even with the text encoder in 4-bit — does **not** f
 in 24 GB: weights alone reach 20.8 GB and activations push it into thrashing.
 The default (bf16 + model offload) is the fastest of the three on this card.
 
-**ComfyUI is still ~4× faster for the same image.** It uses `int8_convrot`
-weights with kernels built for them, a much better memory manager, and — per
-[Comfy-Org/ComfyUI#16400](https://github.com/Comfy-Org/ComfyUI/pull/16400), the
-PR that added Qwen-Image 2.1 support — prefix caching of text and reference
-tokens, worth about 1.7× on edits on its own. That PR does not affect this
-project's correctness (we go through diffusers, not ComfyUI), but it names the
-optimisation diffusers does not do. If raw speed matters more than being
-self-contained, use ComfyUI.
+**ComfyUI is still ~4× faster for the same image**, and it is worth being
+precise about why, because the obvious answer turned out to be wrong. The PR
+that added Qwen-Image 2.1 to ComfyUI,
+[Comfy-Org/ComfyUI#16400](https://github.com/Comfy-Org/ComfyUI/pull/16400),
+highlights prefix caching of text and reference tokens — worth roughly 1.7× on
+edits — and this README used to say that was something diffusers does not do.
+It does: `QwenImage21Pipeline.__call__` takes `use_kv_cache`, it defaults to
+`True`, and we have been getting it all along. The gap is elsewhere: ComfyUI
+runs `int8_convrot` weights with kernels built for them, and its memory manager
+is better than what `enable_model_cpu_offload` gives us. If raw speed matters
+more than being self-contained, use ComfyUI.
 
 ---
 

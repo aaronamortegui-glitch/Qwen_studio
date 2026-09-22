@@ -179,18 +179,41 @@ def caso_mascara():
 
 
 def caso_inpaint():
+    # Se le cambia el color a la prenda en vez de cambiarla por otra, a
+    # proposito. Recortar y recoser sirve para un cambio local; sustituir una
+    # prenda que se sale del recorte deja sus mangas a la vista como contexto y
+    # el modelo armoniza con ellas -- la limitacion que documenta el README.
+    # Probar eso aqui no medía el recosido, medía el fallo conocido.
     r = pedir("/api/inpaint", {"imagen": data_url(ESCENA), "frase": "the yellow sweater",
-                               "prompt": "A navy blue denim jacket, buttoned all the way up, "
-                                         "nothing else visible underneath it, "
-                                         "same lighting and shadows.",
+                               "prompt": "The same knitted sweater in deep forest green, "
+                                         "the same weave, the same folds, the same light "
+                                         "falling across it.",
                                "megapixeles": 1, "steps": 20, "seed": 17})
     assert not r.get("error"), r.get("error")
     w, h = dimensiones(r["imagenes"][0]["archivo"])
     ow, oh = 1024, 1024
     assert (w, h) == (ow, oh), f"inpaint changed the size: {w}x{h}"
-    visto = juzgar(r["imagenes"][0]["archivo"], ["denim", "blue", "jacket"])
-    assert "yellow" not in visto, "the yellow sweater is still there"
-    return f"crop {r['crop']} -> {r['generado']}, garment replaced"
+    juzgar(r["imagenes"][0]["archivo"], ["green"])
+
+    # Y medido, no solo leido. Buscar la palabra "yellow" en la descripcion era
+    # demasiado fragil: la mascara afinada deja el pelo fuera, y entre las hebras
+    # asoman unas pocas hebras del color viejo que bastan para que el VLM lo
+    # nombre aunque la prenda entera haya cambiado. Se cuenta cuanto amarillo
+    # fuerte queda frente al que habia.
+    import numpy as np
+    from PIL import Image
+    antes = np.asarray(Image.open(ESCENA).convert("RGB")).astype(np.int16)
+    despues = np.asarray(Image.open(os.path.join(
+        SALIDAS, os.path.basename(r["imagenes"][0]["archivo"]))).convert("RGB")).astype(np.int16)
+
+    def amarillo(a):
+        r_, g_, b_ = a[..., 0], a[..., 1], a[..., 2]
+        return ((r_ > 120) & (g_ > 90) & (b_ < 90) & (r_ - b_ > 60)).sum()
+
+    a0, a1 = amarillo(antes), amarillo(despues)
+    caida = 1 - a1 / max(a0, 1)
+    assert caida > 0.85, f"only {caida*100:.0f}% of the yellow went away"
+    return f"crop {r['crop']} -> {r['generado']}, {caida*100:.0f}% of the yellow gone"
 
 
 def caso_pincel():

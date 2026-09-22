@@ -683,8 +683,10 @@ const CASOS={
     mode:'efecto', zonas:['source'], opt:[], ratio:'auto', prompt:''},
   replace:{cat:'edit', icon:'replace', name:'Replace something', hint:'Name it or paint it, then say what goes there.',
     mode:'inpaint', zonas:['source','extra'], opt:['extra'], ratio:'auto',
-    prompt:'A dark green leather biker jacket, zipped all the way up, nothing else visible '
-      +'underneath it, the same lighting and the same shadows as the rest of the photograph.'},
+    prompt:'A dark green leather biker jacket, zipped all the way up. It is the only '
+      +'garment on the upper body, worn against bare skin at the neck and the wrists, '
+      +'sleeves included. The same lighting and the same shadows as the rest of the '
+      +'photograph.'},
 };
 /* Cada caso viaja con un ejemplo real: las entradas que toma y la hoja de
    contactos de una corrida de verdad con ellas. Asi la primera pantalla ya
@@ -1531,6 +1533,8 @@ const OPCIONES=[
  ['steps','num','Default steps','25 is what ComfyUI recommends, 40 what the model card says.'],
  ['megapixeles','num','Default quality (MP)','1 is fast, 4 is 2K native.'],
  ['vlm_bits','sel','Vision model precision','4-bit uses ~7 GB, 8-bit ~13 GB and describes a little better.'],
+ ['afinar_mascara','check','Sharpen text selections with SAM 2',
+  'CLIPSeg finds the thing you named; SAM 2 makes the edge follow it. Measured: asking for the yellow sweater went from 28.3% of the frame to 22.2%, and the difference was the hair falling across it. Adds ~150 MB and under a second.'],
  ['limite_c','num','Cool down between batch images (\u00b0C)',
   'Before each image of a batch, wait until the card drops below this. 0 turns it off. Not protection from damage \u2014 the firmware already enforces its own limit \u2014 but a long unattended run finishes sooner if it is not being throttled the whole way.'],
  ['vae','vae','Decoder',

@@ -117,7 +117,7 @@ class Perfil:
 # El transformer son 7B y el text encoder Qwen3-VL 8B. En bf16 los dos juntos
 # pasan de 30 GB, asi que salvo en tarjetas muy grandes siempre hay offload o
 # cuantizacion de por medio.
-DESCARGA_GB = 33
+DESCARGA_GB = 34      # 31 el modelo + ~0.8 los auxiliares
 
 
 def detectar(destino_modelos: str | None = None) -> Perfil:
