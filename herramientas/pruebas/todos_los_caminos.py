@@ -47,6 +47,12 @@ def pedir(ruta: str, carga: dict | None = None, timeout: int = 3600):
         return json.loads(r.read())
 
 
+def sat(img) -> float:
+    """Saturacion media en HSV. Un grado en blanco y negro la deja cerca de cero."""
+    from PIL import ImageStat
+    return ImageStat.Stat(img.convert("HSV")).mean[1]
+
+
 def dimensiones(url_rel: str) -> tuple[int, int]:
     from PIL import Image
     return Image.open(os.path.join(SALIDAS, os.path.basename(url_rel))).size
@@ -78,8 +84,10 @@ def alfa_real(url_rel: str) -> float:
     im = Image.open(os.path.join(SALIDAS, os.path.basename(url_rel)))
     if im.mode != "RGBA":
         return 0.0
-    px = list(im.getchannel("A").getdata())
-    return sum(1 for v in px if v < 16) / len(px)
+    # histograma en vez de recorrer pixeles: getdata() esta deprecado y esto
+    # ademas no construye una lista de un millon de enteros
+    h = im.getchannel("A").histogram()
+    return sum(h[:16]) / (im.width * im.height)
 
 
 # ---------------------------------------------------------------- casos
@@ -252,6 +260,63 @@ def caso_pincel():
     return f"inside changed, outside within {peor} levels"
 
 
+def caso_look_entero():
+    """A look with no mask: the whole frame is graded."""
+    from PIL import Image, ImageChops
+
+    src = Image.open(ESCENA).convert("RGB")
+    r = pedir("/api/efecto", {"imagen": data_url(ESCENA), "efecto": "bw",
+                              "megapixeles": 1, "steps": 20, "seed": 21})
+    assert not r.get("error"), r.get("error")
+    out = Image.open(os.path.join(SALIDAS,
+                     os.path.basename(r["imagenes"][0]["archivo"]))).convert("RGB")
+    # blanco y negro de verdad: la saturacion media se desploma en todo el cuadro
+    antes = sat(src)
+    despues = sat(out)
+    assert despues < antes * .25, f"saturation only fell from {antes:.0f} to {despues:.0f}"
+    return f"saturation {antes:.0f} -> {despues:.0f} across the frame"
+
+
+def caso_look_region():
+    """The same look confined to a painted region.
+
+    Esto es lo que separa el look del reemplazo: no se nombra nada, solo se
+    pinta donde, y el efecto tiene que quedarse ahi. Dentro la saturacion cae;
+    arriba, lejos del recorte, la foto tiene que volver identica.
+    """
+    import base64
+    import io as _io
+    from PIL import Image, ImageChops, ImageDraw
+
+    src = Image.open(ESCENA).convert("RGB")
+    caja = (int(src.width * .22), int(src.height * .55),
+            int(src.width * .78), int(src.height * .95))
+    m = Image.new("L", src.size, 0)
+    ImageDraw.Draw(m).rectangle(caja, fill=255)
+    buf = _io.BytesIO()
+    m.save(buf, "PNG")
+    mascara = "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+
+    r = pedir("/api/efecto", {"imagen": data_url(ESCENA), "efecto": "bw",
+                              "mascara": mascara, "megapixeles": 1,
+                              "steps": 20, "seed": 22})
+    assert not r.get("error"), r.get("error")
+    assert r.get("caja"), "the look did not take the crop-and-stitch path"
+    out = Image.open(os.path.join(SALIDAS,
+                     os.path.basename(r["imagenes"][0]["archivo"]))).convert("RGB")
+    assert out.size == src.size, f"the size changed: {out.size} vs {src.size}"
+
+    dentro_antes, dentro_despues = sat(src.crop(caja)), sat(out.crop(caja))
+    assert dentro_despues < dentro_antes * .35,         f"inside the region saturation only fell from {dentro_antes:.0f} to {dentro_despues:.0f}"
+
+    alto = (0, 0, src.width, int(src.height * .35))
+    fuera = ImageChops.difference(src.crop(alto), out.crop(alto)).convert("L")
+    peor = fuera.getextrema()[1]
+    assert peor <= 8, f"the untouched area moved by {peor} levels"
+    return (f"inside {dentro_antes:.0f} -> {dentro_despues:.0f} saturation, "
+            f"outside within {peor} levels")
+
+
 def caso_describir():
     r = pedir("/api/describir", {"imagen": data_url(ESCENA), "tarea": "prompt"}, timeout=900)
     assert not r.get("error"), r.get("error")
@@ -285,6 +350,8 @@ CASOS = [
     ("style reference", caso_estilo), ("transparent cutout", caso_transparencia),
     ("mask preview", caso_mascara), ("inpaint", caso_inpaint),
     ("inpaint by brush", caso_pincel),
+    ("look, whole frame", caso_look_entero),
+    ("look, painted region", caso_look_region),
     ("describe (Qwen3-VL)", caso_describir), ("batch", caso_lote),
     ("settings", caso_ajustes),
 ]

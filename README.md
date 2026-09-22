@@ -123,6 +123,14 @@ An edit selects its region from **words** or from a **brush**. Painting happens
 at the photo's real resolution; what you leave untouched comes back byte for
 byte, which the test suite checks rather than assumes.
 
+**Both editing paths take the brush**, because both are the same operation
+underneath: crop around the region, regenerate the crop, feather it back in.
+Replacing something needs a region and lets you name it in words instead of
+painting it. A look does not need one — leave it alone and the treatment covers
+the whole photograph, which is what a grade is for — but painting one confines
+the look to that region, so you can relight a face or turn just the subject to
+clay and have the rest of the frame come back untouched.
+
 <p align="center"><img src="docs/sam-vs-clipseg.png" width="880" alt="The same selection: original, CLIPSeg alone, and CLIPSeg refined by SAM 2"></p>
 
 When you select by words, **two models do it.** CLIPSeg takes the text and finds
@@ -181,7 +189,7 @@ Light by default, dark in Settings, or Auto to follow the system.
 | | Pose my character | person + pose + optional style and setting |
 | | Transparent cutout | person → PNG with a real alpha channel |
 | | Free | everything, nothing assumed |
-| **Edit a photo** | Apply a look | image + a treatment picked from a grid |
+| **Edit a photo** | Apply a look | image + a treatment picked from a grid, optionally a painted region |
 | | Replace something | image + a selection + what goes there |
 
 Plus a **pose library** (30 skeletons across close-up, half and full body), a
@@ -522,7 +530,11 @@ rather than the cost.
 
 ## Looks and upscaling
 
-**Apply a look** takes one image and a treatment picked from a grid. The
+**Apply a look** takes one image and a treatment picked from a grid, and
+optionally a region painted with the same brush the replacement path uses. With
+no region the look grades the whole frame; with one it goes through the same
+crop-and-stitch as a replacement, so everything outside the paint returns
+unchanged. The
 thumbnails are that effect applied to this install's own reference photo,
 generated here, so the grid shows this model doing this thing rather than
 someone else's pipeline. Ten looks in three groups: grades, relighting, and the

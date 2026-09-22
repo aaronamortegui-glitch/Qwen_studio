@@ -711,6 +711,9 @@ const EJ={
   replace:{ins:{source:'scene.jpg'}, frase:'the yellow sweater', out:'out_replace.jpg',
     que:'The yellow sweater, named in words or painted over with the brush, replaced by a '
       +'green leather jacket; everything else in the photograph is untouched.'},
+  look:{ins:{source:'/efectos/_base.jpg'}, efecto:'golden', out:'out_look.jpg',
+    que:'The same photograph relit twenty minutes before sunset. A look covers the whole '
+      +'frame unless you paint a region, and then it stays inside it.'},
   free:null,
 };
 const S={caso:'portrait', img:{}, poseLib:null, ratio:'1:1', esEjemplo:true,
@@ -775,12 +778,25 @@ function repintar(){
 }
 function construirCampos(){
   const c=caso(), cont=$('#campos'); cont.innerHTML='';
-  if(c.mode==='inpaint'){
-    cont.innerHTML=`<div class="sec"></div><label>What should be replaced</label>
-      <input type="text" id="seleccion" placeholder="the yellow sweater" value="the yellow sweater">
-      <div class="hint">Plain words work best: "the jacket", "the hair", "the background".</div>
-      <div class="barraPrompt"><button type="button" id="btnPintar">Paint it by hand</button>
-        <button type="button" id="btnQuitarMask" hidden>Back to words</button></div>
+  // Los dos caminos de edicion recortan y recosen igual, asi que los dos llevan
+  // el pincel. En el reemplazo la region es obligatoria y ademas se puede nombrar
+  // con palabras; en el look es opcional y sin ella el efecto va al cuadro entero.
+  if(c.mode==='inpaint' || c.mode==='efecto'){
+    const porTexto = c.mode==='inpaint';
+    const campo = porTexto
+      ? `<label>What should be replaced</label>
+         <input type="text" id="seleccion" placeholder="the yellow sweater" value="the yellow sweater">
+         <div class="hint">Plain words work best: "the jacket", "the hair", "the background".
+           Two models read them: CLIPSeg finds the thing, SAM 2 makes the edge follow it.</div>`
+      : `<label>Where it applies <span class="opt-tag">optional</span></label>
+         <div class="hint" style="margin-top:0">Leave this alone and the look covers the whole
+           photograph. Paint a region and it goes only there — relight a face, turn just the
+           subject to clay — and everything outside comes back untouched.</div>`;
+    cont.innerHTML=`<div class="sec"></div>${campo}
+      <div class="barraPrompt">
+        <button type="button" id="btnPintar">${porTexto?'Paint it by hand':'Paint a region'}</button>
+        <button type="button" id="btnQuitarMask" hidden>${porTexto?'Back to words':'Whole photo again'}</button>
+      </div>
       <div class="nota" id="notaMask" hidden></div>`;
     $('#btnPintar').onclick=abrirPincel;
     $('#btnQuitarMask').onclick=()=>{S.mascara=null;pintarEstadoMask()};
@@ -797,7 +813,7 @@ function construirCampos(){
   mostrarLora();
   if(c.mode==='efecto') pintarElegido();
   $('#verMask').hidden=c.mode!=='inpaint';
-  $('#avInpaint').hidden=c.mode!=='inpaint';
+  $('#avInpaint').hidden = c.mode!=='inpaint' && !(c.mode==='efecto' && S.mascara);
   $('#avanzado').open=!!c.abierto;
 }
 function aplicarCaso(k){
@@ -1280,10 +1296,12 @@ function pintarEstadoMask(){
   const hay=!!S.mascara, n=$('#notaMask');
   if(!n) return;
   n.hidden=!hay; $('#btnQuitarMask').hidden=!hay;
-  $('#seleccion').disabled=hay;
-  $('#btnPintar').textContent=hay?'Edit the mask':'Paint it by hand';
-  if(hay) n.innerHTML='<b>Using the mask you painted.</b> The words above are ignored '+
-    'while it is here.';
+  const sel=$('#seleccion'); if(sel) sel.disabled=hay;
+  $('#btnPintar').textContent = hay ? 'Edit the region'
+    : (caso().mode==='efecto' ? 'Paint a region' : 'Paint it by hand');
+  if(hay) n.innerHTML = caso().mode==='efecto'
+    ? '<b>The look goes only where you painted.</b> Everything outside comes back untouched.'
+    : '<b>Using the mask you painted.</b> The words above are ignored while it is here.';
   // grow y threshold pertenecen al segmentador; con el pincel no tocan nada
   ['grow','thr'].forEach(id=>{
     const c=$('#'+id); if(!c) return;
@@ -1292,6 +1310,8 @@ function pintarEstadoMask(){
   });
   const av=$('#avisoMaskAv');
   if(av) av.hidden=!hay;
+  // en el look los ajustes de mascara solo tienen sentido cuando hay una pintada
+  if(caso().mode==='efecto') $('#avInpaint').hidden=!hay;
 }
 let MK={ctx:null, pintando:false, modo:'pintar', tam:60, ratio:1};
 function abrirPincel(){
@@ -1408,8 +1428,10 @@ $('#go').onclick=async()=>{
       if(!S.efecto){alert('Pick a look first.');return}
       antes=(S.img.source||[])[0];
       r=await (await fetch('/api/efecto',{method:'POST',body:JSON.stringify({
-        imagen:antes, efecto:S.efecto, steps:+$('#steps').value,
-        seed:+$('#seed').value})})).json();
+        imagen:antes, efecto:S.efecto, mascara:S.mascara||null,
+        difuminado:+$('#feather').value, padding:+$('#pad').value,
+        megapixeles:+$('#mp').value, variantes:+$('#variants').value,
+        steps:+$('#steps').value, seed:+$('#seed').value})})).json();
     }else if(c.mode==='inpaint'){
       antes=(S.img.source||[])[0];
       r=await (await fetch('/api/inpaint',{method:'POST',body:JSON.stringify({...comunes(),
@@ -1601,9 +1623,11 @@ async function cargarEjemplo(k){
   S.img={}; S.poseLib=null; S.mascara=null;
   if(!e){ S.esEjemplo=true; repintar(); $('#vacio').hidden=$('#gal').children.length>0; return; }
   try{
-    for(const [z,f] of Object.entries(e.ins)) S.img[z]=[await aUrlDatos('/ejemplos/'+f)];
+    for(const [z,f] of Object.entries(e.ins))
+      S.img[z]=[await aUrlDatos(f[0]==='/'?f:'/ejemplos/'+f)];
     if(e.pose){ S.poseLib=e.pose; S.img.pose=['/poses/'+e.pose+'.png']; }
     if(e.frase && $('#seleccion')) $('#seleccion').value=e.frase;
+    if(e.efecto){ S.efecto=e.efecto; pintarElegido(); }
     S.esEjemplo=true; repintar();
 
     const n=document.createElement('div');

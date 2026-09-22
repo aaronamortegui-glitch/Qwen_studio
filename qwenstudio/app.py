@@ -630,8 +630,62 @@ class Handler(BaseHTTPRequestHandler):
             return {"error": "the rewrite came back empty"}
         return {"antes": texto, "texto": salida, "segundos": round(time.time() - t0, 1)}
 
+    def _editar_region(self, img, texto, b, lora=None, fuerza=1.0, prefijo="inpaint",
+                       caso="replace", extra=None):
+        """Crop around the mask, regenerate that crop, stitch it back.
+
+        Shared by the replacement path and by a look applied to part of a photo:
+        the arithmetic is identical and only the prompt and the LoRA differ.
+        """
+        import math
+        m, err = self._resolver_mascara(b, img, crecer_por_defecto=8)
+        if err:
+            return None, err
+
+        mp = min(float(b.get("megapixeles", 1)), (int(cfg["res_max"]) ** 2) / (1024 * 1024))
+        res = int((mp * 1024 * 1024) ** 0.5)
+        caja, crop, mcrop = IN.recorte(img, m, padding=float(b.get("padding", 0.35)))
+        ratio = (caja[2] - caja[0]) / max(1, (caja[3] - caja[1]))
+        area = mp * 1024 * 1024
+        aw = max(256, round(math.sqrt(area * ratio) / 32) * 32)
+        ah = max(256, round(math.sqrt(area / ratio) / 32) * 32)
+
+        usar("imagen")
+        if not motor.listo:
+            motor.cargar()
+            if not motor.listo:
+                return None, (motor.error or "could not load the model")
+
+        refs = [_img_de_data_url(d) for d in b.get("referencias", [])]
+        base = int(b.get("seed", 0)) or int(time.time()) % 100000
+        salidas, prompt = [], texto
+        with _lock:
+            motor.usar_vae(b.get("vae") or leer_ajustes().get("vae", "hdr"))
+            motor.aplicar_lora(os.path.join(LORAS, lora) if lora else None, float(fuerza))
+            for k in range(max(1, min(4, int(b.get("variantes", 1))))):
+                gen, prompt = motor.editar(imagen=crop, texto=texto,
+                                           steps=int(b.get("steps", 25)), seed=base + k,
+                                           res=res, referencias=refs, ancho=aw, alto=ah)
+                final = IN.pegar(img, gen, mcrop, caja,
+                                 difuminado=int(b.get("difuminado", 12)))
+                receta = {"prompt": prompt, "caso": caso, "seed": base + k,
+                          "steps": int(b.get("steps", 25)), "vae": motor.vae_actual,
+                          "lora": lora, "fuerza_lora": fuerza if lora else None,
+                          "tam": f"{final.width}x{final.height}",
+                          "modelo": "Qwen-Image 2.1"}
+                if extra:
+                    receta.update(extra)
+                salidas.append({"archivo": "/salidas/" + _guardar(final, prefijo, receta),
+                                "seed": base + k, "tam": f"{final.width}x{final.height}"})
+            if lora:
+                # se descarga al salir: cada ejecucion vuelve a aplicar el suyo,
+                # y asi ninguno se queda puesto para la siguiente que no lo pida
+                motor.aplicar_lora(None, 1.0)
+        return {"imagenes": salidas, "caja": list(caja), "prompt": prompt,
+                "crop": f"{caja[2]-caja[0]}x{caja[3]-caja[1]}", "generado": f"{aw}x{ah}"}, None
+
     def _efecto(self, b):
-        """Apply one of the gallery looks to a whole image."""
+        """Apply one of the gallery looks, to the whole frame or to one region."""
         e = EF.buscar((b.get("efecto") or "").strip())
         if not e:
             return {"error": "unknown effect"}
@@ -640,6 +694,20 @@ class Handler(BaseHTTPRequestHandler):
             return {"error": f"this look needs {lora} in loras/"}
         img = _img_de_data_url(b["imagen"])
         t0 = time.time()
+
+        # con mascara, el look va solo a esa region y el resto vuelve identico;
+        # sin ella, al cuadro entero, que es lo habitual
+        if b.get("mascara") or (b.get("frase") or "").strip():
+            r, err = self._editar_region(img, e["prompt"], b, lora=lora,
+                                         fuerza=e.get("fuerza", 1.0),
+                                         prefijo="efecto", caso="look",
+                                         extra={"efecto": e["nombre"]})
+            if err:
+                return {"error": err}
+            r["efecto"] = e["nombre"]
+            r["segundos"] = round(time.time() - t0, 1)
+            return r
+
         res, err = self._editar_entero(img, e["prompt"], b, lora=lora,
                                        fuerza=e.get("fuerza", 1.0))
         if err:
@@ -701,53 +769,14 @@ class Handler(BaseHTTPRequestHandler):
                 "cobertura": round(cobertura * 100, 1), "caja": caja}
 
     def _inpaint(self, b):
-        """Segment, crop around the mask, regenerate at full resolution, stitch back."""
-        from PIL import Image
+        """Replace part of an image: same crop-and-stitch as a masked look."""
         img = _img_de_data_url(b["imagen"])
         texto = (b.get("prompt") or "").strip()
-        m, err = self._resolver_mascara(b, img, crecer_por_defecto=8)
-        if err:
-            return {"error": err}
-
-        mp = min(float(b.get("megapixeles", 1)), (int(cfg["res_max"]) ** 2) / (1024 * 1024))
-        res = int((mp * 1024 * 1024) ** 0.5)
-        caja, crop, mcrop = IN.recorte(img, m, padding=float(b.get("padding", 0.35)))
-
-        # the crop keeps its own aspect; the generation matches it so nothing
-        # gets squashed on the way back in
-        ratio = (caja[2] - caja[0]) / max(1, (caja[3] - caja[1]))
-        import math
-        area = mp * 1024 * 1024
-        aw = max(256, round(math.sqrt(area * ratio) / 32) * 32)
-        ah = max(256, round(math.sqrt(area / ratio) / 32) * 32)
-
-        usar("imagen")
-        if not motor.listo:
-            motor.cargar()
-            if not motor.listo:
-                return {"error": motor.error or "could not load the model"}
-
-        refs = [_img_de_data_url(d) for d in b.get("referencias", [])]
-        base = int(b.get("seed", 0)) or int(time.time()) % 100000
-        salidas = []
-        with _lock:
-            motor.aplicar_lora(os.path.join(LORAS, b["lora"]) if b.get("lora") else None,
-                               float(b.get("fuerza_lora", 1.0)))
-            for k in range(max(1, min(4, int(b.get("variantes", 1))))):
-                gen, prompt = motor.editar(imagen=crop, texto=texto, steps=int(b.get("steps", 25)),
-                                           seed=base + k, res=res, referencias=refs,
-                                           ancho=aw, alto=ah)
-                final = IN.pegar(img, gen, mcrop, caja,
-                                 difuminado=int(b.get("difuminado", 12)))
-                salidas.append({"archivo": "/salidas/" + _guardar(final, "inpaint", {
-                                    "prompt": prompt, "caso": "replace",
-                                    "seed": base + k, "steps": int(b.get("steps", 25)),
-                                    "vae": motor.vae_actual,
-                                    "tam": f"{final.width}x{final.height}",
-                                    "modelo": "Qwen-Image 2.1"}),
-                                "seed": base + k, "tam": f"{final.width}x{final.height}"})
-        return {"imagenes": salidas, "caja": list(caja), "prompt": prompt,
-                "crop": f"{caja[2]-caja[0]}x{caja[3]-caja[1]}", "generado": f"{aw}x{ah}"}
+        r, err = self._editar_region(img, texto, b,
+                                     lora=b.get("lora"),
+                                     fuerza=float(b.get("fuerza_lora", 1.0)),
+                                     prefijo="inpaint", caso="replace")
+        return {"error": err} if err else r
 
     def _generar(self, b):
         from PIL import Image

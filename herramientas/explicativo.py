@@ -382,7 +382,8 @@ def construir() -> str:
           Paragraph("Looks, and what was left out", H3),
           Paragraph("A treatment is picked from a grid rather than typed, and every "
                     "thumbnail in it is that effect applied to this install's own reference "
-                    "photo, generated on this machine. Upscaling to 2K is implemented and "
+                    "photo, generated on this machine. A look can be confined to a painted "
+                    "region instead of covering the frame. Upscaling to 2K is implemented and "
                     "deliberately not offered: it works, and it took 754 seconds here for "
                     "one image. Twelve minutes is not a feature. The endpoint and the "
                     "reasoning are written down instead.", CUERPO),
@@ -402,6 +403,26 @@ def construir() -> str:
                     "full resolution, and pastes it back through a feathered edge. Detail "
                     "lands where the edit is instead of being spread thin over the whole "
                     "frame, and the untouched area is preserved exactly.", CUERPO),
+          Paragraph("Both editing paths run through that same routine, so a look confined "
+                    "to a painted region and a replacement are one operation with two "
+                    "prompts. The region can be named in words — CLIPSeg finds it, SAM 2 "
+                    "sharpens the edge — or painted by hand at the photograph's real "
+                    "resolution. A replacement needs a region; a look does not, and without "
+                    "one it grades the whole frame.", CUERPO),
+          Spacer(1, 3 * mm),
+          Paragraph("Knowing what the card is doing", H3),
+          Paragraph("The header carries a live reading of the card: memory used against "
+                    "memory fitted, refreshed while work runs, with a button that drops the "
+                    "cached allocations without unloading the model. Before each image of a "
+                    "batch the app can wait for the card to come back under a temperature "
+                    "you set. That is not protection from damage — the firmware enforces "
+                    "its own limits and nothing here can override them — but a long "
+                    "unattended run finishes sooner if it is not being throttled the whole "
+                    "way, and a number on screen beats guessing.", CUERPO),
+          Paragraph("Deleting from the gallery moves the file to a bin folder on disk "
+                    "rather than unlinking it. A grid of thumbnails that look alike is "
+                    "exactly where an irreversible click loses the good one; emptying the "
+                    "bin stays the user’s decision.", CUERPO),
           Spacer(1, 9 * mm)]
 
     # --- 4. lo medido ------------------------------------------------------
