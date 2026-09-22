@@ -216,6 +216,29 @@ details>summary{cursor:pointer;font-size:13px;color:var(--link);margin-top:18px;
   border-left:4px solid var(--lima)}
 .nota.ejemplo .ghost{margin-left:auto}
 
+/* ---- galeria de efectos ---- */
+#ef{width:min(960px,95vw);max-width:none}
+#efGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;
+  max-height:60vh;overflow:auto;padding:2px}
+#efGrid button{border:1px solid var(--line-soft);background:var(--sf-1);
+  border-radius:var(--r-s);padding:0;cursor:pointer;overflow:hidden;text-align:left;
+  color:var(--on-sf);font:inherit;transition:.15s}
+#efGrid button:hover{border-color:var(--verde)}
+#efGrid button[aria-pressed=true]{border-color:transparent;outline:2px solid var(--verde);
+  outline-offset:-2px}
+#efGrid img{width:100%;aspect-ratio:1;object-fit:cover;background:var(--sf-2);display:block}
+#efGrid .sinthumb{width:100%;aspect-ratio:1;display:grid;place-items:center;
+  background:var(--sf-2);color:var(--on-sf-var);font-size:11px;text-align:center;padding:8px}
+#efGrid span{display:block;padding:9px 11px;font-size:12.5px;font-weight:600}
+#efGrid small{color:var(--on-sf-var);font-size:11px;font-weight:400;display:block}
+#efGrid button[disabled]{opacity:.45;cursor:not-allowed}
+.efElegido{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:12px;
+  background:var(--sf-1);border:1px solid var(--line-soft);border-radius:var(--r-s);
+  padding:10px 12px}
+.efElegido img{width:46px;height:46px;border-radius:var(--r-xs);object-fit:cover;flex:none}
+.efElegido b{font-size:14px;display:block}
+.efElegido small{color:var(--on-sf-var);font-size:12px}
+
 /* ---- galeria ---- */
 #gl{width:min(1020px,95vw);max-width:none}
 #glGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:12px;
@@ -230,7 +253,7 @@ details>summary{cursor:pointer;font-size:13px;color:var(--link);margin-top:18px;
   font-size:10px;white-space:nowrap}
 #glGrid a{display:inline-flex;align-items:center;color:var(--on-sf-var);text-decoration:none}
 #glGrid a:hover{color:var(--link)}
-#glPie{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:16px}
+#glPie,#efPie{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:16px}
 #glPie code{font-size:11px;overflow-wrap:anywhere}
 .iconobtn{border:1px solid var(--line);background:transparent;color:var(--on-sf);
   border-radius:var(--r-full);width:30px;height:30px;display:inline-grid;place-items:center;
@@ -316,12 +339,12 @@ pre{white-space:pre-wrap;font-size:12px;color:var(--on-sf-var);background:var(--
 dialog{border:0;padding:0;background:transparent;max-width:96vw;max-height:96vh}
 dialog>img{max-width:94vw;max-height:94vh;object-fit:contain;border-radius:var(--r-m);display:block}
 dialog::backdrop{background:rgba(10,33,31,.5)}
-#lib,#pl,#cfg,#mk,#gl{background:var(--sf);border-radius:var(--r-xl);padding:26px;
+#lib,#pl,#cfg,#mk,#gl,#ef{background:var(--sf);border-radius:var(--r-xl);padding:26px;
   color:var(--on-sf);box-shadow:var(--e3)}
 #lib{width:min(900px,94vw);max-width:none}
 #pl{width:min(800px,94vw);max-width:none}
 #cfg{width:min(500px,94vw);max-width:none}
-#lib h3,#pl h3,#cfg h3,#mk h3,#gl h3{margin:0 0 18px;font-size:22px;font-weight:400;
+#lib h3,#pl h3,#cfg h3,#mk h3,#gl h3,#ef h3{margin:0 0 18px;font-size:22px;font-weight:400;
   letter-spacing:-.2px}
 #libGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:12px;
   max-height:62vh;overflow:auto}
@@ -353,13 +376,13 @@ dialog::backdrop{background:rgba(10,33,31,.5)}
   color:var(--on-sf-var);cursor:pointer}
 .modoEstilo input{width:auto;margin:0}
 </style>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='12' fill='%230a211f'/%3E%3Crect x='9.5' y='9.5' width='19' height='19' rx='5' fill='none' stroke='%23d8ff85' stroke-width='2.4'/%3E%3Crect x='19.5' y='19.5' width='19' height='19' rx='5' fill='%23d8ff85'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='12' fill='%230a211f'/%3E%3Crect x='9' y='14' width='18' height='18' rx='5' fill='%23d8ff85'/%3E%3Ccircle cx='30' cy='18' r='9' fill='%23d8ff85'/%3E%3Ccircle cx='30' cy='18' r='5.6' fill='%230a211f'/%3E%3C/svg%3E">
 <script>(function(){var t='light';try{t=localStorage.getItem('qs_tema')||'light'}catch(e){}
 if(t!=='auto')document.documentElement.setAttribute('data-theme',t);})();</script>
 </head><body>
 
 <header>
-  <h1><svg class="marca" viewBox="0 0 48 48" role="img" aria-label="QwenStudio"><rect width="48" height="48" rx="12" fill="#0a211f"/><rect x="9.5" y="9.5" width="19" height="19" rx="5" fill="none" stroke="#d8ff85" stroke-width="2.4"/><rect x="19.5" y="19.5" width="19" height="19" rx="5" fill="#d8ff85"/></svg>QwenStudio</h1>
+  <h1><svg class="marca" viewBox="0 0 48 48" role="img" aria-label="QwenStudio"><rect width="48" height="48" rx="12" fill="#0a211f"/><rect x="9" y="14" width="18" height="18" rx="5" fill="#d8ff85"/><circle cx="30" cy="18" r="9" fill="#d8ff85"/><circle cx="30" cy="18" r="5.6" fill="#0a211f"/></svg>QwenStudio</h1>
   <span class="chip num" id="chipProfile">&nbsp;</span>
   <span class="chip" id="chipEngine"><i class="pt"></i><span>starting</span></span>
   <span style="flex:1"></span>
@@ -369,7 +392,7 @@ if(t!=='auto')document.documentElement.setAttribute('data-theme',t);})();</scrip
 
 <main>
 <div class="card">
-  <div id="setup"><div class="bienvenida"><svg class="marca" viewBox="0 0 48 48" role="img" aria-label="QwenStudio"><rect width="48" height="48" rx="12" fill="#0a211f"/><rect x="9.5" y="9.5" width="19" height="19" rx="5" fill="none" stroke="#d8ff85" stroke-width="2.4"/><rect x="19.5" y="19.5" width="19" height="19" rx="5" fill="#d8ff85"/></svg>
+  <div id="setup"><div class="bienvenida"><svg class="marca" viewBox="0 0 48 48" role="img" aria-label="QwenStudio"><rect width="48" height="48" rx="12" fill="#0a211f"/><rect x="9" y="14" width="18" height="18" rx="5" fill="#d8ff85"/><circle cx="30" cy="18" r="9" fill="#d8ff85"/><circle cx="30" cy="18" r="5.6" fill="#0a211f"/></svg>
     <h2>Welcome to QwenStudio</h2>
     <p>Local image generation and editing with Qwen-Image 2.1. Nothing leaves
       this machine.</p>
@@ -388,8 +411,20 @@ if(t!=='auto')document.documentElement.setAttribute('data-theme',t);})();</scrip
     <div class="sec"></div>
     <h2 id="lblPrompt"><i>3</i>Instruction</h2>
     <textarea id="prompt"></textarea>
-    <div class="barraPrompt">
+    <div class="efElegido" id="zonaEfecto" hidden>
+      <span id="efMini"></span>
+      <span style="flex:1"><b id="efNombre">No look picked yet</b>
+        <small id="efDesc">Open the grid and choose one.</small></span>
+      <button type="button" class="ghost" id="btnEf">Pick a look</button>
+    </div>
+    <div class="hint" id="zonaEscalar" hidden>The image is redrawn at a larger size using
+      itself as the reference, which recovers real detail instead of interpolating pixels.
+      The target is the whole 2K budget: the area is scaled towards 2048&times;2048, capped
+      at four times per side.</div>
+    <div class="barraPrompt" id="barraPrompt">
       <button type="button" id="btnPl">Prompt library</button>
+      <button type="button" id="btnMejorar">Improve it</button>
+      <button type="button" id="btnDeshacer" hidden>Undo</button>
       <button type="button" id="btnDesc">Describe an image</button>
       <button type="button" id="btnClear">Clear</button>
     </div>
@@ -458,6 +493,19 @@ if(t!=='auto')document.documentElement.setAttribute('data-theme',t);})();</scrip
   <div class="chips" id="libFiltros" style="margin-bottom:10px"></div>
   <div id="libGrid"></div></dialog>
 <dialog id="pl"><h3>Prompt library</h3><div id="plBody"></div></dialog>
+<dialog id="ef"><h3>Pick a look</h3>
+  <div class="hint" style="margin:-10px 0 14px">Each thumbnail is this effect applied to
+    the reference photo of this install, generated here. The composition, the framing and
+    the face stay; only the treatment changes.</div>
+  <div class="chips" id="efFiltros" style="margin-bottom:12px"></div>
+  <div id="efGrid"></div>
+  <div id="efPie">
+    <span class="hint" id="efNota" style="margin:0"></span>
+    <span style="flex:1"></span>
+    <button class="go alt" type="button" id="efCerrar" style="width:auto;margin:0;
+      padding:10px 22px">Close</button>
+  </div>
+</dialog>
 <dialog id="gl"><h3>Gallery</h3>
   <div class="hint" style="margin:-10px 0 14px">Everything this app has written to
     <code>salidas/</code>, newest first. The folder is the gallery: delete a file there
@@ -517,6 +565,8 @@ const IC={
  text:'<path d="M5 8V5.5h14V8"/><path d="M12 5.5v13"/><path d="M8.5 18.5h7"/>',
  descarga:'<path d="M12 4v10M8.5 10.5L12 14l3.5-3.5"/><path d="M5 16v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"/>',
  galeria:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 15l4.5-4a2 2 0 0 1 2.7 0L16 17"/><circle cx="15.5" cy="8.5" r="1.4"/>',
+ efecto:'<path d="M12 3.2l2.1 4.6 4.9.6-3.6 3.4 1 4.9-4.4-2.5-4.4 2.5 1-4.9L5 8.4l4.9-.6z"/>',
+ escalar:'<path d="M4 10V4h6"/><path d="M20 14v6h-6"/><path d="M4 4l7 7"/><path d="M20 20l-7-7"/>',
  carpeta:'<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
  sign:'<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M7 9.5h10M7 13h6"/><path d="M12 17v3"/>',
 };
@@ -580,6 +630,11 @@ const CASOS={
     mode:'generate', zonas:['person','pose','style','scene'], opt:['person','pose','style','scene'],
     ratio:'auto', prompt:'', abierto:true},
 
+  look:{cat:'edit', icon:'efecto', name:'Apply a look', hint:'Pick the treatment from a grid.',
+    mode:'efecto', zonas:['source'], opt:[], ratio:'auto', prompt:''},
+  upscale:{cat:'edit', icon:'escalar', name:'Upscale to 2K', hint:'Redrawn larger, not interpolated.',
+    mode:'upscale', zonas:['source'], opt:[], ratio:'auto', prompt:''},
+
   replace:{cat:'edit', icon:'replace', name:'Replace something', hint:'Name it or paint it, then say what goes there.',
     mode:'inpaint', zonas:['source','extra'], opt:['extra'], ratio:'auto',
     prompt:'A dark green leather biker jacket, zipped all the way up, nothing else visible '
@@ -610,7 +665,8 @@ const EJ={
       +'green leather jacket; everything else in the photograph is untouched.'},
   free:null,
 };
-const S={caso:'portrait', img:{}, poseLib:null, ratio:'1:1', esEjemplo:true, mascara:null};
+const S={caso:'portrait', img:{}, poseLib:null, ratio:'1:1', esEjemplo:true,
+         mascara:null, efecto:null};
 const caso=()=>CASOS[S.caso];
 
 /* ---------- zones ---------- */
@@ -682,8 +738,17 @@ function construirCampos(){
     $('#btnQuitarMask').onclick=()=>{S.mascara=null;pintarEstadoMask()};
     pintarEstadoMask();
   }
-  $('#lblPrompt').innerHTML=`<i>${$('#lblPrompt').dataset.n||'3'}</i>`
-    +(c.mode==='inpaint'?'What should go there instead':'Instruction');
+  const etiqueta = c.mode==='inpaint' ? 'What should go there instead'
+    : c.mode==='efecto' ? 'The look'
+    : c.mode==='upscale' ? 'What to keep'
+    : 'Instruction';
+  $('#lblPrompt').innerHTML=`<i>${$('#lblPrompt').dataset.n||'3'}</i>`+etiqueta;
+  // en estos dos el prompt no se escribe: uno se escoge y el otro es fijo
+  $('#prompt').hidden = c.mode==='efecto';
+  $('#barraPrompt').hidden = c.mode==='efecto';
+  $('#zonaEfecto').hidden = c.mode!=='efecto';
+  $('#zonaEscalar').hidden = c.mode!=='upscale';
+  if(c.mode==='efecto') pintarElegido();
   $('#verMask').hidden=c.mode!=='inpaint';
   $('#avInpaint').hidden=c.mode!=='inpaint';
   $('#avanzado').open=!!c.abierto;
@@ -954,6 +1019,51 @@ function tarjeta(im, antes){
   f.append(c); f.dataset.src=im.archivo; return f;
 }
 
+/* ---------- la galeria de efectos ---------- */
+let EFECTOS=[], efFiltro='all';
+function pintarElegido(){
+  const e=EFECTOS.find(x=>x.id===S.efecto);
+  if(!$('#efNombre')) return;
+  $('#efNombre').textContent = e ? e.nombre : 'No look picked yet';
+  $('#efDesc').textContent = e ? e.grupo : 'Open the grid and choose one.';
+  $('#efMini').innerHTML = e && e.thumb ? `<img src="${e.thumb}" alt="">` : '';
+  $('#btnEf').textContent = e ? 'Change' : 'Pick a look';
+}
+function pintarEfectos(){
+  const g=$('#efGrid'); g.innerHTML='';
+  EFECTOS.filter(e=>efFiltro==='all'||e.grupo===efFiltro).forEach(e=>{
+    const b=document.createElement('button'); b.type='button';
+    b.setAttribute('aria-pressed', e.id===S.efecto);
+    if(!e.listo) b.disabled=true;
+    b.innerHTML=(e.thumb ? `<img src="${e.thumb}" alt="">`
+                 : `<span class="sinthumb">no thumbnail yet</span>`)
+      +`<span>${e.nombre}<small>${e.listo?e.grupo:'needs '+e.lora}</small></span>`;
+    b.onclick=()=>{S.efecto=e.id;pintarEfectos();pintarElegido();$('#ef').close()};
+    g.append(b);
+  });
+}
+fetch('/api/efectos').then(r=>r.json()).then(es=>{
+  EFECTOS=es;
+  const grupos=['all',...new Set(es.map(e=>e.grupo))];
+  const f=$('#efFiltros'); f.innerHTML='';
+  grupos.forEach(k=>{
+    const b=document.createElement('button'); b.className='pill'; b.type='button';
+    b.dataset.f=k; b.textContent=k==='all'?'All':k;
+    b.setAttribute('aria-pressed',k==='all');
+    b.onclick=()=>{efFiltro=k;
+      [...f.children].forEach(x=>x.setAttribute('aria-pressed',x.dataset.f===k));
+      pintarEfectos()};
+    f.append(b);
+  });
+  const faltan=es.filter(e=>!e.thumb).length;
+  $('#efNota').textContent = faltan
+    ? `${faltan} without a thumbnail \u2014 run herramientas/generar_efectos.py` : '';
+  pintarEfectos(); pintarElegido();
+}).catch(()=>{});
+$('#btnEf') && ($('#btnEf').onclick=()=>$('#ef').showModal());
+$('#efCerrar').onclick=()=>$('#ef').close();
+$('#ef').onclick=e=>{if(e.target.id==='ef')$('#ef').close()};
+
 /* ---------- la galeria ---------- */
 function cuando(ts){
   const s=(Date.now()/1000)-ts;
@@ -1132,7 +1242,17 @@ $('#go').onclick=async()=>{
   const tic=setInterval(()=>b.textContent=`Generating... ${((Date.now()-t0)/1000).toFixed(0)}s`,250);
   try{
     let r, antes=null;
-    if(c.mode==='inpaint'){
+    if(c.mode==='efecto'){
+      if(!S.efecto){alert('Pick a look first.');return}
+      antes=(S.img.source||[])[0];
+      r=await (await fetch('/api/efecto',{method:'POST',body:JSON.stringify({
+        imagen:antes, efecto:S.efecto, steps:+$('#steps').value,
+        seed:+$('#seed').value})})).json();
+    }else if(c.mode==='upscale'){
+      antes=(S.img.source||[])[0];
+      r=await (await fetch('/api/reescalar',{method:'POST',body:JSON.stringify({
+        imagen:antes, steps:+$('#steps').value, seed:+$('#seed').value})})).json();
+    }else if(c.mode==='inpaint'){
       antes=(S.img.source||[])[0];
       r=await (await fetch('/api/inpaint',{method:'POST',body:JSON.stringify({...comunes(),
         imagen:antes, frase:$('#seleccion').value, mascara:S.mascara||null,
@@ -1199,6 +1319,24 @@ fetch('/api/prompts').then(r=>r.json()).then(cats=>{
     });
   });
 }).catch(()=>{});
+$('#btnMejorar').onclick=async()=>{
+  const t=$('#prompt').value.trim();
+  if(!t){alert('Write a few words first and this will turn them into a full prompt.');return}
+  const b=$('#btnMejorar'); b.disabled=true; const antes=b.textContent;
+  b.textContent='Rewriting...';
+  try{
+    const r=await (await fetch('/api/mejorar_prompt',{method:'POST',
+      body:JSON.stringify({prompt:t})})).json();
+    if(r.error){alert(r.error);return}
+    S.promptPrevio=r.antes;              // un solo paso atras, que es lo que hace falta
+    $('#prompt').value=r.texto;
+    $('#btnDeshacer').hidden=false;
+  }finally{ b.disabled=false; b.textContent=antes }
+};
+$('#btnDeshacer').onclick=()=>{
+  if(S.promptPrevio!==undefined) $('#prompt').value=S.promptPrevio;
+  $('#btnDeshacer').hidden=true;
+};
 $('#btnPl').onclick=()=>$('#pl').showModal();
 $('#pl').onclick=e=>{if(e.target.id==='pl')$('#pl').close()};
 $('#btnClear').onclick=()=>{$('#prompt').value=''};
@@ -1229,6 +1367,8 @@ const OPCIONES=[
  ['steps','num','Default steps','25 is what ComfyUI recommends, 40 what the model card says.'],
  ['megapixeles','num','Default quality (MP)','1 is fast, 4 is 2K native.'],
  ['vlm_bits','sel','Vision model precision','4-bit uses ~7 GB, 8-bit ~13 GB and describes a little better.'],
+ ['vae','vae','Decoder',
+  'Measured on the same seed: the HDR decoder gives +19% saturation and +27% edge energy with contrast and exposure unchanged. It interprets rather than reproduces — SSIM drops from 0.958 to 0.944 — so switch to stock for a faithful reproduction. Needs modelos/vae_hdr.safetensors.'],
 ];
 let AJ={};
 function aplicarTema(t){
@@ -1246,6 +1386,9 @@ function pintarAjustes(){
     if(tipo==='check'){ ctrl=`<input type="checkbox" id="aj_${k}" ${AJ[k]?'checked':''}>` }
     else if(tipo==='sel'){ ctrl=`<select id="aj_${k}"><option value="4"${AJ[k]==4?' selected':''}>4-bit</option>
       <option value="8"${AJ[k]==8?' selected':''}>8-bit</option></select>` }
+    else if(tipo==='vae'){ ctrl=`<select id="aj_${k}">
+      <option value="hdr"${AJ[k]==='hdr'?' selected':''}>HDR</option>
+      <option value="stock"${AJ[k]==='stock'?' selected':''}>Stock</option></select>` }
     else { ctrl=`<input type="number" id="aj_${k}" value="${AJ[k]}" min="1" max="60">` }
     row.innerHTML = tipo==='check'
       ? `${ctrl}<div><b>${tit}</b><small>${desc}</small></div>`
@@ -1253,7 +1396,7 @@ function pintarAjustes(){
     b.append(row);
     const el=row.querySelector('#aj_'+k);
     el.onchange=()=>{
-      const v = tipo==='check' ? el.checked : (tipo==='sel'? +el.value : +el.value);
+      const v = tipo==='check' ? el.checked : (tipo==='vae' ? el.value : +el.value);
       AJ[k]=v;
       fetch('/api/ajustes',{method:'POST',body:JSON.stringify({[k]:v})});
       if(k==='steps') $('#steps').value=v, $('#vSteps').textContent=v;

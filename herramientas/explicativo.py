@@ -26,7 +26,8 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.platypus import (BaseDocTemplate, Frame, KeepTogether, NextPageTemplate,
+from reportlab.platypus import (BaseDocTemplate, CondPageBreak, Frame, KeepTogether,
+                                NextPageTemplate,
                                 PageBreak, PageTemplate, Paragraph, Spacer, Table,
                                 TableStyle)
 
@@ -95,6 +96,15 @@ CELDA = _p(9, 12.4)
 CELDA_B = _p(9, 12.4, font=None, space=0)
 
 
+def _seccion(titulo, primero):
+    """Un H2 y lo primero que viene detras, pegados.
+
+    Un titular al pie de pagina con su texto en la siguiente es la forma mas
+    facil de que un documento parezca roto sin estarlo.
+    """
+    return KeepTogether([Paragraph(titulo, H2), primero])
+
+
 def _tabla(filas, anchos, cabecera=True):
     """Cada celda va envuelta en Paragraph.
 
@@ -126,19 +136,31 @@ def _tabla(filas, anchos, cabecera=True):
 
 # ------------------------------------------------------------------ paginas
 
+def _marca(canvas, x, y, lado, fondo, figura):
+    """El simbolo, dibujado una sola vez y reusado en las dos plantillas.
+
+    Las coordenadas son las del SVG de la interfaz sobre un lienzo de 48, para
+    que el icono de la app y el del documento sean la misma forma y no dos
+    parecidas que se van separando con cada retoque.
+    """
+    u = lado / 48.0
+    canvas.setFillColor(fondo)
+    canvas.roundRect(x, y, lado, lado, 12 * u, fill=1, stroke=0)
+    canvas.setFillColor(figura)
+    # el eje y del pdf sube y el del svg baja: 48 - y - alto
+    canvas.roundRect(x + 9 * u, y + (48 - 32) * u, 18 * u, 18 * u, 5 * u, fill=1, stroke=0)
+    canvas.circle(x + 30 * u, y + (48 - 18) * u, 9 * u, fill=1, stroke=0)
+    canvas.setFillColor(fondo)
+    canvas.circle(x + 30 * u, y + (48 - 18) * u, 5.6 * u, fill=1, stroke=0)
+
+
 def _fondo(canvas, doc):
     canvas.saveState()
     canvas.setFillColor(HUESO)
     canvas.rect(0, 0, *A4, fill=1, stroke=0)
     # la marca, pequena, arriba a la izquierda
     x, y, s = MARGEN, A4[1] - MARGEN + 3 * mm, 6.5 * mm
-    canvas.setFillColor(TINTA)
-    canvas.roundRect(x, y, s, s, 1.6 * mm, fill=1, stroke=0)
-    canvas.setStrokeColor(LIMA)
-    canvas.setLineWidth(0.7)
-    canvas.roundRect(x + s * .2, y + s * .2, s * .4, s * .4, 0.7 * mm, fill=0, stroke=1)
-    canvas.setFillColor(LIMA)
-    canvas.roundRect(x + s * .41, y + s * .41, s * .4, s * .4, 0.7 * mm, fill=1, stroke=0)
+    _marca(canvas, x, y, s, TINTA, LIMA)
 
     canvas.setFont(R, 7.8)
     canvas.setFillColor(TENUE)
@@ -159,13 +181,7 @@ def _portada(canvas, doc):
 
     s = 26 * mm
     x, y = MARGEN, A4[1] - MARGEN - s
-    canvas.setFillColor(HUESO)
-    canvas.roundRect(x, y, s, s, 6.5 * mm, fill=1, stroke=0)
-    canvas.setStrokeColor(TINTA)
-    canvas.setLineWidth(1.4)
-    canvas.roundRect(x + s * .2, y + s * .2, s * .4, s * .4, 2.7 * mm, fill=0, stroke=1)
-    canvas.setFillColor(VERDE)
-    canvas.roundRect(x + s * .41, y + s * .41, s * .4, s * .4, 2.7 * mm, fill=1, stroke=0)
+    _marca(canvas, x, y, s, HUESO, VERDE)
 
     canvas.setFillColor(HUESO)
     canvas.setFont(R, 44)
@@ -225,7 +241,8 @@ def construir() -> str:
     f += [Spacer(1, 1), NextPageTemplate("normal"), PageBreak()]
 
     # --- 1. que es ---------------------------------------------------------
-    f += [Paragraph("What this is", H2),
+    f += [CondPageBreak(45 * mm),
+          Paragraph("What this is", H2),
           Paragraph("An image generation and editing app that runs Qwen-Image 2.1 on one "
                     "machine, with nothing in between. No ComfyUI, no cloud, no account, no "
                     "API key. You clone it, double-click an installer, and 31 GB of weights "
@@ -268,10 +285,11 @@ def construir() -> str:
           Paragraph("An edit selects its region from words or from a brush painted at the "
                     "photo's real resolution. What you leave untouched comes back byte for "
                     "byte — the test suite checks that rather than assuming it.", TENUE_P),
-          PageBreak()]
+          Spacer(1, 9 * mm)]
 
     # --- 2. frente a los cerrados -----------------------------------------
-    f += [Paragraph("How this differs from a closed model", H2),
+    f += [CondPageBreak(45 * mm),
+          Paragraph("How this differs from a closed model", H2),
           Paragraph("Not “better”. Different in ways that decide whether it fits "
                     "what you are doing.", OJO),
           _tabla([
@@ -304,10 +322,11 @@ def construir() -> str:
                     "was measured rather than assumed, and the ones that turned out wrong are "
                     "still written down. A closed model hands you a result. This hands you a "
                     "result and the reason.", CUERPO),
-          PageBreak()]
+          Spacer(1, 9 * mm)]
 
     # --- 3. como funciona --------------------------------------------------
-    f += [Paragraph("How it works", H2),
+    f += [CondPageBreak(45 * mm),
+          Paragraph("How it works", H2),
           Paragraph("Four reference slots, one job each", H3),
           Paragraph("The model accepts several reference images. Left to itself it blends "
                     "them; the app gives each one a job and says so in the prompt, so they "
@@ -363,10 +382,11 @@ def construir() -> str:
                     "full resolution, and pastes it back through a feathered edge. Detail "
                     "lands where the edit is instead of being spread thin over the whole "
                     "frame, and the untouched area is preserved exactly.", CUERPO),
-          PageBreak()]
+          Spacer(1, 9 * mm)]
 
     # --- 4. lo medido ------------------------------------------------------
-    f += [Paragraph("What we measured", H2),
+    f += [CondPageBreak(45 * mm),
+          Paragraph("What we measured", H2),
           Paragraph("All of it in one long session on an RTX 5090 Laptop with 24 GB. Where a "
                     "belief turned out to be wrong, the wrong version is kept.", OJO)]
 
@@ -430,10 +450,11 @@ def construir() -> str:
                     "1.7× on edits by itself. If raw speed matters more than being "
                     "self-contained, use ComfyUI. This exists to be self-contained.",
                     TENUE_P),
-          PageBreak()]
+          Spacer(1, 9 * mm)]
 
     # --- 5. como se comprueba y licencias ---------------------------------
-    f += [Paragraph("How it is checked", H2),
+    f += [CondPageBreak(45 * mm),
+          Paragraph("How it is checked", H2),
           Paragraph("Fourteen cases run against the live app. They check the shape of what "
                     "came back, not just the absence of an exception: a 1024 square returned "
                     "when 16:9 was asked for is broken even though nothing raised.", CUERPO),
@@ -444,6 +465,7 @@ def construir() -> str:
                     "mask was right, and the edit was wrong. Shape checking alone would have "
                     "passed it.", CUERPO),
           Spacer(1, 6 * mm),
+          CondPageBreak(45 * mm),
           Paragraph("Licences", H2),
           _tabla([
               ["", ""],

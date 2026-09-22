@@ -221,6 +221,7 @@ class Motor:
     def __init__(self, cfg: dict):
         self.cfg = cfg
         self.pipe = None
+        self.vae_actual = "stock"
         self.cargando = False
         self.error = ""
         self._lora = None          # (ruta, fuerza) actualmente aplicada
@@ -229,6 +230,42 @@ class Motor:
     @property
     def listo(self) -> bool:
         return self.pipe is not None
+
+    def vae_disponible(self) -> bool:
+        """True when the alternative VAE weights are sitting in modelos/."""
+        return os.path.exists(os.path.join(self.cfg["ruta_modelos"], "vae_hdr.safetensors"))
+
+    def usar_vae(self, cual: str) -> str:
+        """Swap the VAE weights in place. Returns which one is now loaded.
+
+        Loading the state dict into the mounted VAE costs a second off disk;
+        building a second pipeline would cost the whole model again.
+        """
+        if self.pipe is None:
+            return getattr(self, "vae_actual", "stock")
+        cual = "hdr" if cual == "hdr" else "stock"
+        if getattr(self, "vae_actual", "stock") == cual:
+            return cual
+        import torch
+        from safetensors.torch import load_file
+        ruta = (os.path.join(self.cfg["ruta_modelos"], "vae_hdr.safetensors") if cual == "hdr"
+                else os.path.join(self.cfg["ruta_modelos"], "vae",
+                                  "diffusion_pytorch_model.safetensors"))
+        if not os.path.exists(ruta):
+            return getattr(self, "vae_actual", "stock")
+        sd = load_file(ruta)
+        destino = self.pipe.vae
+        # el archivo HDR viene en fp16 y el VAE montado puede estar en bf16:
+        # se castea a lo que ya tiene cada tensor, no al reves
+        sd = {k: v.to(dtype=destino.state_dict()[k].dtype) for k, v in sd.items()}
+        destino.load_state_dict(sd, strict=True)
+        del sd
+        try:
+            torch.cuda.empty_cache()
+        except Exception:
+            pass
+        self.vae_actual = cual
+        return cual
 
     def cargar(self) -> None:
         if self.pipe is not None or self.cargando:
@@ -311,6 +348,9 @@ class Motor:
                 pipe.to("mps")
 
             self.pipe = pipe
+            self.vae_actual = "stock"
+            if self.cfg.get("vae", "stock") == "hdr":
+                self.usar_vae("hdr")
         except Exception as e:
             self.error = f"{type(e).__name__}: {e}"
         finally:

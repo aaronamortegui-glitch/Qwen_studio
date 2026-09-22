@@ -1,7 +1,7 @@
 """Draw the QwenStudio mark and write the icon files.
 
-The mark is two overlapping frames: one open, one filled. It is what the app
-does — a reference plus a reference make a result — in Superside's palette
+The mark is a body and a lens fused into one silhouette: the frame you compose
+in and the thing you point at it, in Superside's palette
 (#0A211F and #D8FF85). It is an original symbol, not the Superside logo: this
 is an unofficial exploration and a registered wordmark has no business in it.
 
@@ -35,11 +35,10 @@ def dibujar(lado: int) -> Image.Image:
     u = n / 48.0                                   # el svg esta pensado en 48
 
     d.rounded_rectangle([0, 0, n - 1, n - 1], radius=round(12 * u), fill=TINTA)
-    grosor = max(1, round(2.4 * u))
-    d.rounded_rectangle([round(9.5 * u), round(9.5 * u), round(28.5 * u), round(28.5 * u)],
-                        radius=round(5 * u), outline=LIMA, width=grosor)
-    d.rounded_rectangle([round(19.5 * u), round(19.5 * u), round(38.5 * u), round(38.5 * u)],
+    d.rounded_rectangle([round(9 * u), round(14 * u), round(27 * u), round(32 * u)],
                         radius=round(5 * u), fill=LIMA)
+    d.ellipse([round(21 * u), round(9 * u), round(39 * u), round(27 * u)], fill=LIMA)
+    d.ellipse([round(24.4 * u), round(12.4 * u), round(35.6 * u), round(23.6 * u)], fill=TINTA)
     return im.resize((lado, lado), Image.LANCZOS)
 
 

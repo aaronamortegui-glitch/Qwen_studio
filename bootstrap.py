@@ -35,6 +35,10 @@ DIFFUSERS = "git+https://github.com/huggingface/diffusers.git@main"
 
 COMUNES = [
     "transformers>=5.5",
+    # peft lo exige diffusers para cargar un LoRA. Sin el, load_lora_weights
+    # lanza "PEFT backend is required" y la funcion entera no existe, que es
+    # justo lo que pasaba hasta que un efecto con LoRA lo destapo.
+    "peft>=0.14",
     "accelerate>=1.0",
     "safetensors>=0.4",
     "huggingface_hub>=1.0",

@@ -103,6 +103,56 @@ def descargar_de_memoria() -> None:
         pass
 
 
+# Como reescribir un encargo suelto en algo que este modelo entienda. El orden
+# no es decorativo: el sujeto primero porque es lo que mas peso recibe, y la
+# optica al final porque es lo que menos. Las reglas son las que se midieron en
+# este proyecto, no preferencias de estilo.
+REDACTAR = """You rewrite prompts for an image model. Rewrite the request below as
+one paragraph of natural declarative English, in this order: the subject, then the
+clothing and the telling details, then the place, then the framing, then the light,
+then the lens or the medium.
+
+Rules:
+- Say only what should be in the picture. Never write what should be absent: there
+  is no negative guidance, so a thing you forbid is a thing you summoned.
+- Name things that can be seen. "A brass diving helmet" works; "beautiful" and
+  "masterpiece" give the model nothing to draw.
+- Keep any words the request put in double quotes exactly as they are, quotes
+  included: those come out as lettering in the image.
+- Keep every concrete fact from the request. Add detail where it is silent, and
+  invent nothing that contradicts it.
+- Say "the subject" rather than he or she unless the request names a gender.
+- No preamble, no explanation, no lists, no quotation marks around the whole
+  answer. Return the paragraph and nothing else.
+
+Request: """
+
+
+def redactar(texto: str, max_tokens: int = 320) -> str:
+    """Rewrite a loose request into a prompt this model reads well.
+
+    Text only, and the VLM is already resident for describing images, so the
+    rewrite costs nothing extra to load and never leaves the machine.
+    """
+    if _estado["modelo"] is None:
+        raise RuntimeError(_estado["error"] or "the vision model is not loaded")
+    if not texto.strip():
+        return ""
+
+    import torch
+    m, proc = _estado["modelo"], _estado["processor"]
+    mensajes = [{"role": "user",
+                 "content": [{"type": "text", "text": REDACTAR + texto.strip()}]}]
+    plantilla = proc.apply_chat_template(mensajes, tokenize=False,
+                                         add_generation_prompt=True)
+    entradas = proc(text=[plantilla], return_tensors="pt")
+    entradas = {k: v.to(m.device) for k, v in entradas.items()}
+    with torch.inference_mode():
+        salida = m.generate(**entradas, max_new_tokens=max_tokens, do_sample=False)
+    nuevos = salida[0][entradas["input_ids"].shape[1]:]
+    return proc.decode(nuevos, skip_special_tokens=True).strip().strip('"')
+
+
 def preguntar(imagen, tarea: str = "prompt", extra: str = "",
               max_tokens: int = 320) -> str:
     """Run one of TAREAS (or a free question in `extra`) against the image."""

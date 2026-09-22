@@ -261,6 +261,34 @@ before the app learned to warn about it.
 | segmentation, 3 phrases | 0.9 s |
 | describe an image (Qwen3-VL 4-bit) | 5–9 s, 7.1 GB |
 
+### How long a generation takes, by card
+
+Only the first row was measured. The rest follow from the profile the hardware
+detection picks, and the profile is the thing that decides the answer: what
+dominates is not raw compute but whether the weights fit, because sequential
+offload moves layers across PCIe on every step.
+
+| Your GPU | Profile | What it does | 1024 px, 25 steps |
+|---|---|---|---|
+| RTX 5090 / 4090 laptop, 24 GB | L | bf16, text encoder offloaded after encoding | **55 s** *(measured)* |
+| RTX 5090 / 6000 Ada, 32–48 GB | XL | bf16, nothing offloaded | ~35–45 s *(estimated)* |
+| RTX 4080 / 3090, 16–20 GB | M | bf16, sequential offload | ~2–4 min *(estimated)* |
+| RTX 4070 / 3080, 10–16 GB | S | nf4 quantised, sequential offload | ~4–8 min *(estimated)* |
+| under 10 GB | MINIMO | nf4, everything offloaded | ~10 min+, and the puppy |
+| Apple Silicon, 32 GB+ | M | bf16 on MPS, sequential offload | unmeasured — see below |
+| no compatible GPU | INVIABLE | CPU | over half an hour per image |
+
+The estimates are extrapolations from one card, not benchmarks, and they are
+labelled that way on purpose. The jump between L and M is the one that hurts:
+20 GB keeps the transformer resident, 16 GB does not, and everything below that
+line pays the PCIe tax on every step of every image.
+
+Other operations on the measured card: an edit or a look runs 45–65 s, the
+first model load costs 27–35 s once, segmentation is under a second, and
+describing an image with Qwen3-VL takes 5–9 s.
+
+---
+
 Three load configurations were compared. Keeping the transformer and the text
 encoder both resident — even with the text encoder in 4-bit — does **not** fit
 in 24 GB: weights alone reach 20.8 GB and activations push it into thrashing.
@@ -306,6 +334,67 @@ Deep links work too: `?caso=pose` opens the app on that path, `?abrir=poses`
 and `?tema=dark` picks the theme. Useful for sending someone the exact screen,
 and for an agent that wants to say "open it here" instead of describing three
 clicks.
+
+---
+
+## The HDR VAE
+
+The VAE is the last step: it turns the latent the model produced into pixels.
+Swapping it changes nothing about *what* was generated and everything about how
+it is rendered.
+
+<p align="center"><img src="docs/vae-ab.png" width="860" alt="The same generation decoded by the stock VAE and by the HDR VAE"></p>
+
+Same seed, same prompt, same latent — only the decoder differs. Stock on the
+left, HDR on the right. Measured on the pair above:
+
+| | stock | HDR | change |
+|---|---|---|---|
+| saturation | 0.2391 | 0.2851 | **+19.2%** |
+| gradient energy | 0.0136 | 0.0172 | **+27.1%** |
+| contrast | 0.2279 | 0.2292 | +0.5% |
+| mean luminance | 0.2409 | 0.2417 | +0.3% |
+
+The last two rows are the interesting ones: it is not simply pushing every
+slider. Contrast and exposure sit still while colour and edge detail come up —
+you can see it in the rim light on the hair and in the texture of the beard.
+
+It is **on by default** when the file is present, and there is a switch in
+Settings. The trade is real and its author states it: SSIM drops from 0.958 to
+0.944 and PSNR loses 6 dB. This VAE does not reconstruct the latent more
+faithfully, it interprets it with more contrast, more edge and more saturation.
+For a portrait that reads as better. For a faithful reproduction of a source
+image it is the wrong tool, and that is what the switch is for.
+
+The file is **not part of the 31 GB download**. Put
+`qwen21HDRVAE_diffusersFormat_fp16.safetensors` into `modelos/` as
+`vae_hdr.safetensors` and the option appears; without it the app uses the stock
+VAE and says nothing. It comes from
+[Qwen 2.1 HDR VAE](https://civitai.com/models/2955671/qwen-21-hdr-vae), which
+publishes it in diffusers format specifically because it is built for the
+`QwenImage21Pipeline` path — its own notes say ComfyUI support is uncertain.
+It is one of the few places where going through diffusers is the advantage
+rather than the cost.
+
+---
+
+## Looks and upscaling
+
+**Apply a look** takes one image and a treatment picked from a grid. The
+thumbnails are that effect applied to this install's own reference photo,
+generated here, so the grid shows this model doing this thing rather than
+someone else's pipeline. Ten looks in three groups: grades, relighting, and the
+three Blender viewport modes from the
+[Look Development Pack](https://civitai.com/models/2953686/look-development-pack-for-qwen-image-21),
+which is a genuine Qwen-Image 2.1 LoRA. Effects needing a LoRA stay visible
+when the file is missing and say which one they need, rather than disappearing.
+
+**Upscale to 2K** redraws the image larger using itself as the reference,
+which recovers real detail instead of interpolating pixels. The target is the
+whole 2K budget: the area is scaled towards 2048×2048, capped at four times per
+side — the same arithmetic the
+[2K upscale workflow](https://civitai.com/models/2952715/qwen-21-2k-upscale-workflow)
+uses for this model.
 
 ---
 
@@ -364,7 +453,8 @@ what caught the layered-jacket bug above: the image was the right size, the
 mask was right, and the edit was wrong.
 
 ```bash
-.venv\Scripts\python.exe herramientasevision_ui.py
+.venv\Scripts\python.exe herramientas
+evision_ui.py
 ```
 
 A static pass over the interface, which is one Python string holding HTML, CSS
