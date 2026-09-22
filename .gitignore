@@ -28,3 +28,6 @@ __pycache__/
 _meta_gen.json
 .DS_Store
 Thumbs.db
+
+# cache del generador del PDF (lo vuelve a bajar si falta)
+herramientas/.fuentes/

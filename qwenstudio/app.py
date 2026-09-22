@@ -192,6 +192,9 @@ class Handler(BaseHTTPRequestHandler):
         if p == "/api/poses":
             return self._send(200, P.catalogo())
 
+        if p == "/api/galeria":
+            return self._send(200, self._galeria())
+
         if p.startswith("/fuentes/"):
             # Inter Tight viaja dentro del paquete: la app tiene que verse igual
             # sin red, y una fuente que se pide a un CDN no cumple eso.
@@ -292,6 +295,9 @@ class Handler(BaseHTTPRequestHandler):
         if p == "/api/liberar_vision":
             VIS.descargar_de_memoria()
             return self._send(200, {"ok": True})
+
+        if p == "/api/abrir_carpeta":
+            return self._send(200, self._abrir_carpeta())
 
         if p == "/api/mascara":
             try:
@@ -397,6 +403,49 @@ class Handler(BaseHTTPRequestHandler):
         if crecer and not pintada:
             m = IN.dilatar(m, crecer)
         return m, None
+
+    @staticmethod
+    def _galeria(limite: int = 120):
+        """Lo que hay en salidas/, lo mas reciente primero.
+
+        La carpeta ES la galeria: no hay base de datos que se desincronice con
+        el disco, y borrar un archivo ahi lo borra aqui.
+        """
+        filas = []
+        try:
+            for n in os.listdir(SALIDAS):
+                if n.startswith(".") or not n.lower().endswith((".png", ".jpg", ".jpeg")):
+                    continue
+                ruta = os.path.join(SALIDAS, n)
+                try:
+                    st = os.stat(ruta)
+                except OSError:
+                    continue
+                clase = ("summary" if n.startswith("resumen") else
+                         "edit" if n.startswith("inpaint") else
+                         "mask" if n.startswith("mask") else
+                         "batch" if n.startswith("lote") else "image")
+                filas.append({"archivo": "/salidas/" + n, "nombre": n, "clase": clase,
+                              "cuando": int(st.st_mtime), "kb": round(st.st_size / 1024)})
+        except OSError:
+            pass
+        filas.sort(key=lambda r: r["cuando"], reverse=True)
+        return {"items": filas[:limite], "total": len(filas), "carpeta": SALIDAS}
+
+    @staticmethod
+    def _abrir_carpeta():
+        """Open salidas/ in whatever the system uses for folders."""
+        import subprocess
+        try:
+            if sys.platform == "win32":
+                os.startfile(SALIDAS)                      # noqa: S606
+            elif sys.platform == "darwin":
+                subprocess.Popen(["open", SALIDAS])
+            else:
+                subprocess.Popen(["xdg-open", SALIDAS])
+            return {"ok": True, "carpeta": SALIDAS}
+        except Exception as e:
+            return {"error": f"{type(e).__name__}: {e}", "carpeta": SALIDAS}
 
     def _mascara(self, b):
         """Preview: resolve the mask and return the tinted overlay."""

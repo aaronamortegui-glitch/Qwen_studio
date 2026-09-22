@@ -20,9 +20,11 @@ APP = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 INCLUIR_ARCHIVOS = [
     "INSTALL.bat", "install.command", "RUN.bat", "run.command",
-    "bootstrap.py", "README.md",
+    "SHORTCUT.bat", "QwenStudio.ico", "bootstrap.py", "README.md", ".gitignore",
 ]
-INCLUIR_CARPETAS = ["qwenstudio", "herramientas", "poses", "ejemplos"]
+# docs/ viaja porque el README lo referencia y porque el PDF explicativo esta
+# ahi: quien recibe el zip sin pasar por GitHub tambien tiene que poder leerlo.
+INCLUIR_CARPETAS = ["qwenstudio", "herramientas", "poses", "ejemplos", "docs"]
 
 # lo que no viaja, y por que
 EXCLUIR_DIRS = {
