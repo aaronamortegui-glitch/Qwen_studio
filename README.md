@@ -105,6 +105,17 @@ showcase is one tool doing a day's work, not eight unrelated demos. It steps
 aside the moment you generate something of your own, and a link in the header
 brings it back. Rebuild it as yours with `herramientasitrina.py`.
 
+<p align="center"><img src="docs/ui-indice.png" width="820" alt="The footer: an index of everything the app can do, each entry opening its own panel"></p>
+
+Nine paths and a handful of tools is more than fits on one screen, so the footer
+carries **an index of the whole thing** — and each entry is named the way you
+would ask for it, not the way the panel is labelled. Someone looking to *remove
+the background* will not guess that it lives under **Transparent cutout**, so
+that is what the index calls it; clicking takes you there with the case already
+set up. Next to it, in one place, the two sentences anyone needs before they
+send an image anywhere: this is a beta built to experiment with, and the model's
+licence is non-commercial.
+
 <p align="center"><img src="docs/ui-text.png" width="820" alt="Text to image: a screen-printed poster with rendered lettering"></p>
 
 Words in quotes come out as **actual lettering**. This is the thing Qwen-Image

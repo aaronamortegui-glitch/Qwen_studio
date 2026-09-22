@@ -36,6 +36,13 @@ IDS_DINAMICOS |= {f"z_{z}" for z in
 IDS_DINAMICOS |= {f"t_{z}" for z in
                   ("person", "pose", "style", "scene", "source", "extra")}
 
+# Reglas que ponen un color oscuro sin fondo propio porque lo heredan de su
+# padre, y el padre si tiene uno claro y fijo. El control de abajo mira una
+# regla cada vez y no puede saberlo, asi que se dicen aqui con su motivo.
+FONDO_HEREDADO = {
+    ".caso[aria-pressed=true] small",   # el fondo lima lo pone .caso[aria-pressed=true]
+}
+
 
 def _partes(s: str) -> tuple[str, str]:
     i, j = s.index("<style>"), s.index("</style>")
@@ -105,7 +112,34 @@ def revisar() -> list[str]:
             fallos.append("falta [hidden]{display:none!important} y el JS oculta "
                           + ", ".join(f"#{x}" for x in sorted(ocultados)[:6]))
 
-    # --- 7. lo que el usuario lee, en ingles -------------------------------
+    # --- 7. un color oscuro como texto, sin version para el tema oscuro ----
+    # en claro se ve bien y en oscuro queda tinta sobre tinta; --ac-2 y --link
+    # existen justamente para esto
+    oscuros = {}
+    for t, v in re.findall(r"(--[a-z0-9-]+)\s*:\s*(#[0-9a-fA-F]{6})", raiz.group(1) if raiz else ""):
+        r_, g_, b_ = (int(v[i:i + 2], 16) for i in (1, 3, 5))
+        if (0.2126 * r_ + 0.7152 * g_ + 0.0722 * b_) < 110:
+            oscuros[t] = v
+    bloques_oscuros = "".join(re.findall(r"\[data-theme=\"dark\"\]\{(.*?)\}", css, re.S))
+    bloques_oscuros += "".join(re.findall(r"prefers-color-scheme:\s*dark\)\{(.*?)\n\}\}", css, re.S))
+    for t, v in oscuros.items():
+        if re.search(re.escape(t) + r"\s*:", bloques_oscuros):
+            continue                       # sí tiene version oscura
+        for m in re.finditer(r"([^{};]*)\{([^{}]*?(?<![-\w])color:\s*var\("
+                             + re.escape(t) + r"\)[^{}]*)\}", css):
+            sel, bloque = m.group(1).strip().splitlines()[-1].strip(), m.group(2)
+            # texto oscuro sobre un fondo claro fijo (una pastilla lima) esta
+            # bien en los dos temas: lo que falla es sobre una superficie que
+            # cambia con el tema, o sin fondo ninguno
+            if sel in FONDO_HEREDADO:
+                continue
+            fondo = re.search(r"background(?:-color)?:\s*var\((--[a-z0-9-]+)\)", bloque)
+            if fondo and not re.search(re.escape(fondo.group(1)) + r"\s*:", bloques_oscuros):
+                continue
+            fallos.append(f"color:var({t}) ({v}, oscuro) en `{sel[:40]}`: "
+                          "sin version para el tema oscuro")
+
+    # --- 8. lo que el usuario lee, en ingles -------------------------------
     # los comentarios van en castellano a proposito; el texto visible no
     for m in re.finditer(r"<(?:b|small|label|h2|h3|p)>([^<>{}$`]{8,})<", cuerpo):
         t = m.group(1)

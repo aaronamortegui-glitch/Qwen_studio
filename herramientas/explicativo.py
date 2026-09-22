@@ -380,6 +380,15 @@ def construir() -> str:
                     "those images then edited — because one tool doing a day’s work "
                     "argues better than eight unrelated demonstrations. It steps aside as "
                     "soon as there is work of the user’s own to show.", CUERPO),
+          Paragraph("Nine paths and a handful of tools do not fit on one screen, so the "
+                    "footer carries an index of all of them, and each entry is named the "
+                    "way someone would ask for it rather than the way the panel is "
+                    "labelled. Nobody looking to remove a background guesses that it lives "
+                    "under “transparent cutout”, so that is what the index calls "
+                    "it, and clicking opens that path already set up. The same footer "
+                    "carries the two sentences that matter before an image leaves the "
+                    "machine: this is a beta to experiment with, and the model’s "
+                    "licence is non-commercial.", CUERPO),
           Paragraph("Each result carries its own recipe, written into the PNG as tEXt "
                     "chunks: the exact prompt, the seed, the steps, the decoder, the LoRA, "
                     "the reference order. Click any image and it opens, with the prompt "

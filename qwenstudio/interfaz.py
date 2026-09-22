@@ -183,7 +183,7 @@ input[type=checkbox],input[type=radio]{width:auto;accent-color:var(--verde)}
   align-items:center;cursor:pointer;transition:.15s;margin-bottom:12px}
 .zona:hover,.zona.over{border-color:var(--verde);border-style:solid;background:var(--sf-2)}
 .zona .n{width:52px;height:52px;border-radius:var(--r-s);background:var(--sf-2);
-  color:var(--verde);display:grid;place-items:center;flex:none}
+  color:var(--ac-2);display:grid;place-items:center;flex:none}
 .zona:hover .n,.zona.over .n{background:var(--lima);color:var(--tinta)}
 .zona.opt{background:transparent;border-color:var(--line-soft)}
 .zona.opt .n{background:var(--sf-2);color:var(--on-sf-var)}
@@ -348,6 +348,42 @@ details>summary{cursor:pointer;font-size:13px;color:var(--link);margin-top:18px;
   background:repeating-conic-gradient(var(--sf-2) 0 25%,transparent 0 50%) 50%/18px 18px}
 .gal figcaption{padding:11px 15px;font-size:12px;color:var(--on-sf-var);
   display:flex;justify-content:space-between;gap:8px;align-items:center}
+/* ---- el pie: indice de capacidades y aviso ---- */
+#pie{border-top:1px solid var(--line);background:var(--sf-1);margin-top:8px;
+  padding:34px 20px 26px}
+.pieDentro{max-width:1440px;margin:0 auto}
+#pie h2{font-size:17px;font-weight:500;margin:0 0 3px}
+#pie>.pieDentro>.hint{margin:0 0 20px}
+.indice{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));
+  gap:22px 26px}
+.indice h3{font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--ac-2);margin:0 0 9px}
+.indice ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.indice button{display:block;width:100%;text-align:left;border:0;background:none;
+  font:inherit;font-size:12.5px;line-height:1.45;color:var(--on-sf-var);cursor:pointer;
+  padding:5px 8px;margin-left:-8px;border-radius:var(--r-s)}
+.indice button:hover,.indice button:focus-visible{background:var(--sf-2);
+  color:var(--on-sf);outline:none}
+.indice button::after{content:' \2192';opacity:0;color:var(--ac-2)}
+.indice button:hover::after,.indice button:focus-visible::after{opacity:1}
+.pieCierre{margin-top:26px;padding-top:18px;border-top:1px solid var(--line-soft);
+  display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px 40px;align-items:start}
+@media(max-width:900px){.pieCierre{grid-template-columns:1fr}}
+.pieNota{margin:0;font-size:12px;line-height:1.6;color:var(--on-sf-var);max-width:80ch}
+.pieNota b{color:var(--on-sf)}
+.pieDatos{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;margin:0;
+  font-size:11.5px;line-height:1.45;white-space:nowrap}
+.pieDatos dt{color:var(--on-sf-var)}
+.pieDatos dd{margin:0;color:var(--on-sf);font-weight:500}
+.marcaBeta{display:inline-block;font-size:10px;font-weight:600;letter-spacing:.09em;
+  text-transform:uppercase;background:var(--lima);color:var(--tinta);
+  border-radius:var(--r-full);padding:3px 10px;margin-right:9px;vertical-align:1px}
+#pie a{color:var(--link)}
+/* el subrayado que dice "es este": dos segundos y se va */
+@keyframes senalar{0%,70%{box-shadow:0 0 0 3px var(--lima)}100%{box-shadow:0 0 0 3px transparent}}
+.senalado{animation:senalar 2.2s ease-out 1}
+@media(max-width:560px){#pie{padding:26px 16px 22px}}
+
 /* ---- la vitrina ---- */
 .cabRes{display:flex;align-items:baseline;gap:12px;margin-bottom:12px}
 .cabRes h2{margin:0;flex:1}
@@ -367,7 +403,7 @@ details>summary{cursor:pointer;font-size:13px;color:var(--link);margin-top:18px;
 .vitGrid small{font-size:11px;color:var(--on-sf-var);line-height:1.35;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .vitCaso{align-self:flex-start;font-size:10px;letter-spacing:.04em;text-transform:uppercase;
-  color:var(--verde);background:var(--sf-2);border-radius:999px;padding:2px 8px;margin-top:2px}
+  color:var(--ac-2);background:var(--sf-2);border-radius:999px;padding:2px 8px;margin-top:2px}
 #dtQue{font-size:12.5px;line-height:1.5;color:var(--on-sf-var);background:var(--sf-1);
   border-left:2px solid var(--lima);border-radius:0 var(--r-s) var(--r-s) 0;
   padding:10px 13px;margin-bottom:13px}
@@ -552,6 +588,78 @@ if(t!=='auto')document.documentElement.setAttribute('data-theme',t);})();</scrip
   </section>
 </div>
 </main>
+
+<footer id="pie"><div class="pieDentro">
+  <h2>What you can do here</h2>
+  <div class="hint">Nine paths and a few tools. Click one and it opens, set up and
+    ready &mdash; the names below are what you would call the thing, not what the
+    panel calls it.</div>
+
+  <nav class="indice" id="indice">
+    <div>
+      <h3>Make something new</h3>
+      <ul>
+        <li><button type="button" data-ir="caso:blank">A photograph from a description</button></li>
+        <li><button type="button" data-ir="caso:sign">Posters and signs with real lettering</button></li>
+        <li><button type="button" data-ir="caso:blank">Product shots, food, landscapes, interiors</button></li>
+        <li><button type="button" data-ir="dlg:pl">Starting points for all of the above</button></li>
+      </ul>
+    </div>
+    <div>
+      <h3>From a photo of a person</h3>
+      <ul>
+        <li><button type="button" data-ir="caso:portrait">A new portrait of the same face</button></li>
+        <li><button type="button" data-ir="caso:scene">Put someone into another photograph</button></li>
+        <li><button type="button" data-ir="caso:pose">Pose a character from a skeleton</button></li>
+        <li><button type="button" data-ir="caso:cutout">Remove the background (transparent PNG)</button></li>
+        <li><button type="button" data-ir="caso:free">Everything at once, nothing assumed</button></li>
+      </ul>
+    </div>
+    <div>
+      <h3>Edit a photograph</h3>
+      <ul>
+        <li><button type="button" data-ir="caso:replace">Replace an object, a garment or the sky</button></li>
+        <li><button type="button" data-ir="mask">Paint the region by hand</button></li>
+        <li><button type="button" data-ir="look">Colour grade, relight, black and white</button></li>
+        <li><button type="button" data-ir="look">Clay render and 3D viewport looks</button></li>
+        <li><button type="button" data-ir="caso:look">Apply a look to one region only</button></li>
+      </ul>
+    </div>
+    <div>
+      <h3>Tools</h3>
+      <ul>
+        <li><button type="button" data-ir="foco:btnDesc">Write a prompt from a photograph</button></li>
+        <li><button type="button" data-ir="foco:btnMejorar">Rewrite a rough prompt</button></li>
+        <li><button type="button" data-ir="dlg:lib">The pose library</button></li>
+        <li><button type="button" data-ir="gal">Everything you have made</button></li>
+        <li><button type="button" data-ir="dlg:cfg">LoRAs, decoder, temperature limit</button></li>
+      </ul>
+    </div>
+  </nav>
+
+  <div class="pieCierre">
+  <p class="pieNota">
+    <span class="marcaBeta">Beta</span>
+    <b>An exploration, for experimenting &mdash; not a product.</b> It was built to
+    answer one question: how far does an open image model get you when it runs
+    entirely on your own machine. It is not an official Superside tool, it is not
+    affiliated with or endorsed by Superside, and it is not endorsed by the Qwen
+    team or Alibaba; the mark in the corner is an original symbol drawn for this
+    repository. <b>Qwen-Image 2.1 is published under the Qwen Research License:
+    personal and research use only</b>, so nothing made here belongs in client
+    work without a separate licence from Alibaba. Upscaling to 2K is implemented
+    and deliberately not offered &mdash; it works and it takes twelve minutes, which
+    is not a feature; the endpoint and the reasoning are in the repository.
+  </p>
+  <dl class="pieDatos">
+    <dt>Model</dt><dd>Qwen-Image 2.1</dd>
+    <dt>Licence</dt><dd>Qwen Research &mdash; non-commercial</dd>
+    <dt>Runs</dt><dd>entirely on this machine</dd>
+    <dt>Network</dt><dd>none needed after the first download</dd>
+  </dl>
+  </div>
+</div></footer>
+
 <dialog id="lupa"><img id="lupaImg" alt=""></dialog>
 <dialog id="lib"><h3>Pose library <small style="font-weight:400;color:var(--on-sf-var);font-size:11.5px">— hover to see the skeleton that gets sent</small></h3>
   <div class="chips" id="libFiltros" style="margin-bottom:10px"></div>
@@ -1265,6 +1373,38 @@ $('#dtUsarImagen').onclick=async()=>{
     tocado(); repintar(); $('#dt').close();
   }catch(_){ $('#dtAviso').textContent='Could not load that file.'; }
 };
+
+/* ---------- el indice del pie ----------
+   Cada entrada esta escrita como la buscaria alguien, no como se llama el panel
+   al que lleva: "remove the background" y no "transparent cutout". */
+function irA(destino){
+  const [que, cual] = destino.split(':');
+  const arriba = () => window.scrollTo({top:0, behavior:'smooth'});
+  if(que==='caso'){ aplicarCaso(cual); arriba(); return }
+  if(que==='mask'){ aplicarCaso('replace'); arriba(); setTimeout(abrirPincel, 420); return }
+  if(que==='look'){ aplicarCaso('look'); arriba(); setTimeout(()=>$('#ef')?.showModal(), 420); return }
+  if(que==='gal'){ abrirGaleria(); return }
+  if(que==='dlg'){ $('#'+cual)?.showModal(); return }
+  if(que==='foco'){
+    // estos dos viven pegados a la caja del prompt, y en "Apply a look" esa
+    // barra no existe: primero un caso donde si este, y luego senalarlo
+    if(caso().mode==='efecto') aplicarCaso('blank');
+    arriba();
+    setTimeout(()=>{
+      const b=$('#'+cual); if(!b) return;
+      b.scrollIntoView({behavior:'smooth', block:'center'});
+      b.focus({preventScroll:true});
+      b.classList.remove('senalado');
+      void b.offsetWidth;                  // reinicia la animacion si se repite
+      b.classList.add('senalado');
+      setTimeout(()=>b.classList.remove('senalado'), 2400);
+    }, 380);
+  }
+}
+$('#indice').addEventListener('click', e=>{
+  const b=e.target.closest('button[data-ir]');
+  if(b) irA(b.dataset.ir);
+});
 
 /* ---------- la vitrina ----------
    Dieciocho imagenes que salieron de esta instalacion, con la receta al lado.

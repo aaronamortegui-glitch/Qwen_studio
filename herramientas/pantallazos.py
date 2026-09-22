@@ -41,6 +41,8 @@ PANTALLAS: dict[str, tuple[str, int]] = {
     "ui-portrait": ("?caso=portrait", ALTO),
     "ui-text":     ("?caso=sign", ALTO),
     "ui-vitrina":  ("?caso=blank", 1150),
+    # el pie queda al final de una pagina larga: se toma entera y se recorta
+    "ui-indice":   ("?caso=look", 3000),
     "ui-brush":    ("?caso=replace&abrir=mask", ALTO),
     "ui-poses":    ("?caso=pose&abrir=poses", ALTO),
     "ui-looks":    ("?caso=look&abrir=efectos", ALTO),
@@ -81,8 +83,24 @@ def tomar(nombre: str, enlace: str, alto: int, chrome: str) -> None:
     r = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
     if not os.path.exists(destino):
         raise SystemExit(f"{nombre}: nothing written\n{r.stderr[-400:]}")
+    if nombre == "ui-indice":
+        alto = _recortar_al_pie(destino)
     kb = round(os.path.getsize(destino) / 1024)
     print(f"  {nombre:14} {ANCHO}x{alto}  {kb} KB  {round(time.time()-t0)}s")
+
+
+def _recortar_al_pie(ruta: str) -> int:
+    """Deja solo el pie: la pagina entera mide tres mil pixeles y no se lee."""
+    from PIL import Image
+    import numpy as np
+    with Image.open(ruta) as im:
+        a = np.asarray(im.convert("RGB"))
+        fondo = a[-5, 5].astype(int)
+        filas = np.where((np.abs(a.astype(int) - fondo).sum(axis=2) > 12).any(axis=1))[0]
+        fin = int(filas.max()) + 14 if len(filas) else a.shape[0]
+        ini = max(0, fin - 640)
+        im.crop((0, ini, im.width, fin)).save(ruta)
+    return fin - ini
 
 
 def main() -> None:
