@@ -23,10 +23,17 @@ import time
 import urllib.request
 
 APP = "http://127.0.0.1:7860"
-SALIDAS = r"D:\QwenStudio\salidas"
-PERSONA = r"D:\AIToolkit\AI-Toolkit\datasets\eliana_qwen21\Eliohwx_03.jpg"
-ESCENA = r"D:\ComfyUI_QI21\ComfyUI_windows_portable\ComfyUI\input\escena_cocina.png"
-ESTILO = r"D:\ComfyUI_QI21\ComfyUI_windows_portable\ComfyUI\input\escena_playa.png"
+RAIZ = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+SALIDAS = os.path.join(RAIZ, "salidas")
+EJEMPLOS = os.path.join(RAIZ, "ejemplos")
+# Las tres entradas vienen del propio repositorio, no de carpetas sueltas de
+# esta maquina. Antes la persona salia de un dataset de entrenamiento privado:
+# la suite es la que llena salidas/, salidas/ es lo que sale en el pantallazo de
+# la galeria, y asi la cara de alguien real acababa en el repositorio sin que
+# nadie lo decidiera. Ademas, con esto la suite corre en cualquier clon.
+PERSONA = os.path.join(EJEMPLOS, "person.jpg")
+ESCENA = os.path.join(EJEMPLOS, "scene.jpg")
+ESTILO = os.path.join(EJEMPLOS, "style.jpg")
 
 
 def data_url(ruta: str) -> str:
