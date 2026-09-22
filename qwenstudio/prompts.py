@@ -213,3 +213,109 @@ def catalogo() -> list[dict]:
     return [{"categoria": c,
              "items": [{"etiqueta": e, "texto": t} for e, t in items]}
             for c, items in BIBLIOTECA.items()]
+
+# caso de uso -> puntos de partida propios. Lo primero que se ve al abrir la
+# libreria desde ese camino, porque un campo vacio no dice que se espera en el.
+BASES: dict[str, list[tuple[str, str]]] = {
+    "blank": [
+        ("Product", "A weathered brass diving helmet on an oak workbench, studio product "
+         "photograph, scratched patina and green verdigris in the seams, a single softbox "
+         "from the left falling off into near black, shot on a 100mm macro lens."),
+        ("Landscape", "A basalt shoreline under a low grey sky, black sand and a long "
+         "exposure smoothing the surf into mist, the horizon kept level and high in the "
+         "frame, shot on a 24mm lens at f/11."),
+        ("Interior", "A small second-hand bookshop at closing time, warm lamps against the "
+         "blue outside the window, dust in the air, shelves receding out of focus, shot on a "
+         "35mm lens at f/2."),
+        ("Food", "A bowl of ramen shot from just above the rim, steam caught against a dark "
+         "background, the egg cut open, one hard source raking from behind to make the broth "
+         "shine, 100mm macro."),
+        ("Animal", "A red fox standing still in wet bracken at first light, ears forward, "
+         "breath visible, the background compressed to soft colour on a 300mm lens."),
+        ("Illustration", "A flat vector illustration of a lighthouse on a cliff, four flat "
+         "colours and no gradients, crisp geometric shapes, generous negative space."),
+        ("Architecture", "A brutalist concrete stairwell photographed from below, hard "
+         "midday light cutting a diagonal across the wall, straight verticals, 24mm."),
+        ("Still life", "Three pears on a linen cloth beside a chipped enamel jug, north "
+         "light from one side, the palette held to ochre and grey, medium format at f/8."),
+    ],
+    "sign": [
+        ("Poster", 'A screen-printed travel poster. The word "ATACAMA" runs across the top '
+         'in tall condensed sans-serif capitals, with "ALTIPLANO \u00b7 CHILE" in small spaced '
+         "letters underneath. A lone volcano over a white salt flat below the type. Flat "
+         "spot colours in ochre, rust and deep teal, visible paper grain."),
+        ("Shop sign", 'A hand-painted shop window reading "ROSEWOOD & SONS" in gold leaf '
+         "serif capitals on dark green glass, a fine drop shadow behind each letter, the "
+         "street reflected faintly in the pane."),
+        ("Packaging", 'A matte kraft coffee bag with "SINGLE ORIGIN" printed in small spaced '
+         'capitals above "ETHIOPIA \u00b7 YIRGACHEFFE", one ink colour, photographed square on '
+         "under even studio light."),
+        ("Book cover", 'A hardback book cover with the title "THE LONG DRY" foil-stamped in '
+         "the upper third, generous margins, a single woodcut illustration of a dry riverbed "
+         "below it, cloth texture visible."),
+        ("Neon", 'A neon sign spelling "LATE BAR" in warm pink tubing mounted on a wet brick '
+         "wall at night, the glow bleeding into the surrounding dark and reflecting in the "
+         "puddles below."),
+        ("Chalkboard", 'A chalkboard outside a cafe reading "SOUP OF THE DAY" in looping '
+         "handwritten chalk, the letters smudged where a hand has passed, morning light "
+         "across it."),
+    ],
+    "upscale": [
+        ("Photograph", "Enhance this photograph to high resolution while preserving the "
+         "original composition, lighting and atmosphere. Recover the real texture of skin, "
+         "fabric and hair. Keep the grain structure and the colour exactly as they are."),
+        ("Illustration", "Enhance this illustration to high resolution while preserving the "
+         "original composition and palette. Keep the line weight crisp and the colour flat; "
+         "add no photographic texture."),
+        ("Detail pass", "Enhance this image to high resolution while preserving the original "
+         "composition, lighting and atmosphere. Resolve the fine detail that is currently "
+         "soft: individual hairs, the weave of the cloth, the edges of small objects."),
+        ("Keep the grain", "Enhance this image to high resolution while preserving the "
+         "original composition, lighting and atmosphere, including the film grain and the "
+         "existing softness. Do not make it look digital."),
+    ],
+    "replace": [
+        ("Garment", "A dark green leather biker jacket, zipped all the way up, nothing else "
+         "visible underneath it, the same lighting and the same shadows as the rest of the "
+         "photograph."),
+        ("Background", "A plain seamless studio backdrop in warm mid grey, evenly lit, the "
+         "edge light on the subject left exactly as it is."),
+        ("Sky", "A clear evening sky graduating from warm near the horizon to deep blue "
+         "overhead, a few high thin clouds catching the last of the sun."),
+        ("Object", "A ceramic coffee cup held in both hands at chest height, steam rising "
+         "from it, lit the same way as everything around it."),
+    ],
+}
+
+# caso de uso -> que categorias tienen sentido en ese camino
+RELEVANTES: dict[str, tuple[str, ...]] = {
+    "blank": ("Portrait", "Full body", "Lighting", "Camera", "Setting", "Style and grade",
+              "Lettering"),
+    "sign": ("Lettering", "Style and grade", "Camera"),
+    "portrait": ("Portrait", "Lighting", "Camera", "Setting", "Clothing", "Style and grade"),
+    "scene": ("Lighting", "Camera", "Style and grade"),
+    "pose": ("Full body", "Lighting", "Camera", "Setting", "Clothing", "Style and grade"),
+    "cutout": ("Full body", "Lighting", "Clothing"),
+    "replace": ("Edits (what to put there)", "What to select", "Lighting", "Clothing"),
+    "upscale": (),
+    "look": (),
+    "free": tuple(BIBLIOTECA),
+}
+
+
+def catalogo_de(caso: str | None = None) -> list[dict]:
+    """The library filtered to one use case, with its own starting points first.
+
+    An unknown case gets everything: a wrong guess should widen the list, not
+    empty it.
+    """
+    fuera = []
+    if caso and caso in BASES:
+        fuera.append({"categoria": "Starting points",
+                      "items": [{"etiqueta": e, "texto": t} for e, t in BASES[caso]]})
+    permitidas = RELEVANTES.get(caso or "", tuple(BIBLIOTECA)) if caso else tuple(BIBLIOTECA)
+    for c, items in BIBLIOTECA.items():
+        if c in permitidas:
+            fuera.append({"categoria": c,
+                          "items": [{"etiqueta": e, "texto": t} for e, t in items]})
+    return fuera

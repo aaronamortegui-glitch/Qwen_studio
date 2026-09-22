@@ -24,7 +24,8 @@ INCLUIR_ARCHIVOS = [
 ]
 # docs/ viaja porque el README lo referencia y porque el PDF explicativo esta
 # ahi: quien recibe el zip sin pasar por GitHub tambien tiene que poder leerlo.
-INCLUIR_CARPETAS = ["qwenstudio", "herramientas", "poses", "ejemplos", "docs"]
+INCLUIR_CARPETAS = ["qwenstudio", "herramientas", "poses", "ejemplos", "docs",
+                    "referencia"]
 
 # lo que no viaja, y por que
 EXCLUIR_DIRS = {

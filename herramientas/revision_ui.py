@@ -78,8 +78,13 @@ def revisar() -> list[str]:
     # --- 5. cada dialogo, con panel y con salida ---------------------------
     dialogos = set(re.findall(r'<dialog id="([\w-]+)"', cuerpo))
     con_panel = set()
+    regla_general = False
     for sel in re.findall(r"^([^{]*)\{[^}]*background:var\(--sf\)[^}]*\}", css, re.M):
+        if "dialog:not(#lupa)" in sel:
+            regla_general = True          # cubre a todos menos la lupa, a proposito
         con_panel |= set(re.findall(r"#([\w-]+)", sel))
+    if regla_general:
+        con_panel |= dialogos
     for d in sorted(dialogos - con_panel - {"lupa"}):
         fallos.append(f"el dialogo #{d} no tiene fondo: se vera transparente")
     for d in sorted(dialogos):
@@ -89,7 +94,18 @@ def revisar() -> list[str]:
         if not cierra:
             fallos.append(f"el dialogo #{d} no tiene forma de cerrarse")
 
-    # --- 6. lo que el usuario lee, en ingles -------------------------------
+    # --- 6. hidden contra un display explicito -----------------------------
+    # la hoja del navegador da [hidden]{display:none}, que pierde contra
+    # cualquier display puesto en una clase. Sin una regla !important, poner
+    # el atributo a un flex no lo oculta y nadie se entera hasta verlo
+    if "[hidden]{display:none!important}" not in css:
+        ocultados = set(re.findall(r"\$\('#([\w-]+)'\)\.hidden\s*=", cuerpo))
+        ocultados |= set(re.findall(r"getElementById\('([\w-]+)'\)\.hidden\s*=", cuerpo))
+        if ocultados:
+            fallos.append("falta [hidden]{display:none!important} y el JS oculta "
+                          + ", ".join(f"#{x}" for x in sorted(ocultados)[:6]))
+
+    # --- 7. lo que el usuario lee, en ingles -------------------------------
     # los comentarios van en castellano a proposito; el texto visible no
     for m in re.finditer(r"<(?:b|small|label|h2|h3|p)>([^<>{}$`]{8,})<", cuerpo):
         t = m.group(1)

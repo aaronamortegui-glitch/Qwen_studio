@@ -215,6 +215,95 @@ def vram_ocupada_por_otros(umbral_gb: float = 1.5) -> tuple[float, list[str]]:
         return 0.0, []
 
 
+def estado_vram() -> dict:
+    """Lo que hay en la tarjeta ahora mismo, separando lo nuestro de lo ajeno.
+
+    Torch sabe lo que ha reservado este proceso; nvidia-smi sabe el total. La
+    diferencia es lo que ocupa cualquier otra cosa, y es el numero que de
+    verdad decide si una generacion va a ir o a arrastrarse.
+    """
+    import subprocess
+    fuera = {"hay": False}
+    try:
+        campos = ("memory.used,memory.total,utilization.gpu,power.draw,"
+                  "temperature.gpu,power.limit,"
+                  "clocks_throttle_reasons.sw_thermal_slowdown,"
+                  "clocks_throttle_reasons.hw_thermal_slowdown,name")
+        linea = subprocess.run(
+            ["nvidia-smi", f"--query-gpu={campos}", "--format=csv,noheader,nounits"],
+            capture_output=True, text=True, timeout=6).stdout.strip().splitlines()[0]
+        (usada, total, util, vatios, grados, tope_w,
+         sw_term, hw_term, nombre) = [c.strip() for c in linea.split(",")]
+
+        def _num(x, f=float):
+            try:
+                return f(x)
+            except Exception:
+                return None
+
+        # nvidia-smi responde "Active" o "Not Active", y "Not Active" contiene
+        # "active": buscar la subcadena marcaba estrangulamiento siempre
+        recorta = any(x.strip().lower() == "active" for x in (sw_term, hw_term))
+        fuera.update(hay=True, usada_gb=round(int(usada) / 1024, 1),
+                     total_gb=round(int(total) / 1024, 1), utilizacion=int(util),
+                     vatios=_num(vatios, lambda x: round(float(x))),
+                     tope_vatios=_num(tope_w, lambda x: round(float(x))),
+                     grados=_num(grados, int), estrangulada=recorta,
+                     tarjeta=nombre)
+    except Exception:
+        return fuera
+
+    try:
+        import torch
+        if torch.cuda.is_available():
+            nuestra = torch.cuda.memory_reserved() / 1024 ** 3
+            fuera["nuestra_gb"] = round(nuestra, 1)
+            fuera["ajena_gb"] = max(0.0, round(fuera["usada_gb"] - nuestra, 1))
+    except Exception:
+        pass
+    return fuera
+
+
+def vaciar_cache() -> dict:
+    """Devolver a la tarjeta lo que torch tiene reservado y no usa."""
+    antes = estado_vram().get("usada_gb")
+    try:
+        import gc
+
+        import torch
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            torch.cuda.ipc_collect()
+    except Exception as e:
+        return {"error": f"{type(e).__name__}: {e}"}
+    despues = estado_vram().get("usada_gb")
+    return {"antes_gb": antes, "despues_gb": despues,
+            "liberado_gb": round((antes or 0) - (despues or 0), 1)}
+
+
+def esperar_a_que_enfrie(limite_c: int = 80, maximo_s: int = 120) -> dict:
+    """Wait until the card drops below `limite_c`, up to `maximo_s` seconds.
+
+    Not protection from damage: the firmware already throttles at its own
+    limit and nothing here can override that. This is for the unattended case
+    -- a long batch at three in the morning -- where letting the card breathe
+    between images keeps it out of thermal throttling and the whole run
+    finishes sooner than it would while being slowed down.
+    """
+    import time as _t
+    inicio = _t.time()
+    e = estado_vram()
+    if not e.get("hay") or e.get("grados") is None:
+        return {"esperado_s": 0, "grados": None}
+    partida = e["grados"]
+    while e.get("grados", 0) >= limite_c and (_t.time() - inicio) < maximo_s:
+        _t.sleep(3)
+        e = estado_vram()
+    return {"esperado_s": round(_t.time() - inicio), "grados_antes": partida,
+            "grados": e.get("grados"), "limite": limite_c}
+
+
 # ------------------------------------------------------------------ pipeline
 
 class Motor:
@@ -235,37 +324,51 @@ class Motor:
         """True when the alternative VAE weights are sitting in modelos/."""
         return os.path.exists(os.path.join(self.cfg["ruta_modelos"], "vae_hdr.safetensors"))
 
-    def usar_vae(self, cual: str) -> str:
-        """Swap the VAE weights in place. Returns which one is now loaded.
+    def _pesos_vae(self, pipe, cual: str) -> str:
+        """Load the chosen VAE weights into `pipe` before any offload hook exists.
 
-        Loading the state dict into the mounted VAE costs a second off disk;
-        building a second pipeline would cost the whole model again.
+        Doing this after enable_model_cpu_offload leaves tensors on CPU: with
+        offload the weights belong to accelerate, and load_state_dict writes
+        underneath its hooks. Measured the hard way.
         """
-        if self.pipe is None:
-            return getattr(self, "vae_actual", "stock")
+        if cual != "hdr":
+            return "stock"
+        ruta = os.path.join(self.cfg["ruta_modelos"], "vae_hdr.safetensors")
+        if not os.path.exists(ruta):
+            return "stock"
+        try:
+            from safetensors.torch import load_file
+            sd = load_file(ruta)
+            actual = pipe.vae.state_dict()
+            sd = {k: v.to(dtype=actual[k].dtype) for k, v in sd.items()}
+            pipe.vae.load_state_dict(sd, strict=True)
+            del sd
+            return "hdr"
+        except Exception as e:
+            self.aviso_vram = (self.aviso_vram + " " if self.aviso_vram else "") + \
+                f"the HDR decoder could not be loaded ({type(e).__name__}), using the stock one"
+            return "stock"
+
+    def usar_vae(self, cual: str) -> str:
+        """Pick the decoder. Returns the one actually in use.
+
+        Switching with the model already mounted costs a reload, because the
+        swap has to happen before the offload hooks are installed. Asking for
+        the one already loaded costs nothing, which is the common case: every
+        request asks, and almost every request already has what it wants.
+        """
         cual = "hdr" if cual == "hdr" else "stock"
+        if cual == "hdr" and not self.vae_disponible():
+            cual = "stock"
+        if self.pipe is None:
+            self.cfg["vae"] = cual
+            return cual
         if getattr(self, "vae_actual", "stock") == cual:
             return cual
-        import torch
-        from safetensors.torch import load_file
-        ruta = (os.path.join(self.cfg["ruta_modelos"], "vae_hdr.safetensors") if cual == "hdr"
-                else os.path.join(self.cfg["ruta_modelos"], "vae",
-                                  "diffusion_pytorch_model.safetensors"))
-        if not os.path.exists(ruta):
-            return getattr(self, "vae_actual", "stock")
-        sd = load_file(ruta)
-        destino = self.pipe.vae
-        # el archivo HDR viene en fp16 y el VAE montado puede estar en bf16:
-        # se castea a lo que ya tiene cada tensor, no al reves
-        sd = {k: v.to(dtype=destino.state_dict()[k].dtype) for k, v in sd.items()}
-        destino.load_state_dict(sd, strict=True)
-        del sd
-        try:
-            torch.cuda.empty_cache()
-        except Exception:
-            pass
-        self.vae_actual = cual
-        return cual
+        self.cfg["vae"] = cual
+        self.liberar()
+        self.cargar()
+        return getattr(self, "vae_actual", "stock")
 
     def cargar(self) -> None:
         if self.pipe is not None or self.cargando:
@@ -323,6 +426,9 @@ class Motor:
 
             pipe = QwenImage21Pipeline.from_pretrained(ruta, **kwargs)
 
+            # antes de cualquier gancho de offload: despues ya no vale
+            self.vae_actual = self._pesos_vae(pipe, self.cfg.get("vae", "hdr"))
+
             # SageAttention es opcional a proposito. Diffusers trae el backend
             # registrado, pero el paquete no: PyPI solo publica la 1.x (kernels
             # Triton, que en Windows no viene) y la 2.x hay que compilarla. Si
@@ -348,9 +454,6 @@ class Motor:
                 pipe.to("mps")
 
             self.pipe = pipe
-            self.vae_actual = "stock"
-            if self.cfg.get("vae", "stock") == "hdr":
-                self.usar_vae("hdr")
         except Exception as e:
             self.error = f"{type(e).__name__}: {e}"
         finally:

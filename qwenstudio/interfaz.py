@@ -74,6 +74,11 @@ HTML = r"""<!doctype html>
   --e3:0 14px 40px rgba(0,0,0,.66);
 }
 *{box-sizing:border-box}
+/* [hidden] es display:none en la hoja del navegador, que pierde contra
+   cualquier display explicito. .barraPrompt, .efElegido y .lora son flex, asi
+   que ponerles el atributo no las ocultaba: seguian ahi, en mitad de un camino
+   donde no pintan nada. */
+[hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--on-sf);
   font:400 15px/1.5 'Inter Tight',Inter,system-ui,-apple-system,'Segoe UI',Arial,sans-serif;
   -webkit-font-smoothing:antialiased;letter-spacing:.1px}
@@ -94,6 +99,9 @@ h1 .marca{width:26px;height:26px;flex:none}
 .chip.ok{background:var(--lima);color:var(--tinta)} .chip.ok .pt{background:var(--verde)}
 .chip.busy .pt{background:var(--warn);animation:lat 1.1s ease-in-out infinite}
 .chip.err{background:var(--bad-cont);color:var(--on-bad-cont)} .chip.err .pt{background:var(--bad)}
+.chip.alto{background:var(--warn-cont);color:var(--warn)}
+.chip.vram{cursor:pointer}
+.chip.vram:hover{filter:brightness(.97)}
 @keyframes lat{0%,100%{opacity:1}50%{opacity:.25}}
 @media (prefers-reduced-motion:reduce){.chip.busy .pt{animation:none}}
 
@@ -216,6 +224,23 @@ details>summary{cursor:pointer;font-size:13px;color:var(--link);margin-top:18px;
   border-left:4px solid var(--lima)}
 .nota.ejemplo .ghost{margin-left:auto}
 
+/* ---- la receta de una imagen ---- */
+#dt{width:min(880px,95vw);max-width:none}
+#dtCuerpo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:20px;
+  align-items:start}
+@media(max-width:700px){#dtCuerpo{grid-template-columns:1fr}}
+#dtImg{width:100%;border-radius:var(--r-s);display:block;cursor:zoom-in;
+  background:repeating-conic-gradient(var(--sf-2) 0 25%,transparent 0 50%) 50%/16px 16px}
+#dtPrompt{background:var(--sf-1);border:1px solid var(--line-soft);border-radius:var(--r-s);
+  padding:13px 15px;font-size:13px;line-height:1.55;max-height:220px;overflow:auto;
+  white-space:pre-wrap;overflow-wrap:anywhere}
+#dtPrompt.vacio{color:var(--on-sf-var);font-style:italic}
+.dtDatos{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:12.5px;
+  margin-top:14px}
+.dtDatos dt{color:var(--on-sf-var)}
+.dtDatos dd{margin:0;overflow-wrap:anywhere}
+.dtAcciones{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+
 /* ---- galeria de efectos ---- */
 #ef{width:min(960px,95vw);max-width:none}
 #efGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;
@@ -251,10 +276,15 @@ details>summary{cursor:pointer;font-size:13px;color:var(--link);margin-top:18px;
   display:flex;justify-content:space-between;align-items:center;gap:6px}
 #glGrid .tipo{background:var(--sf-2);border-radius:var(--r-full);padding:1px 8px;
   font-size:10px;white-space:nowrap}
+#glGrid figure{position:relative}
+#glGrid .quitar{position:absolute;top:6px;right:6px;border:0;width:24px;height:24px;
+  border-radius:50%;background:rgba(10,33,31,.72);color:var(--hueso);font-size:13px;
+  line-height:24px;padding:0;cursor:pointer;opacity:0;transition:opacity .15s}
+#glGrid figure:hover .quitar,#glGrid .quitar:focus-visible{opacity:1}
 #glGrid a{display:inline-flex;align-items:center;color:var(--on-sf-var);text-decoration:none}
 #glGrid a:hover{color:var(--link)}
-#glPie,#efPie{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:16px}
-#glPie code{font-size:11px;overflow-wrap:anywhere}
+.pieDlg{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:16px}
+.pieDlg code{font-size:11px;overflow-wrap:anywhere}
 .iconobtn{border:1px solid var(--line);background:transparent;color:var(--on-sf);
   border-radius:var(--r-full);width:30px;height:30px;display:inline-grid;place-items:center;
   cursor:pointer;padding:0;text-decoration:none}
@@ -339,12 +369,12 @@ pre{white-space:pre-wrap;font-size:12px;color:var(--on-sf-var);background:var(--
 dialog{border:0;padding:0;background:transparent;max-width:96vw;max-height:96vh}
 dialog>img{max-width:94vw;max-height:94vh;object-fit:contain;border-radius:var(--r-m);display:block}
 dialog::backdrop{background:rgba(10,33,31,.5)}
-#lib,#pl,#cfg,#mk,#gl,#ef{background:var(--sf);border-radius:var(--r-xl);padding:26px;
+dialog:not(#lupa){background:var(--sf);border-radius:var(--r-xl);padding:26px;
   color:var(--on-sf);box-shadow:var(--e3)}
 #lib{width:min(900px,94vw);max-width:none}
 #pl{width:min(800px,94vw);max-width:none}
 #cfg{width:min(500px,94vw);max-width:none}
-#lib h3,#pl h3,#cfg h3,#mk h3,#gl h3,#ef h3{margin:0 0 18px;font-size:22px;font-weight:400;
+dialog:not(#lupa) h3{margin:0 0 18px;font-size:22px;font-weight:400;
   letter-spacing:-.2px}
 #libGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:12px;
   max-height:62vh;overflow:auto}
@@ -376,15 +406,16 @@ dialog::backdrop{background:rgba(10,33,31,.5)}
   color:var(--on-sf-var);cursor:pointer}
 .modoEstilo input{width:auto;margin:0}
 </style>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='12' fill='%230a211f'/%3E%3Crect x='9' y='14' width='18' height='18' rx='5' fill='%23d8ff85'/%3E%3Ccircle cx='30' cy='18' r='9' fill='%23d8ff85'/%3E%3Ccircle cx='30' cy='18' r='5.6' fill='%230a211f'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='12' fill='%230a211f'/%3E%3Ccircle cx='22.8' cy='21.8' r='10.9' fill='none' stroke='%23d8ff85' stroke-width='4.6'/%3E%3Cpath d='M30.5 29.5L36.9 35.9' stroke='%23d8ff85' stroke-width='4.6' stroke-linecap='round'/%3E%3C/svg%3E">
 <script>(function(){var t='light';try{t=localStorage.getItem('qs_tema')||'light'}catch(e){}
 if(t!=='auto')document.documentElement.setAttribute('data-theme',t);})();</script>
 </head><body>
 
 <header>
-  <h1><svg class="marca" viewBox="0 0 48 48" role="img" aria-label="QwenStudio"><rect width="48" height="48" rx="12" fill="#0a211f"/><rect x="9" y="14" width="18" height="18" rx="5" fill="#d8ff85"/><circle cx="30" cy="18" r="9" fill="#d8ff85"/><circle cx="30" cy="18" r="5.6" fill="#0a211f"/></svg>QwenStudio</h1>
+  <h1><svg class="marca" viewBox="0 0 48 48" role="img" aria-label="QwenStudio"><rect width="48" height="48" rx="12" fill="#0a211f"/><circle cx="22.8" cy="21.8" r="10.9" fill="none" stroke="#d8ff85" stroke-width="4.6"/><path d="M30.5 29.5L36.9 35.9" stroke="#d8ff85" stroke-width="4.6" stroke-linecap="round"/></svg>QwenStudio</h1>
   <span class="chip num" id="chipProfile">&nbsp;</span>
   <span class="chip" id="chipEngine"><i class="pt"></i><span>starting</span></span>
+  <span class="chip vram num" id="chipVram" hidden title="Click to release what this app is holding">&nbsp;</span>
   <span style="flex:1"></span>
   <button type="button" class="ghost" id="btnGaleria" title="Everything you have made">Gallery</button>
   <button type="button" class="ghost" id="btnAjustes" title="Settings">Settings</button>
@@ -392,7 +423,7 @@ if(t!=='auto')document.documentElement.setAttribute('data-theme',t);})();</scrip
 
 <main>
 <div class="card">
-  <div id="setup"><div class="bienvenida"><svg class="marca" viewBox="0 0 48 48" role="img" aria-label="QwenStudio"><rect width="48" height="48" rx="12" fill="#0a211f"/><rect x="9" y="14" width="18" height="18" rx="5" fill="#d8ff85"/><circle cx="30" cy="18" r="9" fill="#d8ff85"/><circle cx="30" cy="18" r="5.6" fill="#0a211f"/></svg>
+  <div id="setup"><div class="bienvenida"><svg class="marca" viewBox="0 0 48 48" role="img" aria-label="QwenStudio"><rect width="48" height="48" rx="12" fill="#0a211f"/><circle cx="22.8" cy="21.8" r="10.9" fill="none" stroke="#d8ff85" stroke-width="4.6"/><path d="M30.5 29.5L36.9 35.9" stroke="#d8ff85" stroke-width="4.6" stroke-linecap="round"/></svg>
     <h2>Welcome to QwenStudio</h2>
     <p>Local image generation and editing with Qwen-Image 2.1. Nothing leaves
       this machine.</p>
@@ -417,10 +448,6 @@ if(t!=='auto')document.documentElement.setAttribute('data-theme',t);})();</scrip
         <small id="efDesc">Open the grid and choose one.</small></span>
       <button type="button" class="ghost" id="btnEf">Pick a look</button>
     </div>
-    <div class="hint" id="zonaEscalar" hidden>The image is redrawn at a larger size using
-      itself as the reference, which recovers real detail instead of interpolating pixels.
-      The target is the whole 2K budget: the area is scaled towards 2048&times;2048, capped
-      at four times per side.</div>
     <div class="barraPrompt" id="barraPrompt">
       <button type="button" id="btnPl">Prompt library</button>
       <button type="button" id="btnMejorar">Improve it</button>
@@ -493,13 +520,35 @@ if(t!=='auto')document.documentElement.setAttribute('data-theme',t);})();</scrip
   <div class="chips" id="libFiltros" style="margin-bottom:10px"></div>
   <div id="libGrid"></div></dialog>
 <dialog id="pl"><h3>Prompt library</h3><div id="plBody"></div></dialog>
+<dialog id="dt"><h3 id="dtTitulo">How this was made</h3>
+  <div id="dtCuerpo">
+    <img id="dtImg" alt="">
+    <div>
+      <label>The prompt that produced it</label>
+      <div id="dtPrompt"></div>
+      <dl class="dtDatos num" id="dtDatos"></dl>
+      <div class="dtAcciones">
+        <button type="button" class="ghost" id="dtCopiar">Copy the prompt</button>
+        <button type="button" class="ghost" id="dtUsarPrompt">Put it in the box</button>
+        <button type="button" class="ghost" id="dtUsarImagen">Use as input</button>
+        <a class="ghost" id="dtBajar" download>Download</a>
+      </div>
+      <div class="hint" id="dtAviso"></div>
+    </div>
+  </div>
+  <div class="pieDlg">
+    <span style="flex:1"></span>
+    <button class="go alt" type="button" id="dtCerrar" style="width:auto;margin:0;
+      padding:10px 22px">Close</button>
+  </div>
+</dialog>
 <dialog id="ef"><h3>Pick a look</h3>
   <div class="hint" style="margin:-10px 0 14px">Each thumbnail is this effect applied to
     the reference photo of this install, generated here. The composition, the framing and
     the face stay; only the treatment changes.</div>
   <div class="chips" id="efFiltros" style="margin-bottom:12px"></div>
   <div id="efGrid"></div>
-  <div id="efPie">
+  <div class="pieDlg">
     <span class="hint" id="efNota" style="margin:0"></span>
     <span style="flex:1"></span>
     <button class="go alt" type="button" id="efCerrar" style="width:auto;margin:0;
@@ -511,7 +560,7 @@ if(t!=='auto')document.documentElement.setAttribute('data-theme',t);})();</scrip
     <code>salidas/</code>, newest first. The folder is the gallery: delete a file there
     and it is gone from here.</div>
   <div id="glGrid"></div>
-  <div id="glPie">
+  <div class="pieDlg">
     <button type="button" class="ghost" id="glCarpeta">Open the folder</button>
     <span class="hint num" id="glCuenta" style="margin:0"></span>
     <span style="flex:1"></span>
@@ -632,9 +681,6 @@ const CASOS={
 
   look:{cat:'edit', icon:'efecto', name:'Apply a look', hint:'Pick the treatment from a grid.',
     mode:'efecto', zonas:['source'], opt:[], ratio:'auto', prompt:''},
-  upscale:{cat:'edit', icon:'escalar', name:'Upscale to 2K', hint:'Redrawn larger, not interpolated.',
-    mode:'upscale', zonas:['source'], opt:[], ratio:'auto', prompt:''},
-
   replace:{cat:'edit', icon:'replace', name:'Replace something', hint:'Name it or paint it, then say what goes there.',
     mode:'inpaint', zonas:['source','extra'], opt:['extra'], ratio:'auto',
     prompt:'A dark green leather biker jacket, zipped all the way up, nothing else visible '
@@ -740,14 +786,13 @@ function construirCampos(){
   }
   const etiqueta = c.mode==='inpaint' ? 'What should go there instead'
     : c.mode==='efecto' ? 'The look'
-    : c.mode==='upscale' ? 'What to keep'
     : 'Instruction';
   $('#lblPrompt').innerHTML=`<i>${$('#lblPrompt').dataset.n||'3'}</i>`+etiqueta;
   // en estos dos el prompt no se escribe: uno se escoge y el otro es fijo
   $('#prompt').hidden = c.mode==='efecto';
   $('#barraPrompt').hidden = c.mode==='efecto';
   $('#zonaEfecto').hidden = c.mode!=='efecto';
-  $('#zonaEscalar').hidden = c.mode!=='upscale';
+  mostrarLora();
   if(c.mode==='efecto') pintarElegido();
   $('#verMask').hidden=c.mode!=='inpaint';
   $('#avInpaint').hidden=c.mode!=='inpaint';
@@ -853,7 +898,8 @@ function pintarPoses(){
 $('#lib').onclick=e=>{if(e.target.id==='lib')$('#lib').close()};
 fetch('/api/loras').then(r=>r.json()).then(ls=>{
   // la fila solo aparece si hay algo que elegir
-  $('#filaLora').hidden = !ls.length;
+  $('#filaLora').dataset.hay = ls.length ? '1' : '0';
+  mostrarLora();
   ls.forEach(l=>{
     const o=document.createElement('option'); o.value=l; o.textContent=l; $('#lora').append(o);
   });
@@ -980,11 +1026,54 @@ function perritoVisto(){
   if(PERRITO_SESION) return true;
   try{ return localStorage.getItem('qs_perrito')==='visto' }catch(_){ return false }
 }
+/* ---------- el medidor de la tarjeta ----------
+   Este proyecto ha perdido mas tiempo con la VRAM que con ninguna otra cosa:
+   empezar con la tarjeta a medias no da error, da una barra parada. El numero
+   a la vista es la unica defensa barata. */
+let VRAM={};
+async function medirVram(){
+  try{ VRAM=await (await fetch('/api/gpu')).json(); }catch(_){ return }
+  const c=$('#chipVram');
+  if(!VRAM.hay){ c.hidden=true; return }
+  c.hidden=false;
+  const frac=VRAM.usada_gb/Math.max(VRAM.total_gb,1);
+  c.className='chip vram num'+(frac>=0.9?' err':frac>=0.75?' alto':'');
+  // el escritorio ya ocupa medio giga largo: por debajo de 1.5 no hay nada
+  // que avisar, solo ruido
+  const ajena = VRAM.ajena_gb!==undefined && VRAM.ajena_gb>=1.5
+    ? ` \u00b7 ${VRAM.ajena_gb} GB elsewhere` : '';
+  const grados = (VRAM.grados!==undefined && VRAM.grados!==null)
+    ? ` \u00b7 ${VRAM.grados}\u00b0C` : '';
+  // recortar por calor no rompe nada, pero explica por que un lote va lento
+  if(VRAM.estrangulada) c.className='chip vram num alto';
+  c.textContent=`${VRAM.usada_gb} / ${VRAM.total_gb} GB${grados}${ajena}`;
+  const partes=[];
+  if(VRAM.estrangulada) partes.push('The card is thermally throttling: it is running '+
+    'slower to stay inside its own limit. Nothing is at risk \u2014 the firmware '+
+    'enforces that \u2014 but a batch will take longer than it should.');
+  if(ajena) partes.push(`${VRAM.ajena_gb} GB of this card is held by something that `+
+    'is not this app. Close it before generating: a half-full card does not fail, '+
+    'it crawls.');
+  if(VRAM.vatios) partes.push(`${VRAM.vatios} W`+
+    (VRAM.tope_vatios?` of ${VRAM.tope_vatios} W`:''));
+  partes.push('Click to release what this app is holding.');
+  c.title = partes.join('\n\n');
+}
+$('#chipVram').onclick=async()=>{
+  const c=$('#chipVram'); const antes=c.textContent;
+  c.textContent='releasing...';
+  try{
+    const r=await (await fetch('/api/liberar',{method:'POST'})).json();
+    await medirVram();
+    if(r.error) alert(r.error);
+  }catch(_){ c.textContent=antes }
+};
 function ponerEstado(clase, txt){
   const c=$('#chipEngine'); c.className='chip'+(clase?' '+clase:'');
   c.innerHTML=`<i class="pt"></i><span>${txt}</span>`;
 }
 tick(); setInterval(tick,2500);
+medirVram(); setInterval(medirVram,4000);
 
 /* ---------- results, with before/after ---------- */
 function tarjeta(im, antes){
@@ -1006,7 +1095,7 @@ function tarjeta(im, antes){
     f.append(d);
   }else{
     const i=document.createElement('img'); i.src=im.archivo; i.loading='lazy';
-    i.onclick=()=>{$('#lupaImg').src=im.archivo;$('#lupa').showModal()};
+    i.onclick=()=>abrirDetalle(im.archivo, im.meta||{prompt:im.prompt});
     f.append(i);
   }
   const c=document.createElement('figcaption');
@@ -1018,6 +1107,56 @@ function tarjeta(im, antes){
   c.querySelector('.cmp').onclick=e=>{e.preventDefault();elegirComparar(im.archivo,c.querySelector('.cmp'))};
   f.append(c); f.dataset.src=im.archivo; return f;
 }
+
+/* ---------- la receta de una imagen ---------- */
+const ETIQUETAS={caso:'Use case', efecto:'Look', seed:'Seed', steps:'Steps',
+  tam:'Size', ratio:'Aspect', megapixeles:'Quality (MP)', vae:'Decoder',
+  lora:'LoRA', fuerza_lora:'LoRA weight', orden:'Reference order',
+  modelo:'Model'};
+let DT={url:null, meta:{}};
+function abrirDetalle(url, meta){
+  DT={url, meta:meta||{}};
+  const p=(DT.meta.prompt||'').trim();
+  $('#dtImg').src=url;
+  $('#dtImg').onclick=()=>{$('#lupaImg').src=url;$('#lupa').showModal()};
+  $('#dtPrompt').textContent = p || 'No prompt was stored with this file.';
+  $('#dtPrompt').className = p ? '' : 'vacio';
+  const dl=$('#dtDatos'); dl.innerHTML='';
+  Object.entries(ETIQUETAS).forEach(([k,et])=>{
+    if(DT.meta[k]===undefined||DT.meta[k]==='') return;
+    dl.innerHTML+=`<dt>${et}</dt><dd>${String(DT.meta[k])}</dd>`;
+  });
+  $('#dtBajar').href=url;
+  $('#dtBajar').setAttribute('download', url.split('/').pop()||'qwenstudio.png');
+  $('#dtCopiar').disabled=!p; $('#dtUsarPrompt').disabled=!p;
+  $('#dtAviso').textContent='';
+  $('#dt').showModal();
+}
+$('#dtCerrar').onclick=()=>$('#dt').close();
+$('#dt').onclick=e=>{if(e.target.id==='dt')$('#dt').close()};
+$('#dtCopiar').onclick=async()=>{
+  try{ await navigator.clipboard.writeText(DT.meta.prompt||'');
+       $('#dtAviso').textContent='Copied.'; }
+  catch(_){ $('#dtAviso').textContent='The browser refused the clipboard \u2014 '+
+    'select the text and copy it by hand.'; }
+};
+$('#dtUsarPrompt').onclick=()=>{
+  $('#prompt').value=DT.meta.prompt||'';
+  $('#dt').close();
+};
+$('#dtUsarImagen').onclick=async()=>{
+  // la ranura depende del caso: en los de edicion es la foto de partida y en
+  // los demas la referencia de persona
+  const c=caso();
+  const z = c.zonas.includes('source') ? 'source'
+          : c.zonas.includes('person') ? 'person' : null;
+  if(!z){ $('#dtAviso').textContent='This use case takes no image.'; return }
+  try{
+    S.img[z]=[await aUrlDatos(DT.url)];
+    if(z==='source'){ S.mascara=null; pintarEstadoMask(); }
+    tocado(); repintar(); $('#dt').close();
+  }catch(_){ $('#dtAviso').textContent='Could not load that file.'; }
+};
 
 /* ---------- la galeria de efectos ---------- */
 let EFECTOS=[], efFiltro='all';
@@ -1091,13 +1230,29 @@ async function abrirGaleria(){
     const f=document.createElement('figure');
     const im=document.createElement('img');
     im.src=it.archivo; im.alt=it.nombre; im.loading='lazy';
-    im.onclick=()=>{$('#lupaImg').src=it.archivo;$('#lupa').showModal()};
+    im.onclick=()=>abrirDetalle(it.archivo, it.meta);
     const c=document.createElement('figcaption');
     c.innerHTML=`<span class="tipo">${it.clase}</span>
       <span class="num" style="flex:1">${cuando(it.cuando)}</span>
       <a href="${it.archivo}" download="${it.nombre}" title="Download">
         ${svg('descarga',15)}</a>`;
-    f.append(im,c); g.append(f);
+    const x=document.createElement('button');
+    x.type='button'; x.className='quitar'; x.textContent='×';
+    x.title='Move to the bin';
+    x.onclick=async ev=>{
+      ev.stopPropagation();
+      if(!confirm(`Move ${it.nombre} to salidas/_papelera?
+
+It stays on disk; `+
+                  'empty that folder yourself when you want it gone.')) return;
+      const r=await (await fetch('/api/borrar',{method:'POST',
+        body:JSON.stringify({nombre:it.nombre})})).json();
+      if(r.error){ alert(r.error); return }
+      f.remove();
+      const quedan=document.querySelectorAll('#glGrid figure').length;
+      $('#glCuenta').textContent = quedan+' file'+(quedan===1?'':'s');
+    };
+    f.append(im,c,x); g.append(f);
   });
 }
 $('#btnGaleria').onclick=abrirGaleria;
@@ -1114,6 +1269,11 @@ $('#glCarpeta').onclick=async()=>{
 /* ---------- the mask brush ----------
    Segmentar por texto acierta con lo que tiene nombre. Para media manga o una
    sombra concreta no hay frase, y el pincel es la unica via. */
+function mostrarLora(){
+  const fl=$('#filaLora'); if(!fl) return;
+  const m=caso().mode;
+  fl.hidden = fl.dataset.hay!=='1' || m==='efecto';
+}
 function pintarEstadoMask(){
   const hay=!!S.mascara, n=$('#notaMask');
   if(!n) return;
@@ -1248,10 +1408,6 @@ $('#go').onclick=async()=>{
       r=await (await fetch('/api/efecto',{method:'POST',body:JSON.stringify({
         imagen:antes, efecto:S.efecto, steps:+$('#steps').value,
         seed:+$('#seed').value})})).json();
-    }else if(c.mode==='upscale'){
-      antes=(S.img.source||[])[0];
-      r=await (await fetch('/api/reescalar',{method:'POST',body:JSON.stringify({
-        imagen:antes, steps:+$('#steps').value, seed:+$('#seed').value})})).json();
     }else if(c.mode==='inpaint'){
       antes=(S.img.source||[])[0];
       r=await (await fetch('/api/inpaint',{method:'POST',body:JSON.stringify({...comunes(),
@@ -1299,26 +1455,6 @@ function elegirComparar(src, el){
 $('#lupa').onclick=()=>$('#lupa').close();
 
 /* ---------- prompt library ---------- */
-fetch('/api/prompts').then(r=>r.json()).then(cats=>{
-  const b=$('#plBody');
-  cats.forEach(c=>{
-    const h=document.createElement('h4'); h.textContent=c.categoria; b.append(h);
-    c.items.forEach(it=>{
-      const x=document.createElement('button'); x.type='button';
-      x.innerHTML=`<b>${it.etiqueta}</b>${it.texto}`;
-      x.onclick=()=>{
-        const destino = (caso().mode==='inpaint' && c.categoria==='What to select')
-          ? $('#seleccion') : $('#prompt');
-        if(!destino) return;
-        destino.value = destino.value.trim()
-          ? (destino===$('#seleccion') ? it.texto : destino.value.trim()+' '+it.texto)
-          : it.texto;
-        $('#pl').close();
-      };
-      b.append(x);
-    });
-  });
-}).catch(()=>{});
 $('#btnMejorar').onclick=async()=>{
   const t=$('#prompt').value.trim();
   if(!t){alert('Write a few words first and this will turn them into a full prompt.');return}
@@ -1337,7 +1473,35 @@ $('#btnDeshacer').onclick=()=>{
   if(S.promptPrevio!==undefined) $('#prompt').value=S.promptPrevio;
   $('#btnDeshacer').hidden=true;
 };
-$('#btnPl').onclick=()=>$('#pl').showModal();
+async function abrirBiblioteca(){
+  const cont=$('#plBody'); cont.innerHTML='<div class="hint">Loading…</div>';
+  $('#pl').showModal();
+  let cats=[];
+  try{ cats=await (await fetch('/api/prompts?caso='+encodeURIComponent(S.caso))).json(); }
+  catch(_){ cont.innerHTML='<div class="nota mal">Could not load the library.</div>'; return }
+  if(!cats.length){
+    cont.innerHTML='<div class="hint">This path takes no free prompt — the look you '+
+      'pick supplies it.</div>';
+    return;
+  }
+  cont.innerHTML='';
+  cats.forEach(c=>{
+    cont.innerHTML+=`<h4>${c.categoria}</h4>`;
+    c.items.forEach(it=>{
+      const b=document.createElement('button'); b.type='button';
+      b.innerHTML=`<b>${it.etiqueta}</b>${it.texto}`;
+      b.onclick=()=>{
+        const t=$('#prompt');
+        // los puntos de partida sustituyen, los fragmentos se suman
+        t.value = c.categoria==='Starting points' ? it.texto
+                : (t.value.trim() ? t.value.trim()+' '+it.texto : it.texto);
+        $('#pl').close();
+      };
+      cont.append(b);
+    });
+  });
+}
+$('#btnPl').onclick=abrirBiblioteca;
 $('#pl').onclick=e=>{if(e.target.id==='pl')$('#pl').close()};
 $('#btnClear').onclick=()=>{$('#prompt').value=''};
 
@@ -1367,6 +1531,8 @@ const OPCIONES=[
  ['steps','num','Default steps','25 is what ComfyUI recommends, 40 what the model card says.'],
  ['megapixeles','num','Default quality (MP)','1 is fast, 4 is 2K native.'],
  ['vlm_bits','sel','Vision model precision','4-bit uses ~7 GB, 8-bit ~13 GB and describes a little better.'],
+ ['limite_c','num','Cool down between batch images (\u00b0C)',
+  'Before each image of a batch, wait until the card drops below this. 0 turns it off. Not protection from damage \u2014 the firmware already enforces its own limit \u2014 but a long unattended run finishes sooner if it is not being throttled the whole way.'],
  ['vae','vae','Decoder',
   'Measured on the same seed: the HDR decoder gives +19% saturation and +27% edge energy with contrast and exposure unchanged. It interprets rather than reproduces — SSIM drops from 0.958 to 0.944 — so switch to stock for a faithful reproduction. Needs modelos/vae_hdr.safetensors.'],
 ];
@@ -1479,6 +1645,17 @@ $('#cfg').onclick=e=>{if(e.target.id==='cfg')$('#cfg').close()};
   const abrir=q.get('abrir');
   if(abrir==='mask') setTimeout(abrirPincel, 500);
   else if(abrir==='galeria') setTimeout(abrirGaleria, 400);
+  else if(abrir==='efectos') setTimeout(()=>$('#ef')?.showModal(), 400);
+  // ?receta=<archivo> abre la ficha de un resultado concreto: sirve para
+  // mandarle a alguien como se hizo una imagen, no solo la imagen
+  const receta=q.get('receta');
+  if(receta) setTimeout(async()=>{
+    try{
+      const d=await (await fetch('/api/galeria')).json();
+      const it=(d.items||[]).find(x=>x.nombre===receta) || (d.items||[])[0];
+      if(it) abrirDetalle(it.archivo, it.meta);
+    }catch(_){}
+  }, 500);
   else {
     const d={poses:'#lib', prompts:'#pl', ajustes:'#cfg'}[abrir];
     if(d) setTimeout(()=>$(d)?.showModal(), 350);

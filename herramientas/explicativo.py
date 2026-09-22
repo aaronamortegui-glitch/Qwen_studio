@@ -143,15 +143,21 @@ def _marca(canvas, x, y, lado, fondo, figura):
     que el icono de la app y el del documento sean la misma forma y no dos
     parecidas que se van separando con cada retoque.
     """
+    import math
     u = lado / 48.0
     canvas.setFillColor(fondo)
     canvas.roundRect(x, y, lado, lado, 12 * u, fill=1, stroke=0)
-    canvas.setFillColor(figura)
-    # el eje y del pdf sube y el del svg baja: 48 - y - alto
-    canvas.roundRect(x + 9 * u, y + (48 - 32) * u, 18 * u, 18 * u, 5 * u, fill=1, stroke=0)
-    canvas.circle(x + 30 * u, y + (48 - 18) * u, 9 * u, fill=1, stroke=0)
-    canvas.setFillColor(fondo)
-    canvas.circle(x + 30 * u, y + (48 - 18) * u, 5.6 * u, fill=1, stroke=0)
+
+    # el eje y del pdf sube y el del svg baja, asi que la y va como 48 - y
+    cx, cy, rm, grosor, largo = 22.8, 48 - 21.8, 10.9, 4.6, 9.0
+    canvas.setStrokeColor(figura)
+    canvas.setLineWidth(grosor * u)
+    canvas.setLineCap(1)
+    canvas.circle(x + cx * u, y + cy * u, rm * u, fill=0, stroke=1)
+    ang = math.radians(45)
+    x1, y1 = cx + rm * math.cos(ang), cy - rm * math.sin(ang)
+    x2, y2 = x1 + largo * math.cos(ang), y1 - largo * math.sin(ang)
+    canvas.line(x + x1 * u, y + y1 * u, x + x2 * u, y + y2 * u)
 
 
 def _fondo(canvas, doc):
@@ -279,7 +285,8 @@ def construir() -> str:
               ["", "Pose my character", "person + pose + optional style and setting"],
               ["", "Transparent cutout", "person → PNG with a real alpha channel"],
               ["", "Free", "everything, nothing assumed"],
-              ["Edit a photo", "Replace something", "image + a selection + what goes there"],
+              ["Edit a photo", "Apply a look", "image + a treatment picked from a grid"],
+              ["", "Replace something", "image + a selection + what goes there"],
           ], [an * .22, an * .3, an * .48]),
           Spacer(1, 4 * mm),
           Paragraph("An edit selects its region from words or from a brush painted at the "
@@ -360,12 +367,25 @@ def construir() -> str:
                     "the checkpoint already carries the vision tower and the language head. "
                     "The same 16 GB do both jobs.", CUERPO),
           Spacer(1, 4 * mm),
-          Paragraph("Where the images go", H3),
+          Paragraph("Where the images go, and how they got there", H3),
           Paragraph("Everything written lands in one folder, and the gallery reads that "
                     "folder rather than a database, so the disk is the single source of "
-                    "truth: delete a file there and it disappears from the gallery. Every "
-                    "result carries a download button, and one click hands you to the file "
-                    "manager.", CUERPO),
+                    "truth: delete a file there and it disappears from the gallery.", CUERPO),
+          Paragraph("Each result carries its own recipe, written into the PNG as tEXt "
+                    "chunks: the exact prompt, the seed, the steps, the decoder, the LoRA, "
+                    "the reference order. Click any image and it opens, with the prompt "
+                    "ready to copy, to put back in the box, or the image itself ready to "
+                    "become the input of the next step. Into the file rather than a sidecar "
+                    "or a database, so it survives the file being moved, copied or sent to "
+                    "someone.", CUERPO),
+          Spacer(1, 3 * mm),
+          Paragraph("Looks, and what was left out", H3),
+          Paragraph("A treatment is picked from a grid rather than typed, and every "
+                    "thumbnail in it is that effect applied to this install's own reference "
+                    "photo, generated on this machine. Upscaling to 2K is implemented and "
+                    "deliberately not offered: it works, and it took 754 seconds here for "
+                    "one image. Twelve minutes is not a feature. The endpoint and the "
+                    "reasoning are written down instead.", CUERPO),
           Spacer(1, 3 * mm),
           Paragraph("LoRAs, and a trap worth knowing", H3),
           Paragraph("Drop .safetensors into the loras folder and a selector appears with a "

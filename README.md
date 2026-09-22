@@ -33,8 +33,9 @@
 ## Two ways to use it
 
 **1. By hand.** Double-click, a page opens at `127.0.0.1:7860`, you drop
-photos into boxes and press Generate. Eight use cases, each showing only the
-inputs it needs, each opening with a worked example already loaded.
+photos into boxes and press Generate. Nine use cases in three groups, each
+showing only the inputs it needs, each opening with a worked example already
+loaded.
 
 **2. By agent.** Point Claude Code, Codex or any MCP client at this folder and
 ask for what you want. The agent gets ten tools — generate, edit, describe,
@@ -104,12 +105,23 @@ Thirty poses. The thumbnail is the photo, because that is what you recognise;
 hover and it swaps to the OpenPose skeleton, because that is what the model
 actually receives.
 
+<p align="center"><img src="docs/ui-looks.png" width="820" alt="The effects grid: each thumbnail is that look applied to this install's own reference"></p>
+
+Looks are picked from a grid, not typed. Every thumbnail is that effect applied
+to this install's own reference photo, generated here — so the grid shows this
+model doing this thing, not a screenshot of someone else's pipeline.
+
 <p align="center"><img src="docs/ui-gallery.png" width="820" alt="The gallery: everything written to the outputs folder"></p>
 
 **Everything you make lands in `salidas/`** and the Gallery reads that folder
 directly — there is no database to fall out of sync with the disk. Delete a
 file there and it is gone from here. Every tile and every result carries a
 download button, and **Open the folder** hands you to the file manager.
+
+Each tile also has a × that moves the file to `salidas/_papelera/` rather than
+unlinking it. A grid of thumbnails that look alike is exactly where a click you
+cannot undo loses the good one; the bin stays on disk and emptying it is your
+call, not the app's.
 
 <p align="center"><img src="docs/ui-dark.png" width="820" alt="The same screen in dark"></p>
 
@@ -128,7 +140,8 @@ Light by default, dark in Settings, or Auto to follow the system.
 | | Pose my character | person + pose + optional style and setting |
 | | Transparent cutout | person → PNG with a real alpha channel |
 | | Free | everything, nothing assumed |
-| **Edit a photo** | Replace something | image + a selection + what goes there |
+| **Edit a photo** | Apply a look | image + a treatment picked from a grid |
+| | Replace something | image + a selection + what goes there |
 
 Plus a **pose library** (30 skeletons across close-up, half and full body), a
 **prompt library** (additive snippets, one clause of a photograph each, built
@@ -244,10 +257,24 @@ transformer genuinely does not fit.
 language head. The same 16 GB serve both jobs; it loads in 4-bit so it can sit
 beside the DiT.
 
+**You cannot burn the card with this, and the app says so.** The thermal limit
+is enforced by the firmware, below the driver: around 83–88 °C it clocks itself
+down and near 95 °C it cuts out, and nothing in user space overrides that. What
+does happen is a laptop sitting at 85 °C for two hours on a fifty-image batch,
+throttling the whole way and taking twice as long while nobody understands why.
+So the meter shows the temperature, says when the card is throttling, and a
+setting makes a batch wait between images until it drops below a threshold —
+80 °C by default, 0 to turn it off. That is not damage protection. It is the
+difference between a long run finishing and a long run crawling.
+
 **Close anything else using the GPU first.** Starting with VRAM half full makes
 generation crawl with no error at all: utilisation reads 100%, power draw stays
 low, nothing finishes. Half an hour was lost to a forgotten ComfyUI process
-before the app learned to warn about it.
+before the app learned to warn about it — and then a second time, mid-build,
+which is why the header now carries a **VRAM meter** reading `18.2 / 23.9 GB`
+and naming how much of that belongs to something else. Click it and the app
+unmounts its models and hands the memory back, no restart. When the number is
+someone else's, the meter says so, because then the fix is not here.
 
 ---
 
@@ -337,6 +364,52 @@ clicks.
 
 ---
 
+## Every image carries its own recipe
+
+<p align="center"><img src="docs/ui-recipe.png" width="820" alt="Clicking a result shows the prompt and settings that produced it"></p>
+
+Click any result, in the gallery or in the run you just made, and it opens what
+produced it: the exact prompt, the seed, the steps, the decoder, the LoRA, the
+reference order. Then **copy the prompt**, **put it back in the box**, or
+**use the image as input** for the case you are in, which is how you chain a
+generation into a look without going through the disk.
+
+The recipe is written into the PNG itself as tEXt chunks, the way ComfyUI and
+A1111 do it — not into a sidecar and not into a database. It survives the file
+being moved, copied or sent to someone, and there is no second store to fall
+out of sync with the folder. A file made before this existed simply says so.
+
+**The prompt library knows where you are.** Each use case sees the categories
+that apply to it and, above them, starting points written for that path — a
+text-to-image case opens on eight complete prompts, an edit opens on garments
+and backgrounds. Offering winter coats to someone who is upscaling a photo
+only makes them doubt what the field is for.
+
+**Improve it** rewrites a few loose words into a full prompt, using the
+Qwen3-VL that is already resident. Text only, no network, about 19 s, and the
+system prompt is built from the rules measured in this project rather than a
+generic "make it better":
+
+> *a guy on a bike in the rain, night, cool*
+
+becomes
+
+> *A guy on a bike, wearing a dark waterproof jacket with a hood pulled up,
+> gloves, and rain-slicked jeans, leaning forward over the handlebars with a
+> wet helmet resting on his lap, the bike's chrome fender gleaming under
+> streetlight, standing on a wet cobblestone street at night, framed in a
+> medium shot from slightly low angle, caught in a vertical rain curtain with
+> streaks of light reflecting off puddles, lit by the warm glow of a single
+> sodium streetlamp casting long shadows, captured with a shallow depth of
+> field using a 35mm lens.*
+
+Subject, then clothing, then place, then framing, then light, then lens — the
+order the model actually weights. The workflow that does this elsewhere sends
+your prompt to a translation API and then to a hosted LLM; this one never
+leaves the machine.
+
+---
+
 ## The HDR VAE
 
 The VAE is the last step: it turns the latent the model produced into pixels.
@@ -366,6 +439,14 @@ faithfully, it interprets it with more contrast, more edge and more saturation.
 For a portrait that reads as better. For a faithful reproduction of a source
 image it is the wrong tool, and that is what the switch is for.
 
+Switching decoder costs a reload, about thirty seconds. That is deliberate:
+loading the weights into a mounted pipeline leaves tensors stranded on CPU,
+because with model offload the weights belong to accelerate and
+`load_state_dict` writes underneath its hooks. The first version did it in
+place and the next edit died with *"Expected all tensors to be on the same
+device"*. The swap now happens before any hook is installed, which means before
+the pipeline finishes loading.
+
 The file is **not part of the 31 GB download**. Put
 `qwen21HDRVAE_diffusersFormat_fp16.safetensors` into `modelos/` as
 `vae_hdr.safetensors` and the option appears; without it the app uses the stock
@@ -389,12 +470,13 @@ three Blender viewport modes from the
 which is a genuine Qwen-Image 2.1 LoRA. Effects needing a LoRA stay visible
 when the file is missing and say which one they need, rather than disappearing.
 
-**Upscale to 2K** redraws the image larger using itself as the reference,
-which recovers real detail instead of interpolating pixels. The target is the
-whole 2K budget: the area is scaled towards 2048×2048, capped at four times per
-side — the same arithmetic the
-[2K upscale workflow](https://civitai.com/models/2952715/qwen-21-2k-upscale-workflow)
-uses for this model.
+**Upscaling is implemented but not offered in the interface.** The technique
+works — the image goes back in as its own reference and the model redraws it
+larger, which recovers real detail rather than interpolating pixels — but it
+took **754 seconds** here for 775×1024 → 1792×2048. Twelve minutes for one
+upscale is not a feature. The endpoint and the reasoning are in
+[`referencia/`](referencia/README.md), along with the workflows this was read
+from; the button comes back when the number does.
 
 ---
 

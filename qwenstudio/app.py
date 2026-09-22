@@ -54,6 +54,10 @@ AJUSTES_DEF = {
     # saturacion y +27% de energia de gradiente sin tocar contraste ni luz
     # media. Si el archivo no esta, usar_vae cae al de serie sin quejarse.
     "vae": "hdr",                 # hdr | stock
+    # entre imagenes de un lote, esperar a que la tarjeta baje de aqui. 0 lo
+    # desactiva. No protege de nada roto: evita que un lote largo se pase la
+    # noche estrangulado y tarde el doble
+    "limite_c": 80,
 }
 
 
@@ -113,11 +117,43 @@ def _img_de_data_url(data_url: str):
     return Image.open(io.BytesIO(base64.b64decode(m.group(1)))).convert("RGB")
 
 
-def _guardar(img, prefijo="out") -> str:
+# lo que se guarda dentro del archivo, y el orden en que se lee
+CAMPOS_META = ("prompt", "caso", "efecto", "seed", "steps", "tam", "ratio",
+               "megapixeles", "vae", "lora", "fuerza_lora", "orden", "modelo")
+
+
+def _guardar(img, prefijo="out", meta: dict | None = None) -> str:
+    """Save a result, with its recipe written into the PNG itself.
+
+    tEXt chunks rather than a sidecar file: the recipe then survives being
+    moved, copied or sent to someone, and there is no second store to fall out
+    of sync with the folder.
+    """
+    from PIL import PngImagePlugin
     os.makedirs(SALIDAS, exist_ok=True)
     nombre = f"{prefijo}_{time.strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}.png"
-    img.save(os.path.join(SALIDAS, nombre))
+
+    info = PngImagePlugin.PngInfo()
+    if meta:
+        info.add_text("generator", "QwenStudio / Qwen-Image 2.1")
+        for k in CAMPOS_META:
+            v = meta.get(k)
+            if v is None or v == "" or v == []:
+                continue
+            info.add_text(k, ", ".join(map(str, v)) if isinstance(v, (list, tuple)) else str(v))
+    img.save(os.path.join(SALIDAS, nombre), pnginfo=info)
     return nombre
+
+
+def _leer_meta(ruta: str) -> dict:
+    """Read the recipe back out of a PNG. Empty dict when there is none."""
+    try:
+        from PIL import Image as _I
+        with _I.open(ruta) as im:
+            info = getattr(im, "text", None) or {}
+            return {k: v for k, v in info.items() if k != "generator"}
+    except Exception:
+        return {}
 
 
 def _esqueleto(img):
@@ -192,10 +228,17 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, leer_ajustes())
 
         if p == "/api/prompts":
-            return self._send(200, PR.catalogo())
+            # filtrada por camino: ofrecer ropa de invierno a quien esta
+            # reescalando una foto solo le hace dudar de para que sirve el campo
+            caso = (self.path.split("caso=")[1].split("&")[0]
+                    if "caso=" in self.path else None)
+            return self._send(200, PR.catalogo_de(caso))
 
         if p == "/api/poses":
             return self._send(200, P.catalogo())
+
+        if p == "/api/gpu":
+            return self._send(200, M.estado_vram())
 
         if p == "/api/efectos":
             return self._send(200, EF.catalogo(LORAS))
@@ -281,6 +324,18 @@ class Handler(BaseHTTPRequestHandler):
 
         if p == "/api/ajustes":
             return self._send(200, guardar_ajustes(b))
+
+        if p == "/api/borrar":
+            return self._send(200, self._borrar(b))
+
+        if p == "/api/liberar":
+            # soltar los modelos y luego devolver a la tarjeta lo reservado:
+            # en ese orden, porque vaciar la cache antes de desmontar no suelta
+            # nada que siga referenciado
+            soltados = registro.desmontar_todo()
+            r = M.vaciar_cache()
+            r["desmontados"] = soltados
+            return self._send(200, r)
 
         if p == "/api/desmontar":
             soltados = registro.desmontar_todo(excepto=b.get("excepto"))
@@ -401,11 +456,22 @@ class Handler(BaseHTTPRequestHandler):
             motor.aplicar_lora(os.path.join(LORAS, b["lora"]) if b.get("lora") else None,
                                float(b.get("fuerza_lora", 1.0)))
             for i, texto in enumerate(prompts):
+                lim = int(leer_ajustes().get("limite_c", 0))
+                if lim and i:
+                    espera = M.esperar_a_que_enfrie(lim)
+                    if espera.get("esperado_s"):
+                        print(f"  [lote] {espera['esperado_s']}s esperando a "
+                              f"{espera['grados']}C", flush=True)
                 t0 = time.time()
-                img, _ = motor.generar(personas=personas, pose=pose, escena=escena,
-                                       texto=str(texto), res=res, ancho=ancho, alto=alto,
-                                       transparencia=transp, steps=steps, seed=base + i)
-                hechas.append({"archivo": "/salidas/" + _guardar(img, "lote"),
+                img, armado = motor.generar(personas=personas, pose=pose, escena=escena,
+                                            texto=str(texto), res=res, ancho=ancho,
+                                            alto=alto, transparencia=transp, steps=steps,
+                                            seed=base + i)
+                hechas.append({"archivo": "/salidas/" + _guardar(img, "lote", {
+                                   "prompt": armado, "caso": "batch", "seed": base + i,
+                                   "steps": int(b.get("steps", 25)), "vae": motor.vae_actual,
+                                   "tam": f"{img.width}x{img.height}",
+                                   "modelo": "Qwen-Image 2.1"}),
                                "seed": base + i, "prompt": str(texto),
                                "tam": f"{img.width}x{img.height}",
                                "segundos": round(time.time() - t0, 1)})
@@ -458,13 +524,46 @@ class Handler(BaseHTTPRequestHandler):
                 clase = ("summary" if n.startswith("resumen") else
                          "edit" if n.startswith("inpaint") else
                          "mask" if n.startswith("mask") else
-                         "batch" if n.startswith("lote") else "image")
+                         "batch" if n.startswith("lote") else
+                         "look" if n.startswith("efecto") else
+                         "upscale" if n.startswith("upscale") else "image")
                 filas.append({"archivo": "/salidas/" + n, "nombre": n, "clase": clase,
-                              "cuando": int(st.st_mtime), "kb": round(st.st_size / 1024)})
+                              "cuando": int(st.st_mtime), "kb": round(st.st_size / 1024),
+                              "meta": _leer_meta(ruta)})
         except OSError:
             pass
         filas.sort(key=lambda r: r["cuando"], reverse=True)
         return {"items": filas[:limite], "total": len(filas), "carpeta": SALIDAS}
+
+    @staticmethod
+    def _borrar(b):
+        """Move one output to salidas/_papelera/ instead of unlinking it.
+
+        Recoverable on purpose: the gallery is a grid of thumbnails that look
+        alike, and a click that cannot be undone there is how the good one
+        disappears. The folder is the user's; emptying the bin is their call.
+        """
+        nombre = os.path.basename((b.get("nombre") or "").strip())
+        if not nombre or nombre.startswith("."):
+            return {"error": "no file given"}
+        origen = os.path.join(SALIDAS, nombre)
+        # basename ya corta cualquier ../, pero se comprueba el resultado igual
+        if not os.path.isfile(origen) or os.path.dirname(os.path.abspath(origen)) != \
+                os.path.abspath(SALIDAS):
+            return {"error": "that file is not in the outputs folder"}
+        papelera = os.path.join(SALIDAS, "_papelera")
+        os.makedirs(papelera, exist_ok=True)
+        destino = os.path.join(papelera, nombre)
+        n = 1
+        while os.path.exists(destino):
+            raiz, ext = os.path.splitext(nombre)
+            destino = os.path.join(papelera, f"{raiz}_{n}{ext}")
+            n += 1
+        try:
+            os.replace(origen, destino)
+        except OSError as e:
+            return {"error": f"{type(e).__name__}: {e}"}
+        return {"movido": nombre, "a": destino}
 
     @staticmethod
     def _abrir_carpeta():
@@ -540,7 +639,13 @@ class Handler(BaseHTTPRequestHandler):
         if err:
             return {"error": err}
         gen, prompt = res
-        return {"imagenes": [{"archivo": "/salidas/" + _guardar(gen, "efecto"),
+        return {"imagenes": [{"archivo": "/salidas/" + _guardar(gen, "efecto", {
+                                  "prompt": prompt, "caso": "look", "efecto": e["nombre"],
+                                  "seed": b.get("seed"), "steps": b.get("steps", 25),
+                                  "vae": motor.vae_actual, "lora": lora,
+                                  "fuerza_lora": e.get("fuerza") if lora else None,
+                                  "tam": f"{gen.width}x{gen.height}",
+                                  "modelo": "Qwen-Image 2.1"}),
                               "tam": f"{gen.width}x{gen.height}"}],
                 "prompt": prompt, "efecto": e["nombre"],
                 "segundos": round(time.time() - t0, 1)}
@@ -567,7 +672,12 @@ class Handler(BaseHTTPRequestHandler):
         if err:
             return {"error": err}
         gen, prompt = res
-        return {"imagenes": [{"archivo": "/salidas/" + _guardar(gen, "upscale"),
+        return {"imagenes": [{"archivo": "/salidas/" + _guardar(gen, "upscale", {
+                                  "prompt": prompt, "caso": "upscale",
+                                  "seed": b.get("seed"), "steps": b.get("steps", 25),
+                                  "vae": motor.vae_actual,
+                                  "tam": f"{gen.width}x{gen.height}",
+                                  "modelo": "Qwen-Image 2.1"}),
                               "tam": f"{gen.width}x{gen.height}"}],
                 "de": f"{img.width}x{img.height}", "escala": round(escala, 2),
                 "prompt": prompt, "segundos": round(time.time() - t0, 1)}
@@ -623,7 +733,12 @@ class Handler(BaseHTTPRequestHandler):
                                            ancho=aw, alto=ah)
                 final = IN.pegar(img, gen, mcrop, caja,
                                  difuminado=int(b.get("difuminado", 12)))
-                salidas.append({"archivo": "/salidas/" + _guardar(final, "inpaint"),
+                salidas.append({"archivo": "/salidas/" + _guardar(final, "inpaint", {
+                                    "prompt": prompt, "caso": "replace",
+                                    "seed": base + k, "steps": int(b.get("steps", 25)),
+                                    "vae": motor.vae_actual,
+                                    "tam": f"{final.width}x{final.height}",
+                                    "modelo": "Qwen-Image 2.1"}),
                                 "seed": base + k, "tam": f"{final.width}x{final.height}"})
         return {"imagenes": salidas, "caja": list(caja), "prompt": prompt,
                 "crop": f"{caja[2]-caja[0]}x{caja[3]-caja[1]}", "generado": f"{aw}x{ah}"}
@@ -697,7 +812,15 @@ class Handler(BaseHTTPRequestHandler):
                                             texto=texto, res=res,
                                             ancho=ancho, alto=alto, transparencia=transp,
                                             steps=steps, seed=base + k)
-                hechas.append({"archivo": "/salidas/" + _guardar(img), "seed": base + k,
+                receta = {"prompt": prompt, "caso": b.get("caso", "generate"),
+                          "seed": base + k, "steps": steps, "vae": motor.vae_actual,
+                          "tam": f"{img.width}x{img.height}", "ratio": b.get("ratio"),
+                          "megapixeles": b.get("megapixeles"), "lora": b.get("lora"),
+                          "fuerza_lora": b.get("fuerza_lora") if b.get("lora") else None,
+                          "orden": self._orden(len(personas), pose, estilo, escena),
+                          "modelo": "Qwen-Image 2.1"}
+                hechas.append({"archivo": "/salidas/" + _guardar(img, "out", receta),
+                               "seed": base + k,
                                "tam": f"{img.width}x{img.height}"})
 
         hoja_resumen = None

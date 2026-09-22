@@ -80,11 +80,12 @@ EFECTOS: dict[str, dict] = {
         # medido: pedir "la mayor parte del cuadro en sombra" se lo toma al pie de
         # la letra y devuelve una foto negra. El encargo tiene que ser lo que SI
         # se ve -- la cara bien expuesta -- y el resto cae solo
-        "prompt": "Relight this photograph as low-key noir: a single hard source from one "
-                  "side, the face clearly lit and fully readable with a bright edge along "
-                  "the cheekbone and the jaw, the background dropping away into shadow "
-                  "behind it. The composition, the framing, the pose and the face stay "
-                  "exactly as they are.",
+        "prompt": "Relight this photograph as low-key noir. The face is the brightest "
+                  "thing in the frame, well exposed and fully readable, lit by a single "
+                  "hard source from one side that carves a bright edge along the cheekbone "
+                  "and the jaw. Everything behind the subject sits far darker than the "
+                  "face. The composition, the framing, the pose and the face stay exactly "
+                  "as they are.",
     },
     "clay": {
         "nombre": "Clay render",

@@ -1,7 +1,7 @@
 """Draw the QwenStudio mark and write the icon files.
 
-The mark is a body and a lens fused into one silhouette: the frame you compose
-in and the thing you point at it, in Superside's palette
+The mark is a Q, drawn as a ring with the tail crossing the stroke, in
+Superside's palette
 (#0A211F and #D8FF85). It is an original symbol, not the Superside logo: this
 is an unofficial exploration and a registered wordmark has no business in it.
 
@@ -34,11 +34,24 @@ def dibujar(lado: int) -> Image.Image:
     d = ImageDraw.Draw(im)
     u = n / 48.0                                   # el svg esta pensado en 48
 
+    import math
+    cx, cy, r_ext, grosor, largo, ancho = 22.8, 21.8, 13.2, 4.6, 9.0, 4.6
     d.rounded_rectangle([0, 0, n - 1, n - 1], radius=round(12 * u), fill=TINTA)
-    d.rounded_rectangle([round(9 * u), round(14 * u), round(27 * u), round(32 * u)],
-                        radius=round(5 * u), fill=LIMA)
-    d.ellipse([round(21 * u), round(9 * u), round(39 * u), round(27 * u)], fill=LIMA)
-    d.ellipse([round(24.4 * u), round(12.4 * u), round(35.6 * u), round(23.6 * u)], fill=TINTA)
+    d.ellipse([(cx - r_ext) * u, (cy - r_ext) * u,
+               (cx + r_ext) * u, (cy + r_ext) * u], fill=LIMA)
+    ri = r_ext - grosor
+    d.ellipse([(cx - ri) * u, (cy - ri) * u, (cx + ri) * u, (cy + ri) * u], fill=TINTA)
+
+    # la cola arranca en el centro del trazo del anillo, no dentro del contra:
+    # asi cruza el aro como en una Q de verdad y no deja un bulto suelto
+    rm = r_ext - grosor / 2
+    ang = math.radians(45)
+    x1, y1 = cx + rm * math.cos(ang), cy + rm * math.sin(ang)
+    x2, y2 = x1 + largo * math.cos(ang), y1 + largo * math.sin(ang)
+    d.line([x1 * u, y1 * u, x2 * u, y2 * u], fill=LIMA, width=round(ancho * u))
+    for px, py in ((x1, y1), (x2, y2)):
+        d.ellipse([(px - ancho / 2) * u, (py - ancho / 2) * u,
+                   (px + ancho / 2) * u, (py + ancho / 2) * u], fill=LIMA)
     return im.resize((lado, lado), Image.LANCZOS)
 
 
