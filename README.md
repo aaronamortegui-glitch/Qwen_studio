@@ -93,17 +93,21 @@ their boxes, and the contact sheet of a real run with exactly those inputs. The
 first screen shows *this + this = this* instead of an empty form. Drop your own
 photo over any box and the example steps aside.
 
-<p align="center"><img src="docs/ui-vitrina.png" width="820" alt="The showcase: eighteen images this install produced, each one clickable for its recipe"></p>
+<p align="center"><img src="docs/ui-vitrina.png" width="820" alt="The showcase: thirty images this install produced, in two groups, each one clickable for its recipe"></p>
 
-And the results column is not empty on the first run. It opens with **eighteen
-images this install produced**, each one clickable for the prompt, the seed and
+And the results column is not empty on the first run. It opens with **thirty
+images this install produced**, in two groups — what each path does, and how
+far the style stretches — each one clickable for the prompt, the seed and
 the settings behind it, and for a button that opens the use case it came from
 with that prompt already in the box. Five of them build on each other: a
 character is invented from a paragraph, that face is carried into a portrait, a
 scene and a cutout, and two of the earlier images are then edited — so the
-showcase is one tool doing a day's work, not eight unrelated demos. It steps
+showcase is one tool doing a day's work, not eight unrelated demos. The second
+group changes the visual language rather than the task — pixel art, isometric
+tiles, game key art, a sitcom still, riso, ink, a patent drawing — because
+range is an argument the use cases cannot make on their own. It steps
 aside the moment you generate something of your own, and a link in the header
-brings it back. Rebuild it as yours with `herramientasitrina.py`.
+brings it back. Rebuild it as yours with `herramientas/vitrina.py`.
 
 <p align="center"><img src="docs/ui-indice.png" width="820" alt="The footer: an index of everything the app can do, each entry opening its own panel"></p>
 

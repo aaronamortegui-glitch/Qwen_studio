@@ -372,7 +372,7 @@ def construir() -> str:
                     "folder rather than a database, so the disk is the single source of "
                     "truth: delete a file there and it disappears from the gallery.", CUERPO),
           Paragraph("The results column is not empty the first time it is opened. It "
-                    "carries eighteen images this install produced, each one clickable for "
+                    "carries thirty images this install produced, in two groups, each one clickable for "
                     "the prompt, the seed and the settings behind it, and for a button that "
                     "opens the use case it came from with that prompt already written. Five "
                     "of them build on each other — a character invented from a "

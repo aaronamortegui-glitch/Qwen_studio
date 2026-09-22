@@ -390,6 +390,10 @@ details>summary{cursor:pointer;font-size:13px;color:var(--link);margin-top:18px;
 #vitrina{margin-top:26px;border-top:1px solid var(--line-soft);padding-top:20px}
 #vitrina>header{margin-bottom:14px}
 #vitrina h3{margin:0 0 4px;font-size:15px;font-weight:500;color:var(--on-sf)}
+.vitGrupo+.vitGrupo{margin-top:26px}
+.vitGrupo>h4{margin:0 0 10px;font-size:11px;font-weight:600;letter-spacing:.07em;
+  text-transform:uppercase;color:var(--ac-2);display:flex;align-items:center;gap:10px}
+.vitGrupo>h4::after{content:'';flex:1;height:1px;background:var(--line-soft)}
 .vitGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
 .vitGrid figure{margin:0;background:var(--sf-1);border:1px solid var(--line-soft);
   border-radius:var(--r-m);overflow:hidden;cursor:pointer;display:flex;
@@ -584,7 +588,6 @@ if(t!=='auto')document.documentElement.setAttribute('data-theme',t);})();</scrip
       <h3>Made with this app, on this machine</h3>
       <div class="hint" id="vitPie"></div>
     </header>
-    <div class="vitGrid" id="vitGrid"></div>
   </section>
 </div>
 </main>
@@ -1414,21 +1417,37 @@ let VIT=[];
 function hayResultados(){
   return !!document.querySelector('#gal > figure:not(#figEjemplo)');
 }
+function tarjetaVitrina(p){
+  const f=document.createElement('figure');
+  f.tabIndex=0; f.dataset.k=p.clave;
+  const et=(CASOS[p.caso]||{}).name||p.caso;
+  f.innerHTML=`<img src="${p.archivo}" alt="" loading="lazy">
+    <figcaption><b>${p.titulo}</b><small>${p.que}</small>
+      <span class="vitCaso">${et}</span></figcaption>`;
+  const abrir=()=>abrirDetalle(p.archivo, {...p.meta, caso_ui:p.caso},
+    {titulo:p.titulo, que:p.que, antes:p.antes, antes_de:p.antes_de, caso_ui:p.caso});
+  f.onclick=abrir;
+  f.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();abrir()}};
+  return f;
+}
 function pintarVitrina(){
-  const g=$('#vitGrid'); if(!g) return;
-  g.innerHTML='';
+  const cont=$('#vitrina'); if(!cont) return;
+  const viejo=cont.querySelectorAll('.vitGrupo'); viejo.forEach(x=>x.remove());
+  // el orden de los grupos es el del manifiesto, no alfabetico: primero para
+  // que sirve cada camino y despues hasta donde estira el estilo
+  const grupos=[];
   VIT.forEach(p=>{
-    const f=document.createElement('figure');
-    f.tabIndex=0; f.dataset.k=p.clave;
-    const et=(CASOS[p.caso]||{}).name||p.caso;
-    f.innerHTML=`<img src="${p.archivo}" alt="" loading="lazy">
-      <figcaption><b>${p.titulo}</b><small>${p.que}</small>
-        <span class="vitCaso">${et}</span></figcaption>`;
-    const abrir=()=>abrirDetalle(p.archivo, {...p.meta, caso_ui:p.caso},
-      {titulo:p.titulo, que:p.que, antes:p.antes, antes_de:p.antes_de, caso_ui:p.caso});
-    f.onclick=abrir;
-    f.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();abrir()}};
-    g.append(f);
+    const n=p.grupo||'';
+    let g=grupos.find(x=>x.n===n);
+    if(!g){ g={n, piezas:[]}; grupos.push(g); }
+    g.piezas.push(p);
+  });
+  grupos.forEach(g=>{
+    const sec=document.createElement('section'); sec.className='vitGrupo';
+    if(g.n && grupos.length>1) sec.innerHTML=`<h4>${g.n}</h4>`;
+    const rejilla=document.createElement('div'); rejilla.className='vitGrid';
+    g.piezas.forEach(p=>rejilla.append(tarjetaVitrina(p)));
+    sec.append(rejilla); cont.append(sec);
   });
   $('#vitPie').textContent = VIT.length
     ? VIT.length+' images this install produced, start to finish. Click any one for the '

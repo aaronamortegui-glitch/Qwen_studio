@@ -3,6 +3,7 @@
   "clave": "personaje",
   "titulo": "A person from text",
   "caso": "blank",
+  "grupo": "What each path does",
   "que": "A person invented from nothing but this paragraph. Everything below reuses this face as a reference, so the same character walks through the rest of the app.",
   "archivo": "/vitrina/personaje.jpg",
   "meta": {
@@ -22,6 +23,7 @@
   "clave": "retrato",
   "titulo": "New portrait",
   "caso": "portrait",
+  "grupo": "What each path does",
   "que": "The same face, a new photograph: different wardrobe, different room, different light. The reference is tagged as the person, so identity is what carries over and nothing else.",
   "archivo": "/vitrina/retrato.jpg",
   "meta": {
@@ -42,6 +44,7 @@
   "clave": "escena",
   "titulo": "Into another photo",
   "caso": "scene",
+  "grupo": "What each path does",
   "que": "Two images the app made earlier, put together: the character from one and the bookshop from the other. The scene brings the place, the wardrobe and the light; the person brings only the face.",
   "archivo": "/vitrina/escena.jpg",
   "meta": {
@@ -62,6 +65,7 @@
   "clave": "pose",
   "titulo": "Posed and graded",
   "caso": "pose",
+  "grupo": "What each path does",
   "que": "Three references, one job each: the face, a skeleton from the pose library for the posture, and the shoreline for the grade. The prompt only has to name the wardrobe.",
   "archivo": "/vitrina/pose.jpg",
   "meta": {
@@ -82,6 +86,7 @@
   "clave": "recorte",
   "titulo": "Transparent cutout",
   "caso": "cutout",
+  "grupo": "What each path does",
   "que": "The same character on a real alpha channel, ready to drop into a layout. The transparency comes from the model, not from cutting the background out afterwards.",
   "archivo": "/vitrina/recorte.jpg",
   "meta": {
@@ -102,6 +107,7 @@
   "clave": "cartel",
   "titulo": "Poster",
   "caso": "sign",
+  "grupo": "What each path does",
   "que": "Words inside double quotes come out as lettering. This is the thing this model does better than most of its size.",
   "archivo": "/vitrina/cartel.jpg",
   "meta": {
@@ -121,6 +127,7 @@
   "clave": "neon",
   "titulo": "Neon sign",
   "caso": "sign",
+  "grupo": "What each path does",
   "que": "The same mechanism at night: the glow and the spelling are asked for in one sentence.",
   "archivo": "/vitrina/neon.jpg",
   "meta": {
@@ -140,6 +147,7 @@
   "clave": "cambio",
   "titulo": "Replace something",
   "caso": "replace",
+  "grupo": "What each path does",
   "que": "The sky named in words, nothing painted. CLIPSeg finds it, SAM 2 follows the edge, and only that region is regenerated — the shoreline below it is the same file.",
   "archivo": "/vitrina/cambio.jpg",
   "meta": {
@@ -159,6 +167,7 @@
   "clave": "arcilla",
   "titulo": "A look, one region",
   "caso": "look",
+  "grupo": "What each path does",
   "que": "The same grid of looks, confined to one region: the subject named in words and turned to clay, the room around her left as the photograph it was. Replacing something and applying a look are one operation underneath.",
   "archivo": "/vitrina/arcilla.jpg",
   "meta": {
@@ -181,6 +190,7 @@
   "clave": "grado",
   "titulo": "A look, whole frame",
   "caso": "look",
+  "grupo": "What each path does",
   "que": "A look over the whole frame: teal into the shadows, the skin kept clean, the highlights rolling off. Picked from the grid, not typed.",
   "archivo": "/vitrina/grado.jpg",
   "meta": {
@@ -201,6 +211,7 @@
   "clave": "producto",
   "titulo": "Product",
   "caso": "blank",
+  "grupo": "What each path does",
   "que": "The Product starting point, unedited. A single softbox falling off into near black is the whole lighting instruction.",
   "archivo": "/vitrina/producto.jpg",
   "meta": {
@@ -220,6 +231,7 @@
   "clave": "bodegon",
   "titulo": "Still life",
   "caso": "blank",
+  "grupo": "What each path does",
   "que": "The Still life starting point, with the palette held to ochre and grey by the prompt.",
   "archivo": "/vitrina/bodegon.jpg",
   "meta": {
@@ -239,6 +251,7 @@
   "clave": "comida",
   "titulo": "Food",
   "caso": "blank",
+  "grupo": "What each path does",
   "que": "The Food starting point. One hard source raking from behind is what makes the broth shine.",
   "archivo": "/vitrina/comida.jpg",
   "meta": {
@@ -258,6 +271,7 @@
   "clave": "paisaje",
   "titulo": "Landscape",
   "caso": "blank",
+  "grupo": "What each path does",
   "que": "The Landscape starting point. The long exposure is asked for in words, not applied afterwards.",
   "archivo": "/vitrina/paisaje.jpg",
   "meta": {
@@ -277,6 +291,7 @@
   "clave": "interior",
   "titulo": "Interior",
   "caso": "blank",
+  "grupo": "What each path does",
   "que": "The Interior starting point. Warm lamps against the blue outside the window is a colour contrast the model holds on its own.",
   "archivo": "/vitrina/interior.jpg",
   "meta": {
@@ -296,6 +311,7 @@
   "clave": "arquitectura",
   "titulo": "Architecture",
   "caso": "blank",
+  "grupo": "What each path does",
   "que": "The Architecture starting point. Asking for straight verticals is what keeps a 24mm from falling over.",
   "archivo": "/vitrina/arquitectura.jpg",
   "meta": {
@@ -315,6 +331,7 @@
   "clave": "animal",
   "titulo": "Animal",
   "caso": "blank",
+  "grupo": "What each path does",
   "que": "The Animal starting point. Naming the 300mm lens is what compresses the background into soft colour.",
   "archivo": "/vitrina/animal.jpg",
   "meta": {
@@ -334,6 +351,7 @@
   "clave": "ilustracion",
   "titulo": "Illustration",
   "caso": "blank",
+  "grupo": "What each path does",
   "que": "The Illustration starting point: four flat colours and no gradients. Not everything this model does is photographic.",
   "archivo": "/vitrina/ilustracion.jpg",
   "meta": {
@@ -344,6 +362,246 @@
    "steps": "30",
    "tam": "1024x1024",
    "ratio": "1:1",
+   "megapixeles": "1",
+   "vae": "hdr",
+   "modelo": "Qwen-Image 2.1"
+  }
+ },
+ {
+  "clave": "pixel",
+  "titulo": "Pixel art",
+  "caso": "blank",
+  "grupo": "How far the style stretches",
+  "que": "Asked for the way the pixel-art guides ask for it: name the era, name the palette, name the view. The dithering is in the prompt, not a filter.",
+  "archivo": "/vitrina/pixel.jpg",
+  "meta": {
+   "generator": "QwenStudio / Qwen-Image 2.1",
+   "prompt": "Pixel art of a hooded traveller standing at the mouth of a moss-covered stone shrine, 16-bit style, limited palette of mossy green, slate grey and torchlight amber, visible square pixels and dithered shading, clean edges, side view, game asset style.",
+   "caso": "generate",
+   "seed": "7101",
+   "steps": "30",
+   "tam": "1248x832",
+   "ratio": "3:2",
+   "megapixeles": "1",
+   "vae": "hdr",
+   "modelo": "Qwen-Image 2.1"
+  }
+ },
+ {
+  "clave": "isometrico",
+  "titulo": "Isometric tiles",
+  "caso": "blank",
+  "grupo": "How far the style stretches",
+  "que": "The same technique at another scale and projection. Holding the grid across a whole town is the hard part, and it holds.",
+  "archivo": "/vitrina/isometrico.jpg",
+  "meta": {
+   "generator": "QwenStudio / Qwen-Image 2.1",
+   "prompt": "Isometric pixel art of a small harbour town with tiled roofs, a lighthouse and fishing boats, 32x32 tile style, limited seaside palette of terracotta, sea green and sand, crisp square pixels, top-down isometric view, game map style.",
+   "caso": "generate",
+   "seed": "7102",
+   "steps": "30",
+   "tam": "1024x1024",
+   "ratio": "1:1",
+   "megapixeles": "1",
+   "vae": "hdr",
+   "modelo": "Qwen-Image 2.1"
+  }
+ },
+ {
+  "clave": "concepto",
+  "titulo": "Game key art",
+  "caso": "blank",
+  "grupo": "How far the style stretches",
+  "que": "Concept art rather than a photograph. The brief asks for brushwork and for the figure to be small in frame, and both survive.",
+  "archivo": "/vitrina/concepto.jpg",
+  "meta": {
+   "generator": "QwenStudio / Qwen-Image 2.1",
+   "prompt": "Painted key art for an adventure game, a lone figure on a cliff path looking down at a valley of ruins and low cloud, digital matte painting, broad confident brushwork, cool blue valley against a warm sky, wide cinematic composition with the figure small in the lower third, late afternoon light.",
+   "caso": "generate",
+   "seed": "7103",
+   "steps": "30",
+   "tam": "1376x768",
+   "ratio": "16:9",
+   "megapixeles": "1",
+   "vae": "hdr",
+   "modelo": "Qwen-Image 2.1"
+  }
+ },
+ {
+  "clave": "lowpoly",
+  "titulo": "Low-poly render",
+  "caso": "blank",
+  "grupo": "How far the style stretches",
+  "que": "A deliberately crude look is harder than a polished one, because the model has to hold back. The sign is spelled because the word was given in quotes — the first take invented letters and got them wrong.",
+  "archivo": "/vitrina/lowpoly.jpg",
+  "meta": {
+   "generator": "QwenStudio / Qwen-Image 2.1",
+   "prompt": "Low-poly 3D render of a roadside diner at night, late-1990s console aesthetic, visible flat polygons and low-resolution textures, vertex lighting with hard colour banding, the word \"DINER\" glowing in red neon above the door, three-quarter view, deep blue night sky.",
+   "caso": "generate",
+   "seed": "7204",
+   "steps": "30",
+   "tam": "1248x832",
+   "ratio": "3:2",
+   "megapixeles": "1",
+   "vae": "hdr",
+   "modelo": "Qwen-Image 2.1"
+  }
+ },
+ {
+  "clave": "sitcom",
+  "titulo": "Sitcom still",
+  "caso": "blank",
+  "grupo": "How far the style stretches",
+  "que": "The look of a decade rather than of any particular show: flat studio light, 4:3 framing and video grain are what the eye actually recognises.",
+  "archivo": "/vitrina/sitcom.jpg",
+  "meta": {
+   "generator": "QwenStudio / Qwen-Image 2.1",
+   "prompt": "Film still from a 1990s multi-camera sitcom, four friends laughing around a worn orange couch in a warm apartment living room, brick wall and fairy lights behind them, flat bright three-point studio lighting with soft shadows, 4:3 television framing, slight video grain.",
+   "caso": "generate",
+   "seed": "7105",
+   "steps": "30",
+   "tam": "1184x896",
+   "ratio": "4:3",
+   "megapixeles": "1",
+   "vae": "hdr",
+   "modelo": "Qwen-Image 2.1"
+  }
+ },
+ {
+  "clave": "cine",
+  "titulo": "Cinematic still",
+  "caso": "blank",
+  "grupo": "How far the style stretches",
+  "que": "Anamorphic is a shape and a bokeh, not a filter. Naming the oval bokeh and the off-centre framing is what makes it read as cinema.",
+  "archivo": "/vitrina/cine.jpg",
+  "meta": {
+   "generator": "QwenStudio / Qwen-Image 2.1",
+   "prompt": "Cinematic film still of a woman in a rain-soaked phone booth at night, anamorphic widescreen, shallow focus with oval bokeh from the street behind, teal shadows and warm sodium highlights, subject framed off-centre to the right, hard rim light through the glass.",
+   "caso": "generate",
+   "seed": "7106",
+   "steps": "30",
+   "tam": "1376x768",
+   "ratio": "16:9",
+   "megapixeles": "1",
+   "vae": "hdr",
+   "modelo": "Qwen-Image 2.1"
+  }
+ },
+ {
+  "clave": "anime",
+  "titulo": "Anime key visual",
+  "caso": "blank",
+  "grupo": "How far the style stretches",
+  "que": "Cel shading means hard shadow edges. Saying so is what stops it drifting into a painting.",
+  "archivo": "/vitrina/anime.jpg",
+  "meta": {
+   "generator": "QwenStudio / Qwen-Image 2.1",
+   "prompt": "Anime key visual of a student standing on a railway overbridge at dusk, modern television animation style, clean cel shading with hard shadow edges, saturated sunset gradient behind, wind in the hair, centred three-quarter framing, lens flare along the rails.",
+   "caso": "generate",
+   "seed": "7107",
+   "steps": "30",
+   "tam": "896x1184",
+   "ratio": "3:4",
+   "megapixeles": "1",
+   "vae": "hdr",
+   "modelo": "Qwen-Image 2.1"
+  }
+ },
+ {
+  "clave": "comic",
+  "titulo": "Comic panel",
+  "caso": "blank",
+  "grupo": "How far the style stretches",
+  "que": "Halftone dots and ink spotting are printing artefacts. Named explicitly, the model reproduces the process and not just the drawing.",
+  "archivo": "/vitrina/comic.jpg",
+  "meta": {
+   "generator": "QwenStudio / Qwen-Image 2.1",
+   "prompt": "Comic book panel of a detective pushing open an office door, American comics ink style, heavy black spotting and cross-hatching, visible halftone dots in the flat colour, bold panel border, low angle looking up, harsh light from the corridor behind.",
+   "caso": "generate",
+   "seed": "7108",
+   "steps": "30",
+   "tam": "896x1184",
+   "ratio": "3:4",
+   "megapixeles": "1",
+   "vae": "hdr",
+   "modelo": "Qwen-Image 2.1"
+  }
+ },
+ {
+  "clave": "acuarela",
+  "titulo": "Watercolour",
+  "caso": "blank",
+  "grupo": "How far the style stretches",
+  "que": "The prompt describes what the medium does physically — blooms, paper grain — instead of asking for a watercolour and hoping.",
+  "archivo": "/vitrina/acuarela.jpg",
+  "meta": {
+   "generator": "QwenStudio / Qwen-Image 2.1",
+   "prompt": "Watercolour botanical study of three sprigs of rosemary and a split fig, loose wet-on-wet washes with visible paper grain and pigment blooms, muted sage and dusty pink, arranged with generous white space around them, even north light.",
+   "caso": "generate",
+   "seed": "7109",
+   "steps": "30",
+   "tam": "1024x1024",
+   "ratio": "1:1",
+   "megapixeles": "1",
+   "vae": "hdr",
+   "modelo": "Qwen-Image 2.1"
+  }
+ },
+ {
+  "clave": "riso",
+  "titulo": "Risograph poster",
+  "caso": "sign",
+  "grupo": "How far the style stretches",
+  "que": "Two inks, deliberate misregistration, and lettering that still has to come out spelled. A printing fault turned into a style.",
+  "archivo": "/vitrina/riso.jpg",
+  "meta": {
+   "generator": "QwenStudio / Qwen-Image 2.1",
+   "prompt": "Risograph poster for a jazz night, two spot colours only, fluorescent pink and deep blue overprinted with visible misregistration and paper texture, bold geometric shapes of a double bass, the words \"LATE SET\" set large in condensed type across the lower third, flat even reproduction.",
+   "caso": "generate",
+   "seed": "7110",
+   "steps": "30",
+   "tam": "896x1184",
+   "ratio": "3:4",
+   "megapixeles": "1",
+   "vae": "hdr",
+   "modelo": "Qwen-Image 2.1"
+  }
+ },
+ {
+  "clave": "arcilla_stop",
+  "titulo": "Stop-motion still",
+  "caso": "blank",
+  "grupo": "How far the style stretches",
+  "que": "Fingerprints and fibres are the whole trick: they say handmade object under a real light, not a rendered character.",
+  "archivo": "/vitrina/arcilla_stop.jpg",
+  "meta": {
+   "generator": "QwenStudio / Qwen-Image 2.1",
+   "prompt": "Stop-motion still of a small felt fox in a knitted scarf standing on a miniature wooden bridge, handmade puppet with visible clay fingerprints and fabric fibres, shallow macro focus on the face, warm practical lantern light from the left, shot on a miniature set.",
+   "caso": "generate",
+   "seed": "7111",
+   "steps": "30",
+   "tam": "1248x832",
+   "ratio": "3:2",
+   "megapixeles": "1",
+   "vae": "hdr",
+   "modelo": "Qwen-Image 2.1"
+  }
+ },
+ {
+  "clave": "plano",
+  "titulo": "Patent drawing",
+  "caso": "blank",
+  "grupo": "How far the style stretches",
+  "que": "Orthographic, no shading, numbered callouts. A drawing whose job is to be read rather than admired — a different discipline entirely.",
+  "archivo": "/vitrina/plano.jpg",
+  "meta": {
+   "generator": "QwenStudio / Qwen-Image 2.1",
+   "prompt": "Technical patent drawing of a hand-cranked coffee grinder, black ink line work on aged cream paper, cross-section with numbered callouts and dashed hidden edges, orthographic front and side views side by side, flat even reproduction with no shading.",
+   "caso": "generate",
+   "seed": "7112",
+   "steps": "30",
+   "tam": "1184x896",
+   "ratio": "4:3",
    "megapixeles": "1",
    "vae": "hdr",
    "modelo": "Qwen-Image 2.1"

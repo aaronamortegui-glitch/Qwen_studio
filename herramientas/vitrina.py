@@ -3,10 +3,18 @@
     .venv\\Scripts\\python.exe herramientas\\vitrina.py            (generate + pack)
     .venv\\Scripts\\python.exe herramientas\\vitrina.py --empacar   (pack only)
 
-Eighteen pieces, each one produced by a path the app actually offers and, where
-there is a starting point for that path, by that starting point rather than a
-prompt written for the occasion. What you see when you open the app is
-therefore what you get when you press the button.
+Thirty pieces in two groups. The first eighteen show what each path of the app
+does, and where a path has a starting point they use that starting point rather
+than a prompt written for the occasion, so what you see on opening is what you
+get from pressing the button. The other twelve change the visual language
+instead of the task -- pixel art, game key art, a sitcom still, riso, ink, a
+patent drawing -- because the range is an argument the use cases cannot make.
+
+Their prompts follow the order Qwen-Image's own guide recommends, subject
+first, then style, detail, composition and light; the pixel-art ones also name
+the scale and the palette, which is what the pixel-art guides ask for. None of
+them names a trademark or reproduces anyone's character: what is asked for is
+the visual language, not somebody else's property.
 
 Five of them build on each other on purpose: a character is invented from a
 paragraph, that face is carried into a portrait, a scene and a cutout, and two
@@ -16,7 +24,7 @@ tool, not eight unrelated demos.
 The recipe is never retyped. It is read back out of the tEXt chunk of the PNG
 the app wrote, which is the same place the gallery reads it from, so the
 showcase cannot drift from what the app actually did. The pieces are saved as
-JPEG at 1100px: eighteen PNGs would be forty megabytes of repository for
+JPEG at 1100px: thirty PNGs would be seventy megabytes of repository for
 thumbnails that are looked at three hundred pixels wide.
 
 Needs the app running. Regenerating everything takes about twenty minutes on an
@@ -58,6 +66,10 @@ IDENTIDAD = " The face of the subject must match the reference exactly."
 #   titulo  el nombre en la ficha
 #   caso    el camino de la interfaz al que pertenece
 #   que     la frase que explica que se hizo, en la ficha y bajo la miniatura
+#   grupo   en cual de las dos rejillas aparece
+CAMINOS = "What each path does"
+ESTILOS = "How far the style stretches"
+
 PIEZAS: list[dict] = [
     # --- la cadena: una persona inventada y todo lo que se hace con ella ----
     {"clave": "personaje", "titulo": "A person from text", "caso": "blank",
@@ -185,6 +197,122 @@ PIEZAS: list[dict] = [
      "seed": 3106, "prompt": base("blank", "Illustration"),
      "que": "The Illustration starting point: four flat colours and no gradients. Not "
             "everything this model does is photographic."},
+
+    # --- lo mismo de siempre, texto a imagen, pero cambiando de idioma -----
+    # visual en vez de de tarea. Los prompts siguen la estructura que publica
+    # la guia de Qwen-Image (sujeto primero, luego estilo, detalle, encuadre y
+    # luz) y, en pixel art, las convenciones de Civitai: nombrar la escala,
+    # nombrar la paleta y nombrar la vista.
+    {"clave": "pixel", "titulo": "Pixel art", "caso": "blank", "grupo": ESTILOS,
+     "ratio": "3:2", "seed": 7101,
+     "prompt": "Pixel art of a hooded traveller standing at the mouth of a moss-covered "
+               "stone shrine, 16-bit style, limited palette of mossy green, slate grey "
+               "and torchlight amber, visible square pixels and dithered shading, clean "
+               "edges, side view, game asset style.",
+     "que": "Asked for the way the pixel-art guides ask for it: name the era, name the "
+            "palette, name the view. The dithering is in the prompt, not a filter."},
+
+    {"clave": "isometrico", "titulo": "Isometric tiles", "caso": "blank", "grupo": ESTILOS,
+     "ratio": "1:1", "seed": 7102,
+     "prompt": "Isometric pixel art of a small harbour town with tiled roofs, a "
+               "lighthouse and fishing boats, 32x32 tile style, limited seaside palette "
+               "of terracotta, sea green and sand, crisp square pixels, top-down "
+               "isometric view, game map style.",
+     "que": "The same technique at another scale and projection. Holding the grid across "
+            "a whole town is the hard part, and it holds."},
+
+    {"clave": "concepto", "titulo": "Game key art", "caso": "blank", "grupo": ESTILOS,
+     "ratio": "16:9", "seed": 7103,
+     "prompt": "Painted key art for an adventure game, a lone figure on a cliff path "
+               "looking down at a valley of ruins and low cloud, digital matte painting, "
+               "broad confident brushwork, cool blue valley against a warm sky, wide "
+               "cinematic composition with the figure small in the lower third, late "
+               "afternoon light.",
+     "que": "Concept art rather than a photograph. The brief asks for brushwork and for "
+            "the figure to be small in frame, and both survive."},
+
+    {"clave": "lowpoly", "titulo": "Low-poly render", "caso": "blank", "grupo": ESTILOS,
+     "ratio": "3:2", "seed": 7204,
+     "prompt": "Low-poly 3D render of a roadside diner at night, late-1990s console "
+               "aesthetic, visible flat polygons and low-resolution textures, vertex "
+               "lighting with hard colour banding, the word \"DINER\" glowing in red "
+               "neon above the door, three-quarter view, deep blue night sky.",
+     "que": "A deliberately crude look is harder than a polished one, because the model "
+            "has to hold back. The sign is spelled because the word was given in quotes "
+            "\u2014 the first take invented letters and got them wrong."},
+
+    {"clave": "sitcom", "titulo": "Sitcom still", "caso": "blank", "grupo": ESTILOS,
+     "ratio": "4:3", "seed": 7105,
+     "prompt": "Film still from a 1990s multi-camera sitcom, four friends laughing "
+               "around a worn orange couch in a warm apartment living room, brick wall "
+               "and fairy lights behind them, flat bright three-point studio lighting "
+               "with soft shadows, 4:3 television framing, slight video grain.",
+     "que": "The look of a decade rather than of any particular show: flat studio light, "
+            "4:3 framing and video grain are what the eye actually recognises."},
+
+    {"clave": "cine", "titulo": "Cinematic still", "caso": "blank", "grupo": ESTILOS,
+     "ratio": "16:9", "seed": 7106,
+     "prompt": "Cinematic film still of a woman in a rain-soaked phone booth at night, "
+               "anamorphic widescreen, shallow focus with oval bokeh from the street "
+               "behind, teal shadows and warm sodium highlights, subject framed "
+               "off-centre to the right, hard rim light through the glass.",
+     "que": "Anamorphic is a shape and a bokeh, not a filter. Naming the oval bokeh and "
+            "the off-centre framing is what makes it read as cinema."},
+
+    {"clave": "anime", "titulo": "Anime key visual", "caso": "blank", "grupo": ESTILOS,
+     "ratio": "3:4", "seed": 7107,
+     "prompt": "Anime key visual of a student standing on a railway overbridge at dusk, "
+               "modern television animation style, clean cel shading with hard shadow "
+               "edges, saturated sunset gradient behind, wind in the hair, centred "
+               "three-quarter framing, lens flare along the rails.",
+     "que": "Cel shading means hard shadow edges. Saying so is what stops it drifting "
+            "into a painting."},
+
+    {"clave": "comic", "titulo": "Comic panel", "caso": "blank", "grupo": ESTILOS,
+     "ratio": "3:4", "seed": 7108,
+     "prompt": "Comic book panel of a detective pushing open an office door, American "
+               "comics ink style, heavy black spotting and cross-hatching, visible "
+               "halftone dots in the flat colour, bold panel border, low angle looking "
+               "up, harsh light from the corridor behind.",
+     "que": "Halftone dots and ink spotting are printing artefacts. Named explicitly, the "
+            "model reproduces the process and not just the drawing."},
+
+    {"clave": "acuarela", "titulo": "Watercolour", "caso": "blank", "grupo": ESTILOS,
+     "ratio": "1:1", "seed": 7109,
+     "prompt": "Watercolour botanical study of three sprigs of rosemary and a split fig, "
+               "loose wet-on-wet washes with visible paper grain and pigment blooms, "
+               "muted sage and dusty pink, arranged with generous white space around "
+               "them, even north light.",
+     "que": "The prompt describes what the medium does physically \u2014 blooms, paper "
+            "grain \u2014 instead of asking for a watercolour and hoping."},
+
+    {"clave": "riso", "titulo": "Risograph poster", "caso": "sign", "grupo": ESTILOS,
+     "ratio": "3:4", "seed": 7110,
+     "prompt": "Risograph poster for a jazz night, two spot colours only, fluorescent "
+               "pink and deep blue overprinted with visible misregistration and paper "
+               "texture, bold geometric shapes of a double bass, the words \"LATE SET\" "
+               "set large in condensed type across the lower third, flat even "
+               "reproduction.",
+     "que": "Two inks, deliberate misregistration, and lettering that still has to come "
+            "out spelled. A printing fault turned into a style."},
+
+    {"clave": "arcilla_stop", "titulo": "Stop-motion still", "caso": "blank", "grupo": ESTILOS,
+     "ratio": "3:2", "seed": 7111,
+     "prompt": "Stop-motion still of a small felt fox in a knitted scarf standing on a "
+               "miniature wooden bridge, handmade puppet with visible clay fingerprints "
+               "and fabric fibres, shallow macro focus on the face, warm practical "
+               "lantern light from the left, shot on a miniature set.",
+     "que": "Fingerprints and fibres are the whole trick: they say handmade object under "
+            "a real light, not a rendered character."},
+
+    {"clave": "plano", "titulo": "Patent drawing", "caso": "blank", "grupo": ESTILOS,
+     "ratio": "4:3", "seed": 7112,
+     "prompt": "Technical patent drawing of a hand-cranked coffee grinder, black ink line "
+               "work on aged cream paper, cross-section with numbered callouts and dashed "
+               "hidden edges, orthographic front and side views side by side, flat even "
+               "reproduction with no shading.",
+     "que": "Orthographic, no shading, numbered callouts. A drawing whose job is to be "
+            "read rather than admired \u2014 a different discipline entirely."},
 ]
 
 
@@ -300,6 +428,7 @@ def empacar(hechas: dict | None = None) -> None:
         jpg = p["clave"] + ".jpg"
         total += _encoger(png, os.path.join(DESTINO, jpg))
         pieza = {"clave": p["clave"], "titulo": p["titulo"], "caso": p["caso"],
+                 "grupo": p.get("grupo", CAMINOS),
                  "que": p["que"], "archivo": "/vitrina/" + jpg, "meta": _receta(png)}
         if p.get("fuente"):
             # la foto de partida es otra pieza de la vitrina: se apunta a ella
