@@ -122,7 +122,7 @@ DESCARGA_GB = 33
 
 def detectar(destino_modelos: str | None = None) -> Perfil:
     so = platform.system()
-    maquina = f"{platform.machine()} · {platform.processor() or 'cpu'}"
+    maquina = f"{platform.machine()} - {platform.processor() or 'cpu'}"
     ram = _ram_bytes() / GB
     disco = _disco_libre(destino_modelos or os.path.expanduser("~")) / GB
     avisos: list[str] = []
@@ -210,19 +210,21 @@ def detectar(destino_modelos: str | None = None) -> Perfil:
 
 
 def resumen(p: Perfil) -> str:
+    # ASCII puro: esto se imprime en la consola del instalador, que en Windows
+    # abre en cp1252 y convierte cualquier caracter bonito en un interrogante
     L = [
-        f"  Sistema        {p.so} · {p.maquina}",
-        f"  Acelerador     {p.acelerador}",
+        f"  System         {p.so} - {p.maquina}",
+        f"  Accelerator    {p.acelerador}",
         f"  Backend        {p.backend}",
-        f"  {'Unified' if p.backend=='mps' else 'VRAM':<14} {p.vram_gb:.1f} GB",
+        f"  {'Unified mem' if p.backend=='mps' else 'VRAM':<14} {p.vram_gb:.1f} GB",
         f"  RAM            {p.ram_gb:.1f} GB",
-        f"  Disco libre    {p.disco_libre_gb:.1f} GB   (hacen falta ~{DESCARGA_GB} GB)",
+        f"  Free disk      {p.disco_libre_gb:.1f} GB   (~{DESCARGA_GB} GB needed)",
         "",
-        f"  Perfil         {p.nivel}",
+        f"  Profile        {p.nivel}",
         f"  dtype          {p.dtype}",
-        f"  Cuantizacion   {p.cuantizacion}",
+        f"  Quantisation   {p.cuantizacion}",
         f"  Offload        {p.offload}",
-        f"  Resolucion max {p.res_max}",
+        f"  Max resolution {p.res_max}",
     ]
     if p.avisos:
         L.append("")
