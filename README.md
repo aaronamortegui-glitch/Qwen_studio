@@ -93,6 +93,16 @@ Words in quotes come out as **actual lettering**. This is the thing Qwen-Image
 does better than almost anything else you can run locally, and the poster above
 was generated on the machine described below, at 35 steps, first try.
 
+<p align="center"><img src="docs/muestra-t2i.jpg" width="880" alt="Fourteen text-to-image results, one per starting point in the prompt library"></p>
+
+Every starting point the prompt library offers for the two text-to-image paths,
+run once each at 30 steps. Nothing retried, nothing picked from a batch —
+fourteen prompts, fourteen images, in the order they came out. Six of them ask
+for lettering (`ATACAMA`, `ROSEWOOD & SONS`, `SINGLE ORIGIN · ETHIOPIA ·
+YIRGACHEFFE`, `THE LONG DRY`, `LATE BAR`, `SOUP OF THE DAY`) and all six are
+spelled correctly. Regenerate the sheet with
+`herramientas\hoja_muestra.py`.
+
 <p align="center"><img src="docs/ui-brush.png" width="820" alt="The mask brush: paint over the region to replace"></p>
 
 An edit selects its region from **words** or from a **brush**. Painting happens
@@ -227,6 +237,13 @@ face.
 **With a scene, use one photo of the person.** Several photos of the same
 person are read as several *different* people, and you get several people in
 the frame.
+
+**The transparency wording is the model author's, not ours.** The app used to
+append its own clause about a cut-out on a transparent background, which
+worked. Measured against the wrapper the model card publishes — same seed, same
+subject — the official one came out at 68.4% real alpha against 65.7%. A small
+margin, but there is no reason to invent wording when the people who trained it
+published some, so the prompt is now wrapped rather than suffixed.
 
 **Prompts go positive but imperative.** There is no negative guidance at
 cfg 1, so "ignore the background" just injects the concept. But softening the

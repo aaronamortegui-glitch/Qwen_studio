@@ -484,8 +484,14 @@ class Motor:
         prompt = construir_prompt(len(personas), pose is not None, escena is not None, texto,
                                   con_estilo=estilo is not None, estilo_modo=estilo_modo)
         if transparencia:
-            prompt += (" The subject is cut out on a fully transparent background. "
-                       "Output a PNG image with an alpha channel.")
+            # La forma que publica la ficha del modelo: envuelve, no anade al
+            # final. Medido el 2026-09-22 con la misma semilla, 68.4% de alfa
+            # frente al 65.7% de la version propia que habia aqui. La
+            # diferencia es pequena, pero es la del autor del modelo y no sale
+            # peor, asi que no hay razon para inventarse otra.
+            prompt = ("This is an RGBA image with transparency. " + prompt.strip()
+                      + " The image has an alpha channel and the background is "
+                        "transparent.")
 
         gen = torch.Generator(device="cpu").manual_seed(int(seed))
         kw = dict(prompt=prompt, num_inference_steps=int(steps),
