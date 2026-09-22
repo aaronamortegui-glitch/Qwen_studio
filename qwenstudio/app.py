@@ -116,7 +116,7 @@ def _img_de_data_url(data_url: str):
     from PIL import Image
     m = re.match(r"data:image/[\w.+-]+;base64,(.*)$", data_url, re.S)
     if not m:
-        raise ValueError("imagen no valida")
+        raise ValueError("that image could not be read")
     return Image.open(io.BytesIO(base64.b64decode(m.group(1)))).convert("RGB")
 
 
@@ -162,8 +162,8 @@ def _leer_meta(ruta: str) -> dict:
 def _esqueleto(img):
     """Deriva un esqueleto OpenPose si hay un python con easy-dwpose a mano."""
     if not os.path.exists(DWPOSE_PY):
-        raise RuntimeError("No hay un entorno con easy-dwpose instalado. "
-                           "Sube un esqueleto ya hecho en vez de una foto.")
+        raise RuntimeError("No environment with easy-dwpose installed. Upload a "
+                           "skeleton you already have instead of a photograph.")
     os.makedirs(ENTRADAS, exist_ok=True)
     src = os.path.join(ENTRADAS, f"src_{uuid.uuid4().hex[:6]}.png")
     dst = os.path.join(ENTRADAS, f"skel_{uuid.uuid4().hex[:6]}.png")
@@ -174,7 +174,7 @@ def _esqueleto(img):
             "include_hands=True,include_face=True).save(sys.argv[2])")
     r = subprocess.run([DWPOSE_PY, "-c", code, src, dst], capture_output=True, text=True, timeout=900)
     if not os.path.exists(dst):
-        raise RuntimeError((r.stderr or "")[-300:] or "DWpose no genero el esqueleto")
+        raise RuntimeError((r.stderr or "")[-300:] or "DWpose produced no skeleton")
     from PIL import Image
     return Image.open(dst).convert("RGB"), os.path.basename(dst)
 
@@ -246,6 +246,23 @@ class Handler(BaseHTTPRequestHandler):
         if p == "/api/efectos":
             return self._send(200, EF.catalogo(LORAS))
 
+        if p == "/api/vitrina":
+            # Lo que la app hizo en esta maquina, con su receta al lado. Es lo
+            # que se ve al abrir por primera vez, cuando todavia no hay nada
+            # propio que ensenar.
+            f = os.path.join(EJEMPLOS, "vitrina.json")
+            if not os.path.exists(f):
+                return self._send(200, [])
+            with open(f, encoding="utf-8") as fh:
+                return self._send(200, json.load(fh))
+
+        if p.startswith("/vitrina/"):
+            f = os.path.join(EJEMPLOS, "vitrina", os.path.basename(p[9:]))
+            if not os.path.exists(f):
+                return self._send(404, b"not found", "text/plain")
+            with open(f, "rb") as fh:
+                return self._send(200, fh.read(), "image/jpeg")
+
         if p.startswith("/efectos/"):
             f = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..",
                              "ejemplos", "efectos", os.path.basename(p[9:]))
@@ -253,6 +270,18 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(404, b"not found", "text/plain")
             with open(f, "rb") as fh:
                 return self._send(200, fh.read(), "image/jpeg")
+
+        if p.startswith("/api/receta"):
+            # La receta de un archivo suelto. La galeria la trae con cada item,
+            # pero un resultado recien hecho todavia no ha pasado por ahi y
+            # tiene el mismo derecho a decir como se hizo.
+            from urllib.parse import parse_qs, urlparse
+            q = parse_qs(urlparse(self.path).query)
+            nombre = os.path.basename((q.get("archivo") or [""])[0])
+            ruta = os.path.join(SALIDAS, nombre)
+            if not nombre or not os.path.exists(ruta):
+                return self._send(404, {"error": "no such file"})
+            return self._send(200, {"nombre": nombre, "meta": _leer_meta(ruta)})
 
         if p == "/api/galeria":
             return self._send(200, self._galeria())
@@ -834,7 +863,7 @@ class Handler(BaseHTTPRequestHandler):
         if not motor.listo:
             motor.cargar()
             if not motor.listo:
-                return {"error": motor.error or "no pude cargar el modelo"}
+                return {"error": motor.error or "could not load the model"}
 
         hechas, prompt = [], ""
         with _lock:
@@ -879,7 +908,8 @@ class Handler(BaseHTTPRequestHandler):
 
         return {"imagenes": hechas, "prompt": prompt,
                 "descripcion_escena": descripcion,
-                "avisos": M.avisos_de_uso(len(personas), escena is not None),
+                "avisos": M.avisos_de_uso(len(personas), escena is not None,
+                                          bool(b.get("espera_persona", True))),
                 "orden": self._orden(len(personas), pose, estilo, escena),
                 "resumen": hoja_resumen}
 

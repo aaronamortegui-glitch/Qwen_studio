@@ -115,10 +115,52 @@ def revisar() -> list[str]:
     return fallos
 
 
+# Lo que el servidor manda a la pantalla: errores, avisos y estados. La regla es
+# la misma que para el marcado, pero el corrector de arriba no lo veia porque
+# vive en otro archivo, y por ahi se escapo un aviso en castellano.
+SERVIDOR = ("app.py", "motor.py", "segmentacion.py", "vision.py", "hardware.py",
+            "inpaint.py", "efectos.py")
+SALIDA_AL_USUARIO = [
+    re.compile(r'"error":\s*f?"([^"]{8,})"'),
+    re.compile(r'raise\s+\w*(?:Error|Exception)\(\s*f?"([^"]{8,})"'),
+    re.compile(r'(?:estado\.)?mensaje\s*=\s*f?"([^"]{8,})"'),
+    re.compile(r'\.append\(\s*"([^"]{8,})"'),
+]
+CASTELLANO = re.compile(
+    r"\b(el|la|los|las|una|unos|unas|para|con|sin|que|por|desde|cuando|hay|esto|"
+    r"esta|este|pude|puede|debe|tiene|solo|pero|como|donde|archivo|imagen|modelo"
+    r"|nada|todo)\b")
+# palabras que son iguales en los dos idiomas o nombres propios
+PERDON = re.compile(r"^[A-Za-z0-9_./-]+$")
+
+
+def revisar_servidor() -> list[str]:
+    fallos: list[str] = []
+    for nombre in SERVIDOR:
+        ruta = os.path.join(APP, "qwenstudio", nombre)
+        if not os.path.exists(ruta):
+            continue
+        codigo = open(ruta, encoding="utf-8").read()
+        vistos = set()
+        for patron in SALIDA_AL_USUARIO:
+            for m in patron.finditer(codigo):
+                # lo que va dentro de {} es codigo, no texto: una variable
+                # llamada `para` no es la preposicion castellana
+                t = re.sub(r"\{[^{}]*\}", " ", m.group(1)).strip()
+                if not t or PERDON.match(t) or t in vistos:
+                    continue
+                if CASTELLANO.search(t.lower()):
+                    vistos.add(t)
+                    linea = codigo[:m.start()].count(chr(10)) + 1
+                    fallos.append(f"{nombre}:{linea} mensaje al usuario en "
+                                  f"castellano: {t[:52]}")
+    return fallos
+
+
 def main() -> None:
-    fallos = revisar()
+    fallos = revisar() + revisar_servidor()
     if not fallos:
-        print("  interfaz.py: sin hallazgos")
+        print("  interfaz.py y el servidor: sin hallazgos")
         sys.exit(0)
     print(f"  {len(fallos)} hallazgo(s):")
     for f in fallos:

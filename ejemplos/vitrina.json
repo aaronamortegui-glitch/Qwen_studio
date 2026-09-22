@@ -1,0 +1,352 @@
+[
+ {
+  "clave": "personaje",
+  "titulo": "A person from text",
+  "caso": "blank",
+  "que": "A person invented from nothing but this paragraph. Everything below reuses this face as a reference, so the same character walks through the rest of the app.",
+  "archivo": "/vitrina/personaje.jpg",
+  "meta": {
+   "generator": "QwenStudio / Qwen-Image 2.1",
+   "prompt": "A studio headshot of a woman in her early sixties with close-cropped silver hair, dark brown eyes and deep laughter lines, wearing a charcoal linen shirt, framed from the chest up and square to camera against a seamless mid-grey backdrop, a large softbox just off the lens axis with a reflector filling the shadow side, sharp focus on the eyes, shot on an 85mm lens.",
+   "caso": "generate",
+   "seed": "5103",
+   "steps": "30",
+   "tam": "896x1184",
+   "ratio": "3:4",
+   "megapixeles": "1",
+   "vae": "hdr",
+   "modelo": "Qwen-Image 2.1"
+  }
+ },
+ {
+  "clave": "retrato",
+  "titulo": "New portrait",
+  "caso": "portrait",
+  "que": "The same face, a new photograph: different wardrobe, different room, different light. The reference is tagged as the person, so identity is what carries over and nothing else.",
+  "archivo": "/vitrina/retrato.jpg",
+  "meta": {
+   "generator": "QwenStudio / Qwen-Image 2.1",
+   "prompt": "<image1> show the subject. The subject's face and identity must match <image1> exactly: same facial structure, same features, same skin tone. An editorial magazine portrait of the subject, wearing a black tailored blazer over a crisp white shirt, standing in a sunlit concrete gallery with tall windows, framed three-quarter length with room to one side, hard daylight raking from the left and deep shadow on the far side, shot on medium format with an 80mm lens. The face of the subject must match the reference exactly.",
+   "caso": "generate",
+   "seed": "5201",
+   "steps": "30",
+   "tam": "896x1184",
+   "ratio": "3:4",
+   "megapixeles": "1",
+   "vae": "hdr",
+   "orden": "<image1> person",
+   "modelo": "Qwen-Image 2.1"
+  }
+ },
+ {
+  "clave": "escena",
+  "titulo": "Into another photo",
+  "caso": "scene",
+  "que": "Two images the app made earlier, put together: the character from one and the bookshop from the other. The scene brings the place, the wardrobe and the light; the person brings only the face.",
+  "archivo": "/vitrina/escena.jpg",
+  "meta": {
+   "generator": "QwenStudio / Qwen-Image 2.1",
+   "prompt": "<image1> show the subject. The subject's face and identity must match <image1> exactly: same facial structure, same features, same skin tone. <image2> supplies the setting, the wardrobe, the framing and the lighting, which must be reproduced as they are. The output is one photograph of a single person. The one person in the result is the subject from <image1>, with that subject's face, hair and build, standing in that setting and wearing that wardrobe. A colour photograph of the subject in that setting, wearing that wardrobe, framed and lit exactly as the reference is. The face of the subject must match the first reference exactly. In a dim, cozy bookstore lined with towering bookshelves, a warm, glowing table lamp casts a golden pool of light over stacks of books, while cool blue light from a window in the background creates a moody contrast, framing the scene in quiet intimacy.",
+   "caso": "generate",
+   "seed": "5301",
+   "steps": "30",
+   "tam": "1248x832",
+   "ratio": "auto",
+   "megapixeles": "1",
+   "vae": "hdr",
+   "orden": "<image1> person, <image2> scene",
+   "modelo": "Qwen-Image 2.1"
+  }
+ },
+ {
+  "clave": "pose",
+  "titulo": "Posed and graded",
+  "caso": "pose",
+  "que": "Three references, one job each: the face, a skeleton from the pose library for the posture, and the shoreline for the grade. The prompt only has to name the wardrobe.",
+  "archivo": "/vitrina/pose.jpg",
+  "meta": {
+   "generator": "QwenStudio / Qwen-Image 2.1",
+   "prompt": "<image1> show the subject. The subject's face and identity must match <image1> exactly: same facial structure, same features, same skin tone. <image2> is an OpenPose skeleton. The body posture, limb positions and head tilt must follow that skeleton exactly. The subject's body proportions, build and height stay those of <image1>; the skeleton gives only the pose. <image3> is a style reference. Take from it only the photographic treatment: the colour grading, the contrast, the grain, the quality of light and the lens character. Its subject, its setting and its composition stay out of the result. A colour photograph of the subject in that posture, wearing a camel wool overcoat over a charcoal roll-neck, on a wide empty beach under a low grey sky, graded like the style reference. The face of the subject must match the first reference exactly.",
+   "caso": "generate",
+   "seed": "5302",
+   "steps": "30",
+   "tam": "1248x832",
+   "ratio": "auto",
+   "megapixeles": "1",
+   "vae": "hdr",
+   "orden": "<image1> person, <image2> pose, <image3> style",
+   "modelo": "Qwen-Image 2.1"
+  }
+ },
+ {
+  "clave": "recorte",
+  "titulo": "Transparent cutout",
+  "caso": "cutout",
+  "que": "The same character on a real alpha channel, ready to drop into a layout. The transparency comes from the model, not from cutting the background out afterwards.",
+  "archivo": "/vitrina/recorte.jpg",
+  "meta": {
+   "generator": "QwenStudio / Qwen-Image 2.1",
+   "prompt": "This is an RGBA image with transparency. <image1> show the subject. The subject's face and identity must match <image1> exactly: same facial structure, same features, same skin tone. Full body colour cutout of the subject, standing square to camera in a plain charcoal t-shirt and dark jeans, even studio light with no cast shadow, clean edges around the hair and the clothing. The face of the subject must match the reference exactly. The image has an alpha channel and the background is transparent.",
+   "caso": "generate",
+   "seed": "5202",
+   "steps": "30",
+   "tam": "896x1184",
+   "ratio": "3:4",
+   "megapixeles": "1",
+   "vae": "hdr",
+   "orden": "<image1> person",
+   "modelo": "Qwen-Image 2.1"
+  }
+ },
+ {
+  "clave": "cartel",
+  "titulo": "Poster",
+  "caso": "sign",
+  "que": "Words inside double quotes come out as lettering. This is the thing this model does better than most of its size.",
+  "archivo": "/vitrina/cartel.jpg",
+  "meta": {
+   "generator": "QwenStudio / Qwen-Image 2.1",
+   "prompt": "A screen-printed travel poster. The word \"ATACAMA\" runs across the top in tall condensed sans-serif capitals, with \"ALTIPLANO · CHILE\" in small spaced letters underneath. A lone volcano over a white salt flat below the type. Flat spot colours in ochre, rust and deep teal, visible paper grain.",
+   "caso": "generate",
+   "seed": "3109",
+   "steps": "30",
+   "tam": "896x1184",
+   "ratio": "3:4",
+   "megapixeles": "1",
+   "vae": "hdr",
+   "modelo": "Qwen-Image 2.1"
+  }
+ },
+ {
+  "clave": "neon",
+  "titulo": "Neon sign",
+  "caso": "sign",
+  "que": "The same mechanism at night: the glow and the spelling are asked for in one sentence.",
+  "archivo": "/vitrina/neon.jpg",
+  "meta": {
+   "generator": "QwenStudio / Qwen-Image 2.1",
+   "prompt": "A neon sign spelling \"LATE BAR\" in warm pink tubing mounted on a wet brick wall at night, the glow bleeding into the surrounding dark and reflecting in the puddles below.",
+   "caso": "generate",
+   "seed": "3110",
+   "steps": "30",
+   "tam": "1248x832",
+   "ratio": "3:2",
+   "megapixeles": "1",
+   "vae": "hdr",
+   "modelo": "Qwen-Image 2.1"
+  }
+ },
+ {
+  "clave": "cambio",
+  "titulo": "Replace something",
+  "caso": "replace",
+  "que": "The sky named in words, nothing painted. CLIPSeg finds it, SAM 2 follows the edge, and only that region is regenerated — the shoreline below it is the same file.",
+  "archivo": "/vitrina/cambio.jpg",
+  "meta": {
+   "generator": "QwenStudio / Qwen-Image 2.1",
+   "prompt": "A towering wall of dark storm cloud lit from behind, the light breaking through in a narrow band above the horizon.",
+   "caso": "replace",
+   "seed": "6101",
+   "steps": "30",
+   "tam": "1248x832",
+   "vae": "hdr",
+   "modelo": "Qwen-Image 2.1"
+  },
+  "antes": "/vitrina/paisaje.jpg",
+  "antes_de": "Landscape"
+ },
+ {
+  "clave": "arcilla",
+  "titulo": "A look, one region",
+  "caso": "look",
+  "que": "The same grid of looks, confined to one region: the subject named in words and turned to clay, the room around her left as the photograph it was. Replacing something and applying a look are one operation underneath.",
+  "archivo": "/vitrina/arcilla.jpg",
+  "meta": {
+   "generator": "QwenStudio / Qwen-Image 2.1",
+   "prompt": "Turn the image into a clay render.",
+   "caso": "look",
+   "efecto": "Clay render",
+   "seed": "6104",
+   "steps": "30",
+   "tam": "896x1184",
+   "vae": "hdr",
+   "lora": "QI_2.1_BlenderPack.safetensors",
+   "fuerza_lora": "1.0",
+   "modelo": "Qwen-Image 2.1"
+  },
+  "antes": "/vitrina/retrato.jpg",
+  "antes_de": "New portrait"
+ },
+ {
+  "clave": "grado",
+  "titulo": "A look, whole frame",
+  "caso": "look",
+  "que": "A look over the whole frame: teal into the shadows, the skin kept clean, the highlights rolling off. Picked from the grid, not typed.",
+  "archivo": "/vitrina/grado.jpg",
+  "meta": {
+   "generator": "QwenStudio / Qwen-Image 2.1",
+   "prompt": "Grade this photograph for cinema: teal holding the shadows, warm skin kept clean, the highlights rolling off rather than clipping, a slight halation around the brightest edges. The composition, the framing, the pose and the face stay exactly as they are.",
+   "caso": "look",
+   "efecto": "Cinematic",
+   "seed": "6102",
+   "steps": "30",
+   "tam": "1248x832",
+   "vae": "hdr",
+   "modelo": "Qwen-Image 2.1"
+  },
+  "antes": "/vitrina/interior.jpg",
+  "antes_de": "Interior"
+ },
+ {
+  "clave": "producto",
+  "titulo": "Product",
+  "caso": "blank",
+  "que": "The Product starting point, unedited. A single softbox falling off into near black is the whole lighting instruction.",
+  "archivo": "/vitrina/producto.jpg",
+  "meta": {
+   "generator": "QwenStudio / Qwen-Image 2.1",
+   "prompt": "A weathered brass diving helmet on an oak workbench, studio product photograph, scratched patina and green verdigris in the seams, a single softbox from the left falling off into near black, shot on a 100mm macro lens.",
+   "caso": "generate",
+   "seed": "3101",
+   "steps": "30",
+   "tam": "1248x832",
+   "ratio": "3:2",
+   "megapixeles": "1",
+   "vae": "hdr",
+   "modelo": "Qwen-Image 2.1"
+  }
+ },
+ {
+  "clave": "bodegon",
+  "titulo": "Still life",
+  "caso": "blank",
+  "que": "The Still life starting point, with the palette held to ochre and grey by the prompt.",
+  "archivo": "/vitrina/bodegon.jpg",
+  "meta": {
+   "generator": "QwenStudio / Qwen-Image 2.1",
+   "prompt": "Three pears on a linen cloth beside a chipped enamel jug, north light from one side, the palette held to ochre and grey, medium format at f/8.",
+   "caso": "generate",
+   "seed": "3108",
+   "steps": "30",
+   "tam": "1248x832",
+   "ratio": "3:2",
+   "megapixeles": "1",
+   "vae": "hdr",
+   "modelo": "Qwen-Image 2.1"
+  }
+ },
+ {
+  "clave": "comida",
+  "titulo": "Food",
+  "caso": "blank",
+  "que": "The Food starting point. One hard source raking from behind is what makes the broth shine.",
+  "archivo": "/vitrina/comida.jpg",
+  "meta": {
+   "generator": "QwenStudio / Qwen-Image 2.1",
+   "prompt": "A bowl of ramen shot from just above the rim, steam caught against a dark background, the egg cut open, one hard source raking from behind to make the broth shine, 100mm macro.",
+   "caso": "generate",
+   "seed": "3105",
+   "steps": "30",
+   "tam": "1024x1024",
+   "ratio": "1:1",
+   "megapixeles": "1",
+   "vae": "hdr",
+   "modelo": "Qwen-Image 2.1"
+  }
+ },
+ {
+  "clave": "paisaje",
+  "titulo": "Landscape",
+  "caso": "blank",
+  "que": "The Landscape starting point. The long exposure is asked for in words, not applied afterwards.",
+  "archivo": "/vitrina/paisaje.jpg",
+  "meta": {
+   "generator": "QwenStudio / Qwen-Image 2.1",
+   "prompt": "A basalt shoreline under a low grey sky, black sand and a long exposure smoothing the surf into mist, the horizon kept level and high in the frame, shot on a 24mm lens at f/11.",
+   "caso": "generate",
+   "seed": "3102",
+   "steps": "30",
+   "tam": "1248x832",
+   "ratio": "3:2",
+   "megapixeles": "1",
+   "vae": "hdr",
+   "modelo": "Qwen-Image 2.1"
+  }
+ },
+ {
+  "clave": "interior",
+  "titulo": "Interior",
+  "caso": "blank",
+  "que": "The Interior starting point. Warm lamps against the blue outside the window is a colour contrast the model holds on its own.",
+  "archivo": "/vitrina/interior.jpg",
+  "meta": {
+   "generator": "QwenStudio / Qwen-Image 2.1",
+   "prompt": "A small second-hand bookshop at closing time, warm lamps against the blue outside the window, dust in the air, shelves receding out of focus, shot on a 35mm lens at f/2.",
+   "caso": "generate",
+   "seed": "3103",
+   "steps": "30",
+   "tam": "1248x832",
+   "ratio": "3:2",
+   "megapixeles": "1",
+   "vae": "hdr",
+   "modelo": "Qwen-Image 2.1"
+  }
+ },
+ {
+  "clave": "arquitectura",
+  "titulo": "Architecture",
+  "caso": "blank",
+  "que": "The Architecture starting point. Asking for straight verticals is what keeps a 24mm from falling over.",
+  "archivo": "/vitrina/arquitectura.jpg",
+  "meta": {
+   "generator": "QwenStudio / Qwen-Image 2.1",
+   "prompt": "A brutalist concrete stairwell photographed from below, hard midday light cutting a diagonal across the wall, straight verticals, 24mm.",
+   "caso": "generate",
+   "seed": "4203",
+   "steps": "30",
+   "tam": "896x1184",
+   "ratio": "3:4",
+   "megapixeles": "1",
+   "vae": "hdr",
+   "modelo": "Qwen-Image 2.1"
+  }
+ },
+ {
+  "clave": "animal",
+  "titulo": "Animal",
+  "caso": "blank",
+  "que": "The Animal starting point. Naming the 300mm lens is what compresses the background into soft colour.",
+  "archivo": "/vitrina/animal.jpg",
+  "meta": {
+   "generator": "QwenStudio / Qwen-Image 2.1",
+   "prompt": "A red fox standing still in wet bracken at first light, ears forward, breath visible, the background compressed to soft colour on a 300mm lens.",
+   "caso": "generate",
+   "seed": "3104",
+   "steps": "30",
+   "tam": "1248x832",
+   "ratio": "3:2",
+   "megapixeles": "1",
+   "vae": "hdr",
+   "modelo": "Qwen-Image 2.1"
+  }
+ },
+ {
+  "clave": "ilustracion",
+  "titulo": "Illustration",
+  "caso": "blank",
+  "que": "The Illustration starting point: four flat colours and no gradients. Not everything this model does is photographic.",
+  "archivo": "/vitrina/ilustracion.jpg",
+  "meta": {
+   "generator": "QwenStudio / Qwen-Image 2.1",
+   "prompt": "A flat vector illustration of a lighthouse on a cliff, four flat colours and no gradients, crisp geometric shapes, generous negative space.",
+   "caso": "generate",
+   "seed": "3106",
+   "steps": "30",
+   "tam": "1024x1024",
+   "ratio": "1:1",
+   "megapixeles": "1",
+   "vae": "hdr",
+   "modelo": "Qwen-Image 2.1"
+  }
+ }
+]

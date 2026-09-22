@@ -52,8 +52,8 @@ def dimensiones(ratio: str, megapixeles: float) -> tuple[int, int]:
 # global de HuggingFace: la carpeta de la app tiene que ser autocontenida y
 # despues de la primera descarga nada mas debe necesitar red.
 AUXILIARES = [
-    ("CIDAS/clipseg-rd64-refined", "segmentacion por texto"),
-    ("facebook/sam2.1-hiera-tiny", "afinado del borde"),
+    ("CIDAS/clipseg-rd64-refined", "selecting by words"),
+    ("facebook/sam2.1-hiera-tiny", "sharpening the edge"),
 ]
 # los dos repos publican los mismos pesos en .bin y en .safetensors; bajar
 # ambos duplicaba 600 MB para nada
@@ -131,13 +131,18 @@ def construir_prompt(n_persona: int, con_pose: bool, con_escena: bool, texto: st
     return (" ".join(partes) + " " + texto.strip()).strip()
 
 
-def avisos_de_uso(n_persona: int, con_escena: bool) -> list[str]:
+def avisos_de_uso(n_persona: int, con_escena: bool,
+                  espera_persona: bool = True) -> list[str]:
+    """Lo que conviene decir antes de generar. En ingles: lo lee el usuario."""
     a = []
     if con_escena and n_persona > 1:
-        a.append("Con escena conviene UNA sola foto de la persona: con varias el modelo las lee "
-                 "como sujetos distintos y mete varias personas en la imagen.")
-    if n_persona == 0:
-        a.append("Sin foto de persona esto es texto a imagen; no hay identidad que preservar.")
+        a.append("With a scene, use ONE photo of the person. Several are read as several "
+                 "different people, and several people end up in the picture.")
+    if espera_persona and n_persona == 0:
+        # solo donde el caso tiene ranura de persona: decirselo a quien eligio
+        # texto a imagen es informarle de lo que acaba de pedir
+        a.append("No person photo, so this is text to image and there is no identity to "
+                 "carry over.")
     return a
 
 
@@ -182,7 +187,7 @@ def descargar(ruta: str, estado: Descarga) -> None:
     """Baja los pesos. Reanudable: huggingface_hub salta lo que ya esta."""
     from huggingface_hub import snapshot_download
 
-    estado.activa, estado.error, estado.mensaje = True, "", "consultando tamano..."
+    estado.activa, estado.error, estado.mensaje = True, "", "checking the size..."
     os.makedirs(ruta, exist_ok=True)
     estado.total = _tamano_remoto()
 
@@ -196,7 +201,7 @@ def descargar(ruta: str, estado: Descarga) -> None:
     hilo = threading.Thread(target=vigilar, daemon=True)
     hilo.start()
     try:
-        estado.mensaje = "descargando pesos..."
+        estado.mensaje = "downloading the weights..."
         snapshot_download(repo_id=REPO, local_dir=ruta, allow_patterns=PATRONES,
                           max_workers=4)
 
@@ -204,20 +209,20 @@ def descargar(ruta: str, estado: Descarga) -> None:
         aux = ruta_aux(ruta)
         os.makedirs(aux, exist_ok=True)
         for repo, para in AUXILIARES:
-            estado.mensaje = f"descargando {repo.split('/')[-1]} ({para})..."
+            estado.mensaje = f"downloading {repo.split('/')[-1]} — {para}..."
             try:
                 snapshot_download(repo_id=repo, cache_dir=aux,
                                   allow_patterns=AUX_PATRONES, max_workers=4)
             except Exception as e:
                 # no son imprescindibles para generar: si fallan, la app arranca
                 # igual y lo dice cuando alguien pida una mascara
-                estado.mensaje = f"aviso: {repo} no se pudo bajar ({type(e).__name__})"
+                estado.mensaje = f"warning: could not download {repo} ({type(e).__name__})"
 
         estado.lista = True
-        estado.mensaje = "pesos listos"
+        estado.mensaje = "weights ready"
     except Exception as e:
         estado.error = str(e)
-        estado.mensaje = "fallo la descarga"
+        estado.mensaje = "the download failed"
     finally:
         parar.set()
         estado.bytes = tamano_local(ruta)
@@ -514,7 +519,7 @@ class Motor:
         import torch
 
         if self.pipe is None:
-            raise RuntimeError(self.error or "el modelo no esta cargado")
+            raise RuntimeError(self.error or "the model is not loaded")
 
         refs = list(personas)
         if pose is not None:
@@ -560,7 +565,7 @@ class Motor:
         import torch
 
         if self.pipe is None:
-            raise RuntimeError(self.error or "el modelo no esta cargado")
+            raise RuntimeError(self.error or "the model is not loaded")
 
         refs = [imagen] + list(referencias or [])
         prompt = texto.strip()

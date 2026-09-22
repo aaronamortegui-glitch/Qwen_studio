@@ -229,7 +229,8 @@ details>summary{cursor:pointer;font-size:13px;color:var(--link);margin-top:18px;
 #dtCuerpo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:20px;
   align-items:start}
 @media(max-width:700px){#dtCuerpo{grid-template-columns:1fr}}
-#dtImg{width:100%;border-radius:var(--r-s);display:block;cursor:zoom-in;
+#dtImg{width:100%;max-height:62vh;object-fit:contain;border-radius:var(--r-s);
+  display:block;cursor:zoom-in;
   background:repeating-conic-gradient(var(--sf-2) 0 25%,transparent 0 50%) 50%/16px 16px}
 #dtPrompt{background:var(--sf-1);border:1px solid var(--line-soft);border-radius:var(--r-s);
   padding:13px 15px;font-size:13px;line-height:1.55;max-height:220px;overflow:auto;
@@ -347,6 +348,32 @@ details>summary{cursor:pointer;font-size:13px;color:var(--link);margin-top:18px;
   background:repeating-conic-gradient(var(--sf-2) 0 25%,transparent 0 50%) 50%/18px 18px}
 .gal figcaption{padding:11px 15px;font-size:12px;color:var(--on-sf-var);
   display:flex;justify-content:space-between;gap:8px;align-items:center}
+/* ---- la vitrina ---- */
+.cabRes{display:flex;align-items:baseline;gap:12px;margin-bottom:12px}
+.cabRes h2{margin:0;flex:1}
+#vitrina{margin-top:26px;border-top:1px solid var(--line-soft);padding-top:20px}
+#vitrina>header{margin-bottom:14px}
+#vitrina h3{margin:0 0 4px;font-size:15px;font-weight:500;color:var(--on-sf)}
+.vitGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
+.vitGrid figure{margin:0;background:var(--sf-1);border:1px solid var(--line-soft);
+  border-radius:var(--r-m);overflow:hidden;cursor:pointer;display:flex;
+  flex-direction:column;transition:border-color .12s,box-shadow .12s}
+.vitGrid figure:hover,.vitGrid figure:focus-visible{border-color:var(--verde);
+  box-shadow:var(--e1);outline:none}
+.vitGrid img{width:100%;display:block;aspect-ratio:4/3;object-fit:cover;
+  background:var(--sf-2)}
+.vitGrid figcaption{padding:9px 12px 11px;display:flex;flex-direction:column;gap:3px}
+.vitGrid b{font-size:12.5px;font-weight:500;color:var(--on-sf);line-height:1.25}
+.vitGrid small{font-size:11px;color:var(--on-sf-var);line-height:1.35;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.vitCaso{align-self:flex-start;font-size:10px;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--verde);background:var(--sf-2);border-radius:999px;padding:2px 8px;margin-top:2px}
+#dtQue{font-size:12.5px;line-height:1.5;color:var(--on-sf-var);background:var(--sf-1);
+  border-left:2px solid var(--lima);border-radius:0 var(--r-s) var(--r-s) 0;
+  padding:10px 13px;margin-bottom:13px}
+#dtAntes{display:flex;gap:9px;align-items:center;margin-bottom:12px;font-size:11.5px;
+  color:var(--on-sf-var)}
+#dtAntes img{width:76px;border-radius:var(--r-s);display:block;border:1px solid var(--line-soft)}
 .ba{position:relative;overflow:hidden;cursor:ew-resize;background:var(--sf-2);touch-action:none}
 .ba>img{display:block;width:100%}
 .ba .after{position:absolute;inset:0;clip-path:inset(0 0 0 50%)}
@@ -509,10 +536,20 @@ if(t!=='auto')document.documentElement.setAttribute('data-theme',t);})();</scrip
 </div>
 
 <div class="card">
-  <h2>Results</h2>
-  <div id="vacio" class="hint">Nothing here yet.</div>
+  <div class="cabRes">
+    <h2>Results</h2>
+    <button type="button" class="ghost" id="verVitrina" hidden>Show the examples</button>
+  </div>
+  <div id="vacio" class="hint" hidden>Nothing here yet.</div>
   <div class="gal" id="gal"></div>
   <pre id="verPrompt" hidden></pre>
+  <section id="vitrina" hidden>
+    <header>
+      <h3>Made with this app, on this machine</h3>
+      <div class="hint" id="vitPie"></div>
+    </header>
+    <div class="vitGrid" id="vitGrid"></div>
+  </section>
 </div>
 </main>
 <dialog id="lupa"><img id="lupaImg" alt=""></dialog>
@@ -524,6 +561,8 @@ if(t!=='auto')document.documentElement.setAttribute('data-theme',t);})();</scrip
   <div id="dtCuerpo">
     <img id="dtImg" alt="">
     <div>
+      <div id="dtQue" hidden></div>
+      <div id="dtAntes" hidden></div>
       <label>The prompt that produced it</label>
       <div id="dtPrompt"></div>
       <dl class="dtDatos num" id="dtDatos"></dl>
@@ -531,6 +570,7 @@ if(t!=='auto')document.documentElement.setAttribute('data-theme',t);})();</scrip
         <button type="button" class="ghost" id="dtCopiar">Copy the prompt</button>
         <button type="button" class="ghost" id="dtUsarPrompt">Put it in the box</button>
         <button type="button" class="ghost" id="dtUsarImagen">Use as input</button>
+        <button type="button" class="ghost" id="dtAbrirCaso" hidden>Open this use case</button>
         <a class="ghost" id="dtBajar" download>Download</a>
       </div>
       <div class="hint" id="dtAviso"></div>
@@ -1113,17 +1153,38 @@ function tarjeta(im, antes){
     f.append(d);
   }else{
     const i=document.createElement('img'); i.src=im.archivo; i.loading='lazy';
-    i.onclick=()=>abrirDetalle(im.archivo, im.meta||{prompt:im.prompt});
+    i.onclick=()=>recetaDe(im);
     f.append(i);
   }
   const c=document.createElement('figcaption');
   const nombre=(im.archivo||'').split('/').pop()||'qwenstudio.png';
   c.innerHTML=`<span>${im.seed!==undefined?'seed '+im.seed:''}${im.tam?' · '+im.tam:''}</span>
-    <span class="acciones"><a href="#" class="cmp">compare</a>
+    <span class="acciones"><a href="#" class="receta">recipe</a>
+      <a href="#" class="cmp">compare</a>
       <a class="iconobtn" href="${im.archivo}" download="${nombre}"
          title="Download this image">${svg('descarga',15)}</a></span>`;
   c.querySelector('.cmp').onclick=e=>{e.preventDefault();elegirComparar(im.archivo,c.querySelector('.cmp'))};
+  // en una comparacion antes/despues la imagen no se puede pulsar -- ese gesto
+  // mueve el separador -- asi que la receta vive siempre en el pie
+  c.querySelector('.receta').onclick=e=>{e.preventDefault();recetaDe(im, antes)};
   f.append(c); f.dataset.src=im.archivo; return f;
+}
+
+async function recetaDe(im, antes){
+  /* La receta esta escrita en el PNG, no en la respuesta de la peticion: se lee
+     del archivo para que un resultado recien hecho ensene exactamente lo mismo
+     que ensenara manana desde la galeria. */
+  let meta=im.meta;
+  if(!meta){
+    try{
+      const r=await (await fetch('/api/receta?archivo='+
+        encodeURIComponent((im.archivo||'').split('/').pop()))).json();
+      meta=r.meta||{};
+    }catch(_){ meta={}; }
+    if(!meta.prompt && im.prompt) meta.prompt=im.prompt;
+    im.meta=meta;
+  }
+  abrirDetalle(im.archivo, meta, antes?{antes:antes}:{});
 }
 
 /* ---------- la receta de una imagen ---------- */
@@ -1131,10 +1192,23 @@ const ETIQUETAS={caso:'Use case', efecto:'Look', seed:'Seed', steps:'Steps',
   tam:'Size', ratio:'Aspect', megapixeles:'Quality (MP)', vae:'Decoder',
   lora:'LoRA', fuerza_lora:'LoRA weight', orden:'Reference order',
   modelo:'Model'};
-let DT={url:null, meta:{}};
-function abrirDetalle(url, meta){
-  DT={url, meta:meta||{}};
+let DT={url:null, meta:{}, extra:{}};
+function abrirDetalle(url, meta, extra){
+  DT={url, meta:meta||{}, extra:extra||{}};
   const p=(DT.meta.prompt||'').trim();
+  $('#dtTitulo').textContent = DT.extra.titulo || 'How this was made';
+  $('#dtQue').textContent = DT.extra.que || '';
+  $('#dtQue').hidden = !DT.extra.que;
+  // una edicion no se entiende sin la foto de la que salio
+  $('#dtAntes').innerHTML = DT.extra.antes
+    ? `<img src="${DT.extra.antes}" alt="">`
+      +`<span>Made from ${DT.extra.antes_de ? 'the <b>'+DT.extra.antes_de+'</b> example'
+        : 'this photograph'} above.</span>`
+    : '';
+  $('#dtAntes').hidden = !DT.extra.antes;
+  const cu = DT.extra.caso_ui;
+  $('#dtAbrirCaso').hidden = !(cu && CASOS[cu]);
+  if(cu && CASOS[cu]) $('#dtAbrirCaso').textContent = 'Open in '+CASOS[cu].name;
   $('#dtImg').src=url;
   $('#dtImg').onclick=()=>{$('#lupaImg').src=url;$('#lupa').showModal()};
   $('#dtPrompt').textContent = p || 'No prompt was stored with this file.';
@@ -1149,6 +1223,7 @@ function abrirDetalle(url, meta){
   $('#dtCopiar').disabled=!p; $('#dtUsarPrompt').disabled=!p;
   $('#dtAviso').textContent='';
   $('#dt').showModal();
+  $('#dt').scrollTop=0;
 }
 $('#dtCerrar').onclick=()=>$('#dt').close();
 $('#dt').onclick=e=>{if(e.target.id==='dt')$('#dt').close()};
@@ -1161,6 +1236,21 @@ $('#dtCopiar').onclick=async()=>{
 $('#dtUsarPrompt').onclick=()=>{
   $('#prompt').value=DT.meta.prompt||'';
   $('#dt').close();
+};
+$('#dtAbrirCaso').onclick=()=>{
+  // lleva al camino del que salio la imagen y deja el prompt escrito: de mirar
+  // un ejemplo a tener el suyo hay un clic, no cinco
+  const cu=DT.extra.caso_ui;
+  if(!CASOS[cu]) return;
+  limpiarEjemplo();
+  aplicarCaso(cu);
+  if(DT.meta.prompt) $('#prompt').value=DT.meta.prompt;
+  if(DT.meta.efecto){
+    const e=EFECTOS.find(x=>x.nombre===DT.meta.efecto);
+    if(e){ S.efecto=e.id; pintarElegido(); }
+  }
+  $('#dt').close();
+  document.querySelector('.card').scrollIntoView({behavior:'smooth',block:'start'});
 };
 $('#dtUsarImagen').onclick=async()=>{
   // la ranura depende del caso: en los de edicion es la foto de partida y en
@@ -1175,6 +1265,50 @@ $('#dtUsarImagen').onclick=async()=>{
     tocado(); repintar(); $('#dt').close();
   }catch(_){ $('#dtAviso').textContent='Could not load that file.'; }
 };
+
+/* ---------- la vitrina ----------
+   Dieciocho imagenes que salieron de esta instalacion, con la receta al lado.
+   Se ensena mientras no haya resultados propios: una columna vacia del alto de
+   la pantalla no dice nada de lo que la app sabe hacer. */
+let VIT=[];
+function hayResultados(){
+  return !!document.querySelector('#gal > figure:not(#figEjemplo)');
+}
+function pintarVitrina(){
+  const g=$('#vitGrid'); if(!g) return;
+  g.innerHTML='';
+  VIT.forEach(p=>{
+    const f=document.createElement('figure');
+    f.tabIndex=0; f.dataset.k=p.clave;
+    const et=(CASOS[p.caso]||{}).name||p.caso;
+    f.innerHTML=`<img src="${p.archivo}" alt="" loading="lazy">
+      <figcaption><b>${p.titulo}</b><small>${p.que}</small>
+        <span class="vitCaso">${et}</span></figcaption>`;
+    const abrir=()=>abrirDetalle(p.archivo, {...p.meta, caso_ui:p.caso},
+      {titulo:p.titulo, que:p.que, antes:p.antes, antes_de:p.antes_de, caso_ui:p.caso});
+    f.onclick=abrir;
+    f.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();abrir()}};
+    g.append(f);
+  });
+  $('#vitPie').textContent = VIT.length
+    ? VIT.length+' images this install produced, start to finish. Click any one for the '
+      +'prompt, the seed and the settings behind it \u2014 and to open it where it was made.'
+    : '';
+}
+function ponerVitrina(){
+  const hay=VIT.length>0, propio=hayResultados();
+  $('#vitrina').hidden = !hay || propio;
+  $('#verVitrina').hidden = !hay || !propio;
+  $('#vacio').hidden = hay || propio;
+}
+$('#verVitrina').onclick=()=>{
+  $('#vitrina').hidden=false; $('#verVitrina').hidden=true;
+  $('#vitrina').scrollIntoView({behavior:'smooth',block:'start'});
+};
+fetch('/api/vitrina').then(r=>r.json()).then(v=>{
+  VIT=Array.isArray(v)?v:[];
+  pintarVitrina(); ponerVitrina();
+}).catch(()=>{ $('#vacio').hidden=false; });
 
 /* ---------- la galeria de efectos ---------- */
 let EFECTOS=[], efFiltro='all';
@@ -1445,6 +1579,7 @@ $('#go').onclick=async()=>{
       antes=null;
       r=await (await fetch('/api/generar',{method:'POST',body:JSON.stringify({...comunes(),
         personas:S.img.person||[], escena:(S.img.scene||[])[0]||null,
+        espera_persona:c.zonas.includes('person'),
         estilo:(S.img.style||[])[0]||null,
         estilo_modo:(document.querySelector('input[name=em]:checked')||{}).value||'look',
         pose_lib:S.poseLib, pose_url:S.poseLib?null:((S.img.pose||[])[0]||null),
@@ -1458,6 +1593,7 @@ $('#go').onclick=async()=>{
       +(r.crop?`crop ${r.crop} -> generated ${r.generado}\n\n`:'')+(r.prompt||'');
     r.imagenes.forEach(im=>$('#gal').prepend(tarjeta(im, antes)));
     if(r.resumen) $('#gal').prepend(tarjeta({archivo:r.resumen, tam:'recipe'}, null));
+    ponerVitrina();
   }catch(e){alert('Failed: '+e)}
   finally{clearInterval(tic);b.disabled=false;b.textContent='Generate'}
 };
@@ -1644,7 +1780,8 @@ async function cargarEjemplo(k){
     im.onclick=()=>{$('#lupaImg').src=im.src;$('#lupa').showModal()};
     const cap=document.createElement('figcaption');
     cap.innerHTML='<span>Example · inputs and result</span><span>generated on this machine</span>';
-    f.append(im,cap); $('#gal').prepend(f); $('#vacio').hidden=true;
+    f.append(im,cap); $('#gal').prepend(f);
+    if(typeof ponerVitrina==='function') ponerVitrina();
   }catch(_){ }
 }
 

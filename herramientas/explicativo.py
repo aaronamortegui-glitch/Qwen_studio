@@ -371,6 +371,15 @@ def construir() -> str:
           Paragraph("Everything written lands in one folder, and the gallery reads that "
                     "folder rather than a database, so the disk is the single source of "
                     "truth: delete a file there and it disappears from the gallery.", CUERPO),
+          Paragraph("The results column is not empty the first time it is opened. It "
+                    "carries eighteen images this install produced, each one clickable for "
+                    "the prompt, the seed and the settings behind it, and for a button that "
+                    "opens the use case it came from with that prompt already written. Five "
+                    "of them build on each other — a character invented from a "
+                    "paragraph, carried into a portrait, a scene and a cutout, and two of "
+                    "those images then edited — because one tool doing a day’s work "
+                    "argues better than eight unrelated demonstrations. It steps aside as "
+                    "soon as there is work of the user’s own to show.", CUERPO),
           Paragraph("Each result carries its own recipe, written into the PNG as tEXt "
                     "chunks: the exact prompt, the seed, the steps, the decoder, the LoRA, "
                     "the reference order. Click any image and it opens, with the prompt "
