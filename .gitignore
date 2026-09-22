@@ -1,0 +1,30 @@
+# Todo lo que el instalador recrea o el primer arranque descarga.
+# El repositorio son ~3 MB de codigo y ejemplos; el resto pesa 36 GB.
+
+.venv/
+.uv/
+modelos/
+loras/*
+!loras/.keep
+salidas/*
+!salidas/.keep
+entradas/*
+!entradas/.keep
+
+# config.json describe el hardware de ESTA maquina, ajustes.json son
+# preferencias locales: los escribe el instalador y el uso, no el repositorio.
+config.json
+ajustes.json
+
+# el zip se construye con herramientas/empaquetar.py
+QwenStudio.zip
+
+__pycache__/
+*.py[cod]
+*.log
+*.db
+*.db-wal
+*.db-shm
+_meta_gen.json
+.DS_Store
+Thumbs.db

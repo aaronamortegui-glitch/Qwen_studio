@@ -1,0 +1,127 @@
+"""Describe and reason about images with Qwen3-VL-8B.
+
+No extra download: the image model's text encoder *is* Qwen3-VL-8B, and the
+checkpoint on disk carries the vision tower (`model.visual`), the language
+tower and `lm_head`, declared as `Qwen3VLForConditionalGeneration`. The same
+16 GB serve both jobs.
+
+Loaded in 4-bit by default. Captioning tolerates that far better than image
+generation does, and it keeps the VLM small enough to sit beside the 7B DiT
+instead of forcing a swap on every call.
+"""
+
+from __future__ import annotations
+
+import os
+import threading
+
+_lock = threading.Lock()
+_estado: dict = {"modelo": None, "processor": None, "error": "", "device": "cuda"}
+
+# What to ask for. The wording matters: Qwen-Image 2.1 responds to natural,
+# declarative description, so the prompt-writing tasks aim at that rather than
+# at comma-separated tags.
+TAREAS = {
+    "prompt": (
+        "Write a single detailed prompt that would let an image model recreate this "
+        "photograph. Describe the subject, clothing, pose, setting, lighting, camera "
+        "framing and mood in natural declarative English. One paragraph, no lists, no "
+        "preamble, no quotation marks."),
+    "describe": (
+        "Describe this image in plain English: what is in it, how it is lit, how it is "
+        "framed. Two or three sentences."),
+    "caption": (
+        "Write a training caption for this image: one natural sentence describing the "
+        "subject and everything around them. No preamble."),
+    "edit": (
+        "Look at this image and suggest three specific, concrete edits that would "
+        "improve it or make it more interesting. For each one give the short phrase "
+        "naming what to select and the instruction for what to put there. Be practical."),
+    "scene": (
+        "Describe this photograph as a setting: the place, the clothing the person "
+        "wears, the framing, and the quality and direction of the light. One sentence, "
+        "in natural English, no preamble. Do not describe the person's face or identity."),
+    "select": (
+        "List the distinct objects and regions in this image that could be selected "
+        "and edited separately. Give each as a short noun phrase, one per line, no "
+        "numbering."),
+}
+
+
+def disponible() -> bool:
+    return _estado["modelo"] is not None
+
+
+def error() -> str:
+    return _estado["error"]
+
+
+def cargar(ruta_modelos: str, device: str = "cuda", bits: int = 4) -> None:
+    """Load the VLM from the weights already on disk. Safe to call repeatedly."""
+    with _lock:
+        if _estado["modelo"] is not None:
+            return
+        try:
+            import torch
+            from transformers import AutoProcessor, Qwen3VLForConditionalGeneration
+
+            pesos = os.path.join(ruta_modelos, "text_encoder")
+            proc_dir = os.path.join(ruta_modelos, "processor")
+            kw: dict = {"dtype": torch.bfloat16}
+            if device == "cuda" and bits in (4, 8):
+                from transformers import BitsAndBytesConfig
+                kw["quantization_config"] = (
+                    BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4",
+                                       bnb_4bit_compute_dtype=torch.bfloat16)
+                    if bits == 4 else BitsAndBytesConfig(load_in_8bit=True))
+                kw["device_map"] = {"": 0}
+            m = Qwen3VLForConditionalGeneration.from_pretrained(pesos, **kw)
+            if "device_map" not in kw:
+                m = m.to(device)
+            m.eval()
+            proc = AutoProcessor.from_pretrained(proc_dir)
+            _estado.update(modelo=m, processor=proc, error="", device=device)
+        except Exception as e:
+            _estado["error"] = f"{type(e).__name__}: {e}"
+
+
+def descargar_de_memoria() -> None:
+    with _lock:
+        if _estado["modelo"] is not None:
+            try:
+                _estado["modelo"].to("cpu")
+            except Exception:
+                pass
+        _estado.update(modelo=None, processor=None)
+    try:
+        import gc
+
+        import torch
+        gc.collect()
+        torch.cuda.empty_cache()
+    except Exception:
+        pass
+
+
+def preguntar(imagen, tarea: str = "prompt", extra: str = "",
+              max_tokens: int = 320) -> str:
+    """Run one of TAREAS (or a free question in `extra`) against the image."""
+    if _estado["modelo"] is None:
+        raise RuntimeError(_estado["error"] or "the vision model is not loaded")
+
+    import torch
+    m, proc = _estado["modelo"], _estado["processor"]
+    instruccion = TAREAS.get(tarea, TAREAS["describe"])
+    if extra.strip():
+        instruccion = extra.strip() if tarea == "free" else f"{instruccion}\n\n{extra.strip()}"
+
+    mensajes = [{"role": "user", "content": [
+        {"type": "image"}, {"type": "text", "text": instruccion}]}]
+    texto = proc.apply_chat_template(mensajes, tokenize=False, add_generation_prompt=True)
+    entradas = proc(text=[texto], images=[imagen.convert("RGB")], return_tensors="pt")
+    entradas = {k: v.to(m.device) for k, v in entradas.items()}
+
+    with torch.inference_mode():
+        salida = m.generate(**entradas, max_new_tokens=max_tokens, do_sample=False)
+    nuevos = salida[0][entradas["input_ids"].shape[1]:]
+    return proc.decode(nuevos, skip_special_tokens=True).strip()

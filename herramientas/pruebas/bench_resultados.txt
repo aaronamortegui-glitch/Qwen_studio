@@ -1,0 +1,336 @@
+
+=== actual: bf16 + offload model ===
+W0921 18:02:41.818000 12492 .venv\Lib\site-packages\torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+D:\QwenStudio\.venv\Lib\site-packages\diffusers\utils\deprecation_utils.py:23: FutureWarning: `torch_dtype` is deprecated and will be removed in version 1.0.0. Please use `dtype` instead.
+  deprecate("torch_dtype", "1.0.0", _TORCH_DTYPE_DEPRECATION_MESSAGE)
+Loading pipeline components...:   0%|          | 0/5 [00:00<?, ?it/s]
+Loading weights:   0%|          | 0/750 [00:00<?, ?it/s][A
+Loading weights:   1%|          | 4/750 [00:00<00:25, 28.74it/s][A
+Loading weights:   1%|          | 7/750 [00:00<00:34, 21.60it/s][A
+Loading weights:   1%|1         | 10/750 [00:00<00:47, 15.57it/s][A
+Loading weights:   2%|1         | 12/750 [00:00<00:47, 15.65it/s][A
+Loading weights:   2%|1         | 14/750 [00:00<01:00, 12.18it/s][A
+Loading weights:   3%|2         | 19/750 [00:01<00:42, 17.05it/s][A
+Loading weights:   3%|2         | 21/750 [00:01<00:49, 14.67it/s][A
+Loading weights:   3%|3         | 23/750 [00:01<01:11, 10.23it/s][A
+Loading weights:   4%|3         | 29/750 [00:02<00:46, 15.63it/s][A
+Loading weights:   4%|4         | 31/750 [00:02<00:52, 13.71it/s][A
+Loading weights:   5%|5         | 38/750 [00:02<00:43, 16.50it/s][A
+Loading weights:   5%|5         | 40/750 [00:02<00:53, 13.17it/s][A
+Loading weights:   6%|5         | 42/750 [00:03<00:56, 12.48it/s][A
+Loading weights:   6%|5         | 44/750 [00:03<01:12,  9.78it/s][A
+Loading weights:   7%|6         | 49/750 [00:03<00:49, 14.29it/s][A
+Loading weights:   7%|6         | 51/750 [00:03<01:00, 11.62it/s][A
+Loading weights:   8%|7         | 57/750 [00:03<00:37, 18.47it/s][A
+Loading weights:   8%|8         | 60/750 [00:04<00:42, 16.19it/s][A
+Loading weights:   8%|8         | 63/750 [00:04<00:52, 13.01it/s][A
+Loading weights:   9%|8         | 67/750 [00:04<00:46, 14.83it/s][A
+Loading weights:   9%|9         | 69/750 [00:05<00:56, 12.01it/s][A
+Loading weights:   9%|9         | 71/750 [00:05<01:13,  9.20it/s][A
+Loading weights:  10%|9         | 73/750 [00:05<01:21,  8.33it/s][A
+Loading weights:  11%|#         | 80/750 [00:06<00:52, 12.86it/s][A
+Loading weights:  11%|#         | 82/750 [00:06<00:52, 12.82it/s][A
+Loading weights:  11%|#1        | 86/750 [00:06<00:42, 15.52it/s][A
+Loading weights:  12%|#1        | 88/750 [00:06<00:52, 12.56it/s][A
+Loading weights:  12%|#2        | 90/750 [00:06<01:01, 10.78it/s][A
+Loading weights:  12%|#2        | 92/750 [00:06<00:56, 11.69it/s][A
+Loading weights:  13%|#3        | 98/750 [00:07<00:45, 14.21it/s][A
+Loading weights:  13%|#3        | 100/750 [00:07<00:45, 14.39it/s][A
+Loading weights:  14%|#3        | 102/750 [00:07<00:49, 13.18it/s][A
+Loading weights:  14%|#3        | 104/750 [00:07<00:54, 11.79it/s][A
+Loading weights:  14%|#4        | 107/750 [00:07<00:43, 14.75it/s][A
+Loading weights:  15%|#4        | 109/750 [00:08<00:58, 11.00it/s][A
+Loading weights:  16%|#5        | 117/750 [00:08<00:33, 18.94it/s][A
+Loading weights:  16%|#6        | 120/750 [00:08<00:36, 17.04it/s][A
+Loading weights:  16%|#6        | 122/750 [00:08<00:42, 14.80it/s][A
+Loading weights:  17%|#7        | 128/750 [00:09<00:33, 18.40it/s][A
+Loading weights:  18%|#8        | 135/750 [00:09<00:23, 26.37it/s][A
+Loading weights:  19%|#8        | 139/750 [00:09<00:34, 17.67it/s][A
+Loading weights:  19%|#8        | 142/750 [00:10<00:42, 14.21it/s][A
+Loading weights:  19%|#9        | 145/750 [00:10<00:51, 11.64it/s][A
+Loading weights:  21%|##        | 154/750 [00:10<00:28, 20.58it/s][A
+Loading weights:  21%|##1       | 158/750 [00:10<00:34, 17.24it/s][A
+Loading weights:  22%|##1       | 162/750 [00:11<00:37, 15.68it/s][A
+Loading weights:  22%|##2       | 165/750 [00:11<00:54, 10.67it/s][A
+Loading weights:  22%|##2       | 167/750 [00:12<00:53, 10.92it/s][A
+Loading weights:  23%|##2       | 169/750 [00:12<00:56, 10.33it/s][A
+Loading weights:  23%|##3       | 173/750 [00:12<00:46, 12.44it/s][A
+Loading weights:  23%|##3       | 175/750 [00:12<00:51, 11.26it/s][A
+Loading weights:  24%|##4       | 180/750 [00:12<00:38, 14.84it/s][A
+Loading weights:  24%|##4       | 182/750 [00:13<00:43, 13.09it/s][A
+Loading weights:  25%|##4       | 184/750 [00:13<01:02,  9.11it/s][A
+Loading weights:  25%|##4       | 187/750 [00:13<01:02,  9.03it/s][A
+Loading weights:  26%|##5       | 193/750 [00:14<00:37, 15.03it/s][A
+Loading weights:  26%|##6       | 196/750 [00:14<00:43, 12.66it/s][A
+Loading weights:  27%|##7       | 203/750 [00:14<00:27, 20.13it/s][A
+Loading weights:  31%|###1      | 235/750 [00:14<00:07, 66.44it/s][A
+Loading weights:  35%|###4      | 259/750 [00:14<00:05, 94.72it/s][A
+Loading weights:  39%|###9      | 295/750 [00:14<00:03, 142.25it/s][A
+Loading weights:  43%|####3     | 325/750 [00:14<00:02, 173.66it/s][A
+Loading weights:  49%|####8     | 366/750 [00:15<00:01, 215.84it/s][A
+Loading weights:  53%|#####2    | 397/750 [00:15<00:01, 238.33it/s][A
+Loading weights:  57%|#####6    | 425/750 [00:15<00:01, 247.34it/s][A
+Loading weights:  61%|######    | 457/750 [00:15<00:01, 237.62it/s][A
+Loading weights:  64%|######4   | 483/750 [00:15<00:01, 151.59it/s][ALoading weights: 100%|##########| 750/750 [00:15<00:00, 47.52it/s] 
+Loading pipeline components...:  20%|##        | 1/5 [00:18<01:15, 18.84s/it]Loading pipeline components...:  60%|######    | 3/5 [00:19<00:10,  5.12s/it]
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s][ALoading checkpoint shards: 100%|##########| 2/2 [00:00<00:00, 71.43it/s]
+Loading pipeline components...: 100%|##########| 5/5 [00:19<00:00,  2.61s/it]Loading pipeline components...: 100%|##########| 5/5 [00:19<00:00,  3.99s/it]
+  carga 27s | VRAM tras cargar 423 MiB
+  0%|          | 0/25 [00:00<?, ?it/s]  4%|4         | 1/25 [00:23<09:33, 23.89s/it]  8%|8         | 2/25 [00:26<04:17, 11.20s/it] 12%|#2        | 3/25 [00:26<02:18,  6.30s/it] 16%|#6        | 4/25 [00:27<01:30,  4.31s/it] 20%|##        | 5/25 [00:29<01:04,  3.20s/it] 24%|##4       | 6/25 [00:30<00:48,  2.55s/it] 28%|##8       | 7/25 [00:31<00:38,  2.12s/it] 32%|###2      | 8/25 [00:32<00:31,  1.85s/it] 36%|###6      | 9/25 [00:34<00:26,  1.66s/it] 40%|####      | 10/25 [00:35<00:23,  1.53s/it] 44%|####4     | 11/25 [00:36<00:20,  1.45s/it] 48%|####8     | 12/25 [00:37<00:18,  1.39s/it] 52%|#####2    | 13/25 [00:39<00:16,  1.35s/it] 56%|#####6    | 14/25 [00:40<00:14,  1.32s/it] 60%|######    | 15/25 [00:41<00:13,  1.30s/it] 64%|######4   | 16/25 [00:42<00:11,  1.29s/it] 68%|######8   | 17/25 [00:44<00:10,  1.28s/it] 72%|#######2  | 18/25 [00:45<00:08,  1.27s/it] 76%|#######6  | 19/25 [00:46<00:07,  1.27s/it] 80%|########  | 20/25 [00:48<00:06,  1.26s/it] 84%|########4 | 21/25 [00:49<00:05,  1.26s/it] 88%|########8 | 22/25 [00:50<00:03,  1.26s/it] 92%|#########2| 23/25 [00:51<00:02,  1.26s/it] 96%|#########6| 24/25 [00:53<00:01,  1.26s/it]100%|##########| 25/25 [00:54<00:00,  1.26s/it]100%|##########| 25/25 [00:54<00:00,  2.17s/it]
+  gen 1:   71.3s | VRAM pico 21256 MiB
+  0%|          | 0/25 [00:00<?, ?it/s]  4%|4         | 1/25 [00:10<04:20, 10.87s/it]  8%|8         | 2/25 [00:12<02:03,  5.36s/it] 12%|#2        | 3/25 [00:13<01:16,  3.50s/it] 16%|#6        | 4/25 [00:14<00:54,  2.62s/it] 20%|##        | 5/25 [00:16<00:42,  2.12s/it] 24%|##4       | 6/25 [00:17<00:34,  1.83s/it] 28%|##8       | 7/25 [00:18<00:29,  1.65s/it] 32%|###2      | 8/25 [00:19<00:25,  1.52s/it] 36%|###6      | 9/25 [00:21<00:23,  1.44s/it] 40%|####      | 10/25 [00:22<00:20,  1.38s/it] 44%|####4     | 11/25 [00:23<00:18,  1.35s/it] 48%|####8     | 12/25 [00:25<00:17,  1.32s/it] 52%|#####2    | 13/25 [00:26<00:15,  1.30s/it] 56%|#####6    | 14/25 [00:27<00:14,  1.29s/it] 60%|######    | 15/25 [00:28<00:12,  1.28s/it] 64%|######4   | 16/25 [00:30<00:11,  1.27s/it] 68%|######8   | 17/25 [00:31<00:10,  1.27s/it] 72%|#######2  | 18/25 [00:32<00:08,  1.27s/it] 76%|#######6  | 19/25 [00:33<00:07,  1.27s/it] 80%|########  | 20/25 [00:35<00:06,  1.27s/it] 84%|########4 | 21/25 [00:36<00:05,  1.26s/it] 88%|########8 | 22/25 [00:37<00:03,  1.27s/it] 92%|#########2| 23/25 [00:38<00:02,  1.27s/it] 96%|#########6| 24/25 [00:40<00:01,  1.26s/it]100%|##########| 25/25 [00:41<00:00,  1.26s/it]100%|##########| 25/25 [00:41<00:00,  1.66s/it]
+  gen 2:   54.8s | VRAM pico 21258 MiB
+  --> en caliente: 54.8s
+
+=== TE int8, DiT bf16, SIN offload ===
+W0921 18:05:27.276000 53704 .venv\Lib\site-packages\torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+D:\QwenStudio\.venv\Lib\site-packages\diffusers\utils\deprecation_utils.py:23: FutureWarning: `torch_dtype` is deprecated and will be removed in version 1.0.0. Please use `dtype` instead.
+  deprecate("torch_dtype", "1.0.0", _TORCH_DTYPE_DEPRECATION_MESSAGE)
+Loading pipeline components...:   0%|          | 0/5 [00:00<?, ?it/s]
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s][ALoading checkpoint shards: 100%|##########| 2/2 [00:00<00:00, 47.57it/s]
+Loading pipeline components...:  20%|##        | 1/5 [00:00<00:00,  5.34it/s]
+Loading weights:   0%|          | 0/750 [00:00<?, ?it/s][A
+Loading weights:   0%|          | 1/750 [00:01<14:38,  1.17s/it][A
+Loading weights:   0%|          | 2/750 [00:02<15:44,  1.26s/it][A
+Loading weights:   1%|          | 4/750 [00:02<06:47,  1.83it/s][A
+Loading weights:   1%|          | 6/750 [00:02<04:08,  3.00it/s][A
+Loading weights:   2%|2         | 15/750 [00:03<01:12, 10.19it/s][A
+Loading weights:   2%|2         | 18/750 [00:03<01:05, 11.25it/s][A
+Loading weights:   3%|3         | 26/750 [00:03<00:40, 18.09it/s][A
+Loading weights:   4%|3         | 29/750 [00:03<00:41, 17.53it/s][A
+Loading weights:   5%|4         | 37/750 [00:03<00:29, 24.33it/s][A
+Loading weights:   5%|5         | 41/750 [00:04<00:30, 23.36it/s][A
+Loading weights:   6%|6         | 48/750 [00:04<00:25, 27.76it/s][A
+Loading weights:   7%|6         | 52/750 [00:04<00:27, 25.56it/s][A
+Loading weights:   8%|7         | 59/750 [00:04<00:23, 29.69it/s][A
+Loading weights:   8%|8         | 63/750 [00:04<00:25, 27.14it/s][A
+Loading weights:   9%|9         | 70/750 [00:04<00:22, 30.81it/s][A
+Loading weights:  10%|9         | 74/750 [00:05<00:24, 27.91it/s][A
+Loading weights:  11%|#         | 81/750 [00:05<00:21, 31.21it/s][A
+Loading weights:  11%|#1        | 85/750 [00:05<00:23, 28.16it/s][A
+Loading weights:  12%|#2        | 92/750 [00:05<00:20, 31.93it/s][A
+Loading weights:  13%|#2        | 96/750 [00:05<00:23, 28.34it/s][A
+Loading weights:  14%|#3        | 103/750 [00:06<00:20, 32.01it/s][A
+Loading weights:  14%|#4        | 107/750 [00:06<00:22, 28.70it/s][A
+Loading weights:  15%|#5        | 114/750 [00:06<00:19, 32.12it/s][A
+Loading weights:  16%|#5        | 118/750 [00:06<00:22, 28.60it/s][A
+Loading weights:  17%|#6        | 125/750 [00:06<00:19, 32.15it/s][A
+Loading weights:  17%|#7        | 129/750 [00:06<00:21, 28.80it/s][A
+Loading weights:  18%|#8        | 136/750 [00:07<00:19, 32.20it/s][A
+Loading weights:  19%|#8        | 140/750 [00:07<00:21, 28.71it/s][A
+Loading weights:  20%|#9        | 147/750 [00:07<00:18, 32.28it/s][A
+Loading weights:  20%|##        | 151/750 [00:07<00:20, 28.90it/s][A
+Loading weights:  21%|##1       | 158/750 [00:07<00:18, 32.31it/s][A
+Loading weights:  22%|##1       | 162/750 [00:08<00:20, 28.70it/s][A
+Loading weights:  23%|##2       | 169/750 [00:08<00:18, 31.70it/s][A
+Loading weights:  23%|##3       | 173/750 [00:08<00:20, 28.24it/s][A
+Loading weights:  24%|##4       | 180/750 [00:08<00:17, 31.75it/s][A
+Loading weights:  25%|##4       | 184/750 [00:08<00:20, 28.23it/s][A
+Loading weights:  25%|##5       | 191/750 [00:08<00:17, 31.49it/s][A
+Loading weights:  26%|##6       | 195/750 [00:09<00:20, 27.72it/s][A
+Loading weights:  27%|##6       | 202/750 [00:09<00:17, 30.82it/s][A
+Loading weights:  27%|##7       | 206/750 [00:09<00:20, 27.09it/s][A
+Loading weights:  28%|##8       | 213/750 [00:09<00:17, 30.17it/s][A
+Loading weights:  29%|##8       | 217/750 [00:09<00:19, 26.76it/s][A
+Loading weights:  30%|##9       | 224/750 [00:10<00:17, 29.87it/s][A
+Loading weights:  30%|###       | 228/750 [00:10<00:19, 26.74it/s][A
+Loading weights:  31%|###1      | 235/750 [00:10<00:17, 30.15it/s][A
+Loading weights:  32%|###1      | 239/750 [00:10<00:18, 26.96it/s][A
+Loading weights:  33%|###2      | 246/750 [00:10<00:16, 30.15it/s][A
+Loading weights:  33%|###3      | 250/750 [00:11<00:18, 27.07it/s][A
+Loading weights:  34%|###4      | 257/750 [00:11<00:16, 30.31it/s][A
+Loading weights:  35%|###4      | 261/750 [00:11<00:18, 27.14it/s][A
+Loading weights:  36%|###5      | 268/750 [00:11<00:15, 30.58it/s][A
+Loading weights:  36%|###6      | 272/750 [00:11<00:17, 27.10it/s][A
+Loading weights:  37%|###7      | 279/750 [00:12<00:15, 30.42it/s][A
+Loading weights:  38%|###7      | 283/750 [00:12<00:17, 27.27it/s][A
+Loading weights:  39%|###8      | 290/750 [00:12<00:15, 30.49it/s][A
+Loading weights:  39%|###9      | 294/750 [00:12<00:16, 27.36it/s][A
+Loading weights:  40%|####      | 301/750 [00:12<00:14, 30.46it/s][A
+Loading weights:  41%|####      | 305/750 [00:12<00:16, 26.84it/s][A
+Loading weights:  42%|####1     | 312/750 [00:13<00:14, 29.98it/s][A
+Loading weights:  42%|####2     | 316/750 [00:13<00:16, 26.31it/s][A
+Loading weights:  43%|####3     | 323/750 [00:13<00:14, 29.46it/s][A
+Loading weights:  43%|####3     | 326/750 [00:13<00:17, 24.77it/s][A
+Loading weights:  45%|####4     | 334/750 [00:13<00:13, 30.25it/s][A
+Loading weights:  45%|####5     | 338/750 [00:14<00:15, 27.12it/s][A
+Loading weights:  46%|####6     | 345/750 [00:14<00:13, 30.29it/s][A
+Loading weights:  47%|####6     | 349/750 [00:14<00:14, 27.25it/s][A
+Loading weights:  47%|####7     | 356/750 [00:14<00:12, 30.57it/s][A
+Loading weights:  48%|####8     | 360/750 [00:14<00:14, 27.22it/s][A
+Loading weights:  49%|####8     | 367/750 [00:15<00:12, 30.21it/s][A
+Loading weights:  49%|####9     | 371/750 [00:15<00:14, 26.94it/s][A
+Loading weights:  50%|#####     | 378/750 [00:15<00:12, 30.25it/s][A
+Loading weights:  51%|#####     | 382/750 [00:15<00:13, 27.15it/s][A
+Loading weights:  52%|#####1    | 389/750 [00:15<00:11, 30.42it/s][A
+Loading weights:  52%|#####2    | 393/750 [00:16<00:13, 27.19it/s][A
+Loading weights:  54%|#####4    | 405/750 [00:16<00:07, 43.48it/s][A
+Loading weights:  59%|#####8    | 441/750 [00:16<00:02, 107.62it/s][A
+Loading weights:  65%|######4   | 485/750 [00:16<00:01, 182.39it/s][A
+Loading weights:  70%|#######   | 525/750 [00:16<00:00, 232.20it/s][A
+Loading weights:  75%|#######5  | 563/750 [00:16<00:00, 268.95it/s][A
+Loading weights:  81%|########  | 605/750 [00:16<00:00, 307.14it/s][A
+Loading weights:  86%|########6 | 645/750 [00:16<00:00, 326.39it/s][A
+Loading weights:  91%|#########1| 683/750 [00:16<00:00, 338.64it/s][A
+Loading weights:  97%|#########6| 725/750 [00:17<00:00, 329.00it/s][ALoading weights: 100%|##########| 750/750 [00:17<00:00, 43.25it/s] 
+Loading pipeline components...:  40%|####      | 2/5 [00:17<00:31, 10.44s/it]Loading pipeline components...:  60%|######    | 3/5 [00:18<00:11,  5.83s/it]Loading pipeline components...: 100%|##########| 5/5 [00:18<00:00,  2.68s/it]Loading pipeline components...: 100%|##########| 5/5 [00:18<00:00,  3.73s/it]
+  carga 38s | VRAM tras cargar 24016 MiB
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+MatMul8bitLt: inputs will be cast from torch.bfloat16 to float16 during quantization
+
+=== TE nf4,  DiT bf16, SIN offload ===
+W0921 18:07:38.740000 47076 .venv\Lib\site-packages\torch\utils\flop_counter.py:29] triton not found; flop counting will not work for triton kernels
+D:\QwenStudio\.venv\Lib\site-packages\diffusers\utils\deprecation_utils.py:23: FutureWarning: `torch_dtype` is deprecated and will be removed in version 1.0.0. Please use `dtype` instead.
+  deprecate("torch_dtype", "1.0.0", _TORCH_DTYPE_DEPRECATION_MESSAGE)
+Loading pipeline components...:   0%|          | 0/5 [00:00<?, ?it/s]
+Loading weights:   0%|          | 0/750 [00:00<?, ?it/s][A
+Loading weights:   0%|          | 1/750 [00:01<13:57,  1.12s/it][A
+Loading weights:   0%|          | 2/750 [00:02<14:56,  1.20s/it][A
+Loading weights:   1%|          | 4/750 [00:02<06:12,  2.00it/s][A
+Loading weights:   1%|          | 5/750 [00:02<04:40,  2.66it/s][A
+Loading weights:   1%|          | 6/750 [00:02<03:37,  3.43it/s][A
+Loading weights:   2%|2         | 15/750 [00:02<00:56, 13.06it/s][A
+Loading weights:   2%|2         | 18/750 [00:03<00:56, 12.88it/s][A
+Loading weights:   3%|3         | 26/750 [00:03<00:36, 19.70it/s][A
+Loading weights:   4%|3         | 29/750 [00:03<00:38, 18.56it/s][A
+Loading weights:   5%|4         | 37/750 [00:03<00:28, 24.67it/s][A
+Loading weights:   5%|5         | 40/750 [00:03<00:32, 21.62it/s][A
+Loading weights:   6%|6         | 48/750 [00:04<00:25, 27.66it/s][A
+Loading weights:   7%|6         | 52/750 [00:04<00:27, 25.37it/s][A
+Loading weights:   8%|7         | 59/750 [00:04<00:24, 28.65it/s][A
+Loading weights:   8%|8         | 62/750 [00:04<00:28, 24.49it/s][A
+Loading weights:   9%|9         | 70/750 [00:04<00:22, 29.62it/s][A
+Loading weights:  10%|9         | 74/750 [00:05<00:25, 26.47it/s][A
+Loading weights:  11%|#         | 81/750 [00:05<00:22, 30.04it/s][A
+Loading weights:  11%|#1        | 85/750 [00:05<00:22, 29.07it/s][A
+Loading weights:  12%|#2        | 92/750 [00:05<00:19, 32.98it/s][A
+Loading weights:  13%|#2        | 96/750 [00:05<00:21, 30.62it/s][A
+Loading weights:  14%|#3        | 103/750 [00:05<00:18, 34.93it/s][A
+Loading weights:  14%|#4        | 107/750 [00:06<00:20, 31.24it/s][A
+Loading weights:  15%|#5        | 114/750 [00:06<00:19, 32.89it/s][A
+Loading weights:  16%|#5        | 118/750 [00:06<00:21, 29.15it/s][A
+Loading weights:  17%|#6        | 125/750 [00:06<00:17, 34.98it/s][A
+Loading weights:  17%|#7        | 129/750 [00:06<00:18, 33.70it/s][A
+Loading weights:  18%|#8        | 136/750 [00:06<00:17, 35.66it/s][A
+Loading weights:  19%|#8        | 140/750 [00:07<00:20, 30.03it/s][A
+Loading weights:  20%|#9        | 147/750 [00:07<00:18, 32.07it/s][A
+Loading weights:  20%|##        | 151/750 [00:07<00:21, 27.96it/s][A
+Loading weights:  21%|##1       | 158/750 [00:07<00:19, 30.53it/s][A
+Loading weights:  22%|##1       | 162/750 [00:07<00:21, 27.12it/s][A
+Loading weights:  23%|##2       | 169/750 [00:08<00:19, 29.76it/s][A
+Loading weights:  23%|##3       | 173/750 [00:08<00:22, 26.22it/s][A
+Loading weights:  24%|##4       | 180/750 [00:08<00:18, 30.73it/s][A
+Loading weights:  25%|##4       | 184/750 [00:08<00:18, 30.21it/s][A
+Loading weights:  25%|##5       | 191/750 [00:08<00:15, 35.27it/s][A
+Loading weights:  26%|##6       | 195/750 [00:08<00:18, 30.61it/s][A
+Loading weights:  27%|##6       | 202/750 [00:09<00:17, 32.22it/s][A
+Loading weights:  27%|##7       | 206/750 [00:09<00:19, 27.96it/s][A
+Loading weights:  28%|##8       | 213/750 [00:09<00:17, 30.07it/s][A
+Loading weights:  29%|##8       | 217/750 [00:09<00:19, 27.33it/s][A
+Loading weights:  30%|##9       | 224/750 [00:09<00:17, 29.90it/s][A
+Loading weights:  30%|###       | 228/750 [00:10<00:20, 25.71it/s][A
+Loading weights:  31%|###1      | 235/750 [00:10<00:17, 29.34it/s][A
+Loading weights:  32%|###1      | 239/750 [00:10<00:18, 27.24it/s][A
+Loading weights:  33%|###2      | 246/750 [00:10<00:15, 31.74it/s][A
+Loading weights:  33%|###3      | 250/750 [00:10<00:16, 30.01it/s][A
+Loading weights:  34%|###4      | 257/750 [00:11<00:15, 32.06it/s][A
+Loading weights:  35%|###4      | 261/750 [00:11<00:18, 26.82it/s][A
+Loading weights:  35%|###5      | 266/750 [00:11<00:15, 30.62it/s][A
+Loading weights:  36%|###6      | 270/750 [00:11<00:21, 22.06it/s][A
+Loading weights:  37%|###7      | 279/750 [00:11<00:15, 30.26it/s][A
+Loading weights:  38%|###7      | 283/750 [00:12<00:16, 28.70it/s][A
+Loading weights:  39%|###8      | 290/750 [00:12<00:14, 31.09it/s][A
+Loading weights:  39%|###9      | 294/750 [00:12<00:17, 26.12it/s][A
+Loading weights:  40%|###9      | 299/750 [00:12<00:15, 29.76it/s][A
+Loading weights:  40%|####      | 303/750 [00:12<00:21, 20.98it/s][A
+Loading weights:  41%|####1     | 309/750 [00:13<00:16, 26.92it/s][A
+Loading weights:  42%|####1     | 313/750 [00:13<00:19, 22.29it/s][A
+Loading weights:  42%|####2     | 316/750 [00:13<00:19, 22.37it/s][A
+Loading weights:  43%|####2     | 320/750 [00:13<00:16, 25.50it/s][A
+Loading weights:  43%|####3     | 324/750 [00:13<00:20, 20.80it/s][A
+Loading weights:  44%|####3     | 327/750 [00:13<00:19, 21.44it/s][A
+Loading weights:  44%|####4     | 331/750 [00:14<00:16, 25.04it/s][A
+Loading weights:  45%|####4     | 334/750 [00:14<00:17, 23.82it/s][A
+Loading weights:  45%|####4     | 337/750 [00:14<00:22, 18.51it/s][A
+Loading weights:  46%|####5     | 343/750 [00:14<00:15, 26.13it/s][A
+Loading weights:  46%|####6     | 347/750 [00:14<00:20, 19.94it/s][A
+Loading weights:  47%|####7     | 354/750 [00:15<00:14, 28.08it/s][A
+Loading weights:  48%|####7     | 358/750 [00:15<00:20, 19.45it/s][A
+Loading weights:  49%|####8     | 367/750 [00:15<00:14, 26.69it/s][A
+Loading weights:  49%|####9     | 371/750 [00:15<00:16, 23.22it/s][A
+Loading weights:  50%|#####     | 375/750 [00:15<00:14, 25.63it/s][A
+Loading weights:  51%|#####     | 379/750 [00:16<00:16, 21.90it/s][A
+Loading weights:  51%|#####     | 382/750 [00:16<00:16, 22.46it/s][A
+Loading weights:  51%|#####1    | 386/750 [00:16<00:14, 25.40it/s][A
+Loading weights:  52%|#####1    | 389/750 [00:16<00:14, 24.10it/s][A
+Loading weights:  52%|#####2    | 392/750 [00:16<00:18, 18.86it/s][A
+Loading weights:  53%|#####2    | 397/750 [00:16<00:14, 24.48it/s][A
+Loading weights:  56%|#####5    | 419/750 [00:17<00:05, 64.52it/s][A
+Loading weights:  60%|######    | 451/750 [00:17<00:02, 120.70it/s][A
+Loading weights:  64%|######3   | 477/750 [00:17<00:01, 152.12it/s][A
+Loading weights:  67%|######7   | 503/750 [00:17<00:01, 178.52it/s][A
+Loading weights:  71%|#######1  | 533/750 [00:17<00:01, 210.11it/s][A
+Loading weights:  75%|#######4  | 561/750 [00:17<00:00, 224.30it/s][A
+Loading weights:  80%|#######9  | 597/750 [00:17<00:00, 255.55it/s][A
+Loading weights:  84%|########4 | 633/750 [00:17<00:00, 284.47it/s][A
+Loading weights:  89%|########9 | 669/750 [00:17<00:00, 305.50it/s][A
+Loading weights:  93%|#########3| 701/750 [00:18<00:00, 301.65it/s][A
+Loading weights:  98%|#########7| 732/750 [00:18<00:00, 227.85it/s][ALoading weights: 100%|##########| 750/750 [00:18<00:00, 40.68it/s] 
+Loading pipeline components...:  20%|##        | 1/5 [00:19<01:16, 19.00s/it]Loading pipeline components...:  40%|####      | 2/5 [00:19<00:24,  8.13s/it]
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s][ALoading checkpoint shards: 100%|##########| 2/2 [00:00<00:00, 133.28it/s]
+Loading pipeline components...:  80%|########  | 4/5 [00:19<00:03,  3.15s/it]Loading pipeline components...: 100%|##########| 5/5 [00:19<00:00,  3.98s/it]
+  carga 35s | VRAM tras cargar 20792 MiB
+  0%|          | 0/25 [00:00<?, ?it/s]TODOS LISTOS

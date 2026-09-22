@@ -1,0 +1,242 @@
+[
+  {
+    "id": "cu_chin_up",
+    "label": "Chin up",
+    "framing": "closeup",
+    "group": "portrait",
+    "framing_label": "Close-up",
+    "group_label": "Portrait"
+  },
+  {
+    "id": "cu_front",
+    "label": "Front",
+    "framing": "closeup",
+    "group": "portrait",
+    "framing_label": "Close-up",
+    "group_label": "Portrait"
+  },
+  {
+    "id": "cu_hand_face",
+    "label": "Hand face",
+    "framing": "closeup",
+    "group": "portrait",
+    "framing_label": "Close-up",
+    "group_label": "Portrait"
+  },
+  {
+    "id": "cu_over_shldr",
+    "label": "Over shldr",
+    "framing": "closeup",
+    "group": "portrait",
+    "framing_label": "Close-up",
+    "group_label": "Portrait"
+  },
+  {
+    "id": "cu_profile",
+    "label": "Profile",
+    "framing": "closeup",
+    "group": "portrait",
+    "framing_label": "Close-up",
+    "group_label": "Portrait"
+  },
+  {
+    "id": "cu_three_q",
+    "label": "Three q",
+    "framing": "closeup",
+    "group": "portrait",
+    "framing_label": "Close-up",
+    "group_label": "Portrait"
+  },
+  {
+    "id": "hb_pointing",
+    "label": "Pointing",
+    "framing": "half",
+    "group": "business",
+    "framing_label": "Half body",
+    "group_label": "Business"
+  },
+  {
+    "id": "hb_presenting",
+    "label": "Presenting",
+    "framing": "half",
+    "group": "business",
+    "framing_label": "Half body",
+    "group_label": "Business"
+  },
+  {
+    "id": "hb_arms_cross",
+    "label": "Arms cross",
+    "framing": "half",
+    "group": "casual",
+    "framing_label": "Half body",
+    "group_label": "Casual"
+  },
+  {
+    "id": "hb_arms_hips",
+    "label": "Arms hips",
+    "framing": "half",
+    "group": "casual",
+    "framing_label": "Half body",
+    "group_label": "Casual"
+  },
+  {
+    "id": "hb_hand_chin",
+    "label": "Hand chin",
+    "framing": "half",
+    "group": "casual",
+    "framing_label": "Half body",
+    "group_label": "Casual"
+  },
+  {
+    "id": "hb_holding_cup",
+    "label": "Holding cup",
+    "framing": "half",
+    "group": "casual",
+    "framing_label": "Half body",
+    "group_label": "Casual"
+  },
+  {
+    "id": "hb_waving",
+    "label": "Waving",
+    "framing": "half",
+    "group": "casual",
+    "framing_label": "Half body",
+    "group_label": "Casual"
+  },
+  {
+    "id": "st_chair",
+    "label": "Chair",
+    "framing": "half",
+    "group": "seated",
+    "framing_label": "Half body",
+    "group_label": "Seated"
+  },
+  {
+    "id": "sp_boxing",
+    "label": "Boxing",
+    "framing": "half",
+    "group": "sports",
+    "framing_label": "Half body",
+    "group_label": "Sports"
+  },
+  {
+    "id": "fb_suit_walk",
+    "label": "Suit walk",
+    "framing": "full",
+    "group": "business",
+    "framing_label": "Full body",
+    "group_label": "Business"
+  },
+  {
+    "id": "fb_arms_open",
+    "label": "Arms open",
+    "framing": "full",
+    "group": "casual",
+    "framing_label": "Full body",
+    "group_label": "Casual"
+  },
+  {
+    "id": "fb_arms_up",
+    "label": "Arms up",
+    "framing": "full",
+    "group": "casual",
+    "framing_label": "Full body",
+    "group_label": "Casual"
+  },
+  {
+    "id": "fb_pockets",
+    "label": "Pockets",
+    "framing": "full",
+    "group": "casual",
+    "framing_label": "Full body",
+    "group_label": "Casual"
+  },
+  {
+    "id": "fb_stand",
+    "label": "Stand",
+    "framing": "full",
+    "group": "casual",
+    "framing_label": "Full body",
+    "group_label": "Casual"
+  },
+  {
+    "id": "fb_walking",
+    "label": "Walking",
+    "framing": "full",
+    "group": "casual",
+    "framing_label": "Full body",
+    "group_label": "Casual"
+  },
+  {
+    "id": "fb_hand_hip",
+    "label": "Hand hip",
+    "framing": "full",
+    "group": "fashion",
+    "framing_label": "Full body",
+    "group_label": "Fashion"
+  },
+  {
+    "id": "fb_lean_wall",
+    "label": "Lean wall",
+    "framing": "full",
+    "group": "fashion",
+    "framing_label": "Full body",
+    "group_label": "Fashion"
+  },
+  {
+    "id": "st_crossed",
+    "label": "Crossed",
+    "framing": "full",
+    "group": "seated",
+    "framing_label": "Full body",
+    "group_label": "Seated"
+  },
+  {
+    "id": "st_floor",
+    "label": "Floor",
+    "framing": "full",
+    "group": "seated",
+    "framing_label": "Full body",
+    "group_label": "Seated"
+  },
+  {
+    "id": "sp_jump",
+    "label": "Jump",
+    "framing": "full",
+    "group": "sports",
+    "framing_label": "Full body",
+    "group_label": "Sports"
+  },
+  {
+    "id": "sp_run",
+    "label": "Run",
+    "framing": "full",
+    "group": "sports",
+    "framing_label": "Full body",
+    "group_label": "Sports"
+  },
+  {
+    "id": "sp_squat",
+    "label": "Squat",
+    "framing": "full",
+    "group": "sports",
+    "framing_label": "Full body",
+    "group_label": "Sports"
+  },
+  {
+    "id": "sp_stretch",
+    "label": "Stretch",
+    "framing": "full",
+    "group": "sports",
+    "framing_label": "Full body",
+    "group_label": "Sports"
+  },
+  {
+    "id": "sp_yoga",
+    "label": "Yoga",
+    "framing": "full",
+    "group": "sports",
+    "framing_label": "Full body",
+    "group_label": "Sports"
+  }
+]
