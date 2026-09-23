@@ -41,8 +41,10 @@ PANTALLAS: dict[str, tuple[str, int]] = {
     "ui-portrait": ("?caso=portrait", ALTO),
     "ui-text":     ("?caso=sign", ALTO),
     "ui-vitrina":  ("?caso=blank", 1150),
-    # el pie queda al final de una pagina larga: se toma entera y se recorta
-    "ui-indice":   ("?caso=look", 3000),
+    # el pie queda al final de una pagina larga: se toma entera y se recorta.
+    # La altura se mide en vez de fijarla: la vitrina crece y una ventana corta
+    # hacia que el recorte cayera sobre las miniaturas en vez de sobre el pie.
+    "ui-indice":   ("?caso=look", 0),
     "ui-brush":    ("?caso=replace&abrir=mask", ALTO),
     "ui-poses":    ("?caso=pose&abrir=poses", ALTO),
     "ui-looks":    ("?caso=look&abrir=efectos", ALTO),
@@ -75,6 +77,8 @@ def tomar(nombre: str, enlace: str, alto: int, chrome: str) -> None:
     destino = os.path.join(DOCS, nombre + ".png")
     # virtual-time-budget deja correr los temporizadores de la pagina: los
     # dialogos se abren con setTimeout y las miniaturas cargan en diferido
+    if alto == 0:
+        alto = _alto_de_pagina(enlace, chrome)
     cmd = [chrome, "--headless=new", "--disable-gpu", "--hide-scrollbars",
            "--force-device-scale-factor=1", f"--window-size={ANCHO},{alto}",
            "--virtual-time-budget=9000", f"--screenshot={destino}",
@@ -87,6 +91,25 @@ def tomar(nombre: str, enlace: str, alto: int, chrome: str) -> None:
         alto = _recortar_al_pie(destino)
     kb = round(os.path.getsize(destino) / 1024)
     print(f"  {nombre:14} {ANCHO}x{alto}  {kb} KB  {round(time.time()-t0)}s")
+
+
+def _alto_de_pagina(enlace: str, chrome: str) -> int:
+    """Cuanto mide la pagina de verdad, para que quepa entera en la captura."""
+    import json
+    import tempfile
+    d = tempfile.mkdtemp()
+    cmd = [chrome, "--headless=new", "--disable-gpu", f"--window-size={ANCHO},1200",
+           "--virtual-time-budget=9000", "--dump-dom", APP + "/" + enlace]
+    subprocess.run(cmd, capture_output=True, text=True, timeout=180)
+    # --dump-dom no da la altura: se pide a la propia app cuantas piezas hay y
+    # se acota generosamente. Mas simple y no falla en silencio.
+    try:
+        import urllib.request
+        with urllib.request.urlopen(APP + "/api/vitrina", timeout=30) as r:
+            n = len(json.load(r))
+    except Exception:
+        n = 30
+    return 1800 + n * 130
 
 
 def _recortar_al_pie(ruta: str) -> int:

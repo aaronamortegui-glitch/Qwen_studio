@@ -279,6 +279,42 @@ def inpaint(image: str, prompt: str, select: str = "", mask: str | None = None,
     return _rutas(resp)
 
 
+@mcp.tool()
+def list_looks() -> list:
+    """The treatments the looks grid offers: id, name, group, and whether it is ready.
+
+    A look that needs a LoRA reports which file it wants; it stays listed rather
+    than disappearing, so the answer to "why can I not use it" is in the list.
+    """
+    return _pedir("/api/efectos")
+
+
+@mcp.tool()
+def apply_look(image: str, look: str, select: str = "", mask: str | None = None,
+               megapixels: float = 1.0, steps: int = 25, seed: int = 0,
+               feather: int = 12, padding: float = 0.35) -> dict:
+    """Apply one of the looks to a photograph, whole or in one region.
+
+    look: an id from `list_looks` (for example "bw", "golden", "cine", "clay").
+    select: optionally, what part of the photo it applies to, in words
+        ("the woman", "the sky"). Leave it empty and the look covers the frame.
+    mask: instead of words, a black and white image the same size as `image`,
+        white where the look should land.
+
+    With a region it goes through the same crop-and-stitch as a replacement, so
+    everything outside it comes back byte for byte.
+    """
+    resp = _pedir("/api/efecto", {
+        "imagen": _data_url(image), "efecto": look,
+        "frase": select, "mascara": _data_url(mask) if mask else None,
+        "megapixeles": megapixels, "steps": steps, "seed": seed,
+        "difuminado": feather, "padding": padding,
+    })
+    if resp.get("error"):
+        raise RuntimeError(resp["error"])
+    return _rutas(resp)
+
+
 def main() -> None:
     mcp.run()
 

@@ -139,7 +139,21 @@ def revisar() -> list[str]:
             fallos.append(f"color:var({t}) ({v}, oscuro) en `{sel[:40]}`: "
                           "sin version para el tema oscuro")
 
-    # --- 8. lo que el usuario lee, en ingles -------------------------------
+    # --- 8. innerHTML+= sobre un contenedor al que ademas se le hace append -
+    # asignar innerHTML vuelve a parsear el contenedor entero y sustituye los
+    # nodos ya puestos por copias nuevas, que pierden los onclick asignados por
+    # codigo. Paso de verdad: en la biblioteca de prompts solo respondian los
+    # botones de la ultima categoria.
+    for m in re.finditer(r"(\w+)\.innerHTML\s*\+=", cuerpo):
+        cont = m.group(1)
+        ventana = cuerpo[max(0, m.start() - 1500):m.start() + 1500]
+        if re.search(re.escape(cont) + r"\.append\(", ventana) and ".onclick" in ventana:
+            linea = cuerpo[:m.start()].count(chr(10)) + 1
+            fallos.append(f"{cont}.innerHTML+= junto a {cont}.append() con "
+                          f"onclick cerca (linea ~{linea} del cuerpo): "
+                          "los manejadores ya puestos se pierden")
+
+    # --- 9. lo que el usuario lee, en ingles -------------------------------
     # los comentarios van en castellano a proposito; el texto visible no
     for m in re.finditer(r"<(?:b|small|label|h2|h3|p)>([^<>{}$`]{8,})<", cuerpo):
         t = m.group(1)
@@ -163,6 +177,7 @@ SALIDA_AL_USUARIO = [
 CASTELLANO = re.compile(
     r"\b(el|la|los|las|una|unos|unas|para|con|sin|que|por|desde|cuando|hay|esto|"
     r"esta|este|pude|puede|debe|tiene|solo|pero|como|donde|archivo|imagen|modelo"
+    r"|invalido|valido|vacio|error de|fallo|cargar el|guardar"
     r"|nada|todo)\b")
 # palabras que son iguales en los dos idiomas o nombres propios
 PERDON = re.compile(r"^[A-Za-z0-9_./-]+$")

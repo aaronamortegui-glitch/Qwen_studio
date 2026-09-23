@@ -209,9 +209,11 @@ input[type=checkbox],input[type=radio]{width:auto;accent-color:var(--verde)}
 details>summary{cursor:pointer;font-size:13px;color:var(--link);margin-top:18px;
   user-select:none;padding:10px 0;font-weight:500}
 .barraPrompt{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+/* cuatro herramientas que caben en una fila: a dos filas competian con la
+   caja de prompt a la que pertenecen */
 .barraPrompt button{border:1px solid var(--line);background:transparent;color:var(--on-sf);
-  border-radius:var(--r-full);padding:0 16px;height:34px;font:inherit;font-size:13px;
-  font-weight:500;cursor:pointer;display:inline-flex;align-items:center}
+  border-radius:var(--r-full);padding:0 12px;height:32px;font:inherit;font-size:12px;
+  font-weight:500;cursor:pointer;display:inline-flex;align-items:center;white-space:nowrap}
 .barraPrompt button:hover{background:var(--sf-2)}
 .barraPrompt button:disabled{opacity:.4;cursor:default}
 
@@ -348,6 +350,39 @@ details>summary{cursor:pointer;font-size:13px;color:var(--link);margin-top:18px;
   background:repeating-conic-gradient(var(--sf-2) 0 25%,transparent 0 50%) 50%/18px 18px}
 .gal figcaption{padding:11px 15px;font-size:12px;color:var(--on-sf-var);
   display:flex;justify-content:space-between;gap:8px;align-items:center}
+/* ---- la barra de accion, pegada abajo ---- */
+.accion{position:sticky;bottom:0;z-index:5;background:var(--sf);
+  padding:12px 0 calc(4px + env(safe-area-inset-bottom,0px));
+  margin-top:10px;border-top:1px solid var(--line-soft)}
+.accionInfo{display:flex;gap:10px;align-items:baseline;font-size:12px;
+  color:var(--on-sf-var);margin-bottom:8px;min-height:17px}
+.accionInfo b{color:var(--on-sf);font-weight:500}
+.accionInfo .sep{opacity:.45}
+.accion .go{margin-top:0}
+.barra{height:4px;border-radius:999px;background:var(--sf-2);overflow:hidden;
+  margin-top:10px}
+.barra>i{display:block;height:100%;width:0;background:var(--ac-2);
+  border-radius:999px;transition:width .35s linear}
+.filaParar{display:flex;align-items:center;gap:10px;margin-top:9px;font-size:12px;
+  color:var(--on-sf-var)}
+.filaParar .ghost{height:30px;padding:0 14px;font-size:12px}
+/* un aviso dentro de un dialogo se pone arriba del todo, donde se mira */
+.notaDlg{margin:0 0 12px;padding:10px 13px;border-radius:var(--r-s);
+  background:var(--warn-cont);color:var(--on-sf);font-size:12.5px;line-height:1.5}
+.notaDlg.mal{background:var(--bad-cont);color:var(--on-bad-cont)}
+
+/* En pantalla tactil nada que se pueda pulsar baja de 44 px. La x que quita
+   una foto medía 22 y ademas no se puede deshacer, que es la peor combinacion
+   posible. En raton se deja pequena: ahi la precision no es el problema. */
+@media (pointer:coarse){
+  .tira button,.quitar{width:44px;height:44px;font-size:18px}
+  input[type=checkbox],input[type=radio]{width:24px;height:24px}
+  .gal figcaption a,.gal figcaption .receta,.gal figcaption .cmp{min-height:44px;
+    display:inline-flex;align-items:center}
+  .indice button{padding:11px 8px}
+}
+.etiq{display:block;font-size:12px;color:var(--on-sf-var);margin-bottom:5px}
+
 /* ---- el pie: indice de capacidades y aviso ---- */
 #pie{border-top:1px solid var(--line);background:var(--sf-1);margin-top:8px;
   padding:34px 20px 26px}
@@ -536,19 +571,22 @@ if(t!=='auto')document.documentElement.setAttribute('data-theme',t);})();</scrip
       <div class="sec" style="margin-top:8px"><h2>Format</h2></div>
       <div class="chips" id="ratios"></div>
       <div class="grid2" style="margin-top:10px">
-        <div><label>Quality</label><select id="mp">
+        <div><label for="mp">Quality</label><select id="mp">
           <option value="1">1 MP · fast</option><option value="2">2 MP · medium</option>
           <option value="4">4 MP · 2K native</option></select></div>
-        <div><label>Output</label><div class="medida" id="medida">1024 × 1024</div></div>
+        <div><span class="etiq">Output</span>
+          <div class="medida" id="medida" role="status">1024 × 1024</div></div>
       </div>
 
       <div class="sec" style="margin-top:12px"><h2>Sampling</h2></div>
-      <label>Steps · <b id="vSteps">25</b></label>
+      <label for="steps">Steps · <b id="vSteps">25</b></label>
       <input type="range" id="steps" min="8" max="50" value="25">
       <div class="marcas"><span>8 · draft</span><span>25</span><span>40 · model card</span><span>50</span></div>
       <div class="grid2" style="margin-top:10px">
-        <div><label>Seed (0 = random)</label><input type="number" id="seed" value="0"></div>
-        <div><label>Variants</label><input type="number" id="variants" value="1" min="1" max="4"></div>
+        <div><label for="seed">Seed (0 = random)</label>
+          <input type="number" id="seed" value="0"></div>
+        <div><label for="variants">Variants</label>
+          <input type="number" id="variants" value="1" min="1" max="4"></div>
       </div>
 
 
@@ -557,21 +595,38 @@ if(t!=='auto')document.documentElement.setAttribute('data-theme',t);})();</scrip
         <div class="hint" id="avisoMaskAv" hidden>Grow and Threshold belong to the text
           segmenter. A painted mask is used exactly as drawn, so they do nothing right now.</div>
         <div class="grid2">
-          <div><label>Grow (px)</label><input type="number" id="grow" value="8" min="-20" max="60"></div>
-          <div><label>Feather (px)</label><input type="number" id="feather" value="12" min="0" max="60"></div>
+          <div><label for="grow">Grow (px)</label>
+            <input type="number" id="grow" value="8" min="-20" max="60"></div>
+          <div><label for="feather">Feather (px)</label>
+            <input type="number" id="feather" value="12" min="0" max="60"></div>
         </div>
         <div class="grid2" style="margin-top:9px">
-          <div><label>Threshold</label><input type="number" id="thr" value="0.5" step="0.05" min="0.1" max="0.9"></div>
-          <div><label>Context padding</label><input type="number" id="pad" value="0.35" step="0.05" min="0" max="1.5"></div>
+          <div><label for="thr">Threshold</label>
+            <input type="number" id="thr" value="0.5" step="0.05" min="0.1" max="0.9"></div>
+          <div><label for="pad">Context padding</label>
+            <input type="number" id="pad" value="0.35" step="0.05" min="0" max="1.5"></div>
         </div>
       </div>
 
       <label class="sw"><input type="checkbox" id="transp"> Transparent background (PNG with alpha)</label>
     </details>
 
-    <button class="go" id="go">Generate</button>
-    <button class="go alt" id="verMask" hidden>Preview the selection</button>
-    <div id="avisos"></div>
+    <div class="accion">
+      <div class="accionInfo">
+        <span id="accTam"></span>
+        <span class="sep" id="accSep" hidden>&middot;</span>
+        <span id="accTiempo"></span>
+      </div>
+      <button class="go" id="go">Generate</button>
+      <button class="go alt" id="verMask" hidden>Preview the selection</button>
+      <div class="barra" id="barra" hidden><i id="barraLlena"></i></div>
+      <div class="filaParar" id="filaParar" hidden>
+        <span id="accPaso" role="status" aria-live="polite"></span>
+        <span style="flex:1"></span>
+        <button type="button" class="ghost" id="parar">Stop</button>
+      </div>
+      <div id="avisos" role="status" aria-live="polite"></div>
+    </div>
   </div>
 </div>
 
@@ -912,7 +967,7 @@ async function derivarPose(file){
   if(s)s.textContent='extracting skeleton...';
   try{
     const r=await (await fetch('/api/pose',{method:'POST',body:JSON.stringify({imagen:await leer(file)})})).json();
-    if(r.error)alert('Could not extract the pose: '+r.error);
+    if(r.error)avisar('Could not extract the pose: '+r.error, true);
     else{S.img.pose=[r.esqueleto];S.poseLib=null;repintar()}
   }finally{ if(s&&orig){s.innerHTML=orig; enlazarLib()} }
 }
@@ -935,15 +990,17 @@ function construirCampos(){
   if(c.mode==='inpaint' || c.mode==='efecto'){
     const porTexto = c.mode==='inpaint';
     const campo = porTexto
-      ? `<label>What should be replaced</label>
-         <input type="text" id="seleccion" placeholder="the yellow sweater" value="the yellow sweater">
+      ? `<div class="sec"><h2><i>3</i>What should be replaced</h2></div>
+         <input type="text" id="seleccion" aria-label="What should be replaced"
+           placeholder="the yellow sweater" value="the yellow sweater">
          <div class="hint">Plain words work best: "the jacket", "the hair", "the background".
            Two models read them: CLIPSeg finds the thing, SAM 2 makes the edge follow it.</div>`
-      : `<label>Where it applies <span class="opt-tag">optional</span></label>
+      : `<div class="sec"><h2><i>3</i>Where it applies
+           <span class="opt-tag">optional</span></h2></div>
          <div class="hint" style="margin-top:0">Leave this alone and the look covers the whole
            photograph. Paint a region and it goes only there — relight a face, turn just the
            subject to clay — and everything outside comes back untouched.</div>`;
-    cont.innerHTML=`<div class="sec"></div>${campo}
+    cont.innerHTML=`${campo}
       <div class="barraPrompt">
         <button type="button" id="btnPintar">${porTexto?'Paint it by hand':'Paint a region'}</button>
         <button type="button" id="btnQuitarMask" hidden>${porTexto?'Back to words':'Whole photo again'}</button>
@@ -956,7 +1013,13 @@ function construirCampos(){
   const etiqueta = c.mode==='inpaint' ? 'What should go there instead'
     : c.mode==='efecto' ? 'The look'
     : 'Instruction';
-  $('#lblPrompt').innerHTML=`<i>${$('#lblPrompt').dataset.n||'3'}</i>`+etiqueta;
+  // los dos caminos de edicion ya han gastado el 3 en la region
+  const nPaso = (c.mode==='inpaint'||c.mode==='efecto')
+    ? '4' : ($('#lblPrompt').dataset.n||'3');
+  $('#lblPrompt').innerHTML=`<i>${nPaso}</i><span id="lblPromptTxt">${etiqueta}</span>`;
+  // es un <h2>, no un <label>: for= no ata nada, aria-labelledby si, y de paso
+  // el numero del paso no entra en el nombre que se anuncia
+  $('#prompt').setAttribute('aria-labelledby','lblPromptTxt');
   // en estos dos el prompt no se escribe: uno se escoge y el otro es fijo
   $('#prompt').hidden = c.mode==='efecto';
   $('#barraPrompt').hidden = c.mode==='efecto';
@@ -982,7 +1045,7 @@ function aplicarCaso(k){
   $('#zonas').hidden=sinEntradas;
   $('#tituloEntradas').innerHTML='<i>2</i>'+(c.mode==='inpaint'?'Image':'Inputs');
   $('#lblPrompt').dataset.n=sinEntradas?'2':'3';
-  construirZonas(); construirCampos(); medida();
+  construirZonas(); construirCampos(); medida(); estimar();
   if(S.esEjemplo) cargarEjemplo(k); else document.getElementById('notaEjemplo')?.remove();
 }
 let CAT='photo';
@@ -1022,11 +1085,14 @@ const cr=$('#ratios');
 const marcarRatio=()=>[...cr.children].forEach(x=>x.setAttribute('aria-pressed',x.dataset.r===S.ratio));
 function medida(){
   const mp=+$('#mp').value;
+  setTimeout(estimar, 0);
   if(S.ratio==='auto'){$('#medida').textContent=`~${mp} MP · from the reference`;return}
   const [a,b]=S.ratio.split(':').map(Number),r=a/b,area=mp*1024*1024;
   $('#medida').textContent=`${Math.round(Math.sqrt(area*r)/32)*32} × ${Math.round(Math.sqrt(area/r)/32)*32}`;
 }
-$('#mp').onchange=medida;
+$('#mp').onchange=()=>{medida();estimar()};
+$('#variants').oninput=estimar;
+$('#steps').addEventListener('input', estimar);
 $('#steps').oninput=()=>$('#vSteps').textContent=$('#steps').value;
 
 /* ---------- pose library + loras ---------- */
@@ -1104,7 +1170,9 @@ async function tick(){
     +(montados.length?` · mounted: ${montados.join(', ')}`:'');
   if($('#cfgHw')) $('#cfgHw').textContent=hw;
 
-  const s=$('#setup'); pesosListos=e.pesos_listos;
+  const s=$('#setup'); const antes=pesosListos; pesosListos=e.pesos_listos;
+  // el estado llega despues del primer pintado: la estimacion se entera aqui
+  if(antes!==pesosListos && typeof estimar==='function') estimar();
   if(e.descarga.activa){
     const pct=e.descarga.total_gb?(e.descarga.gb/e.descarga.total_gb*100):0;
     s.innerHTML=`<h2>Downloading the model</h2>
@@ -1234,7 +1302,7 @@ $('#chipVram').onclick=async()=>{
   try{
     const r=await (await fetch('/api/liberar',{method:'POST'})).json();
     await medirVram();
-    if(r.error) alert(r.error);
+    if(r.error) avisar(r.error, true);
   }catch(_){ c.textContent=antes }
 };
 function ponerEstado(clase, txt){
@@ -1270,7 +1338,8 @@ function tarjeta(im, antes){
   const c=document.createElement('figcaption');
   const nombre=(im.archivo||'').split('/').pop()||'qwenstudio.png';
   c.innerHTML=`<span>${im.seed!==undefined?'seed '+im.seed:''}${im.tam?' · '+im.tam:''}</span>
-    <span class="acciones"><a href="#" class="receta">recipe</a>
+    <span class="acciones"><a href="#" class="otra">another</a>
+      <a href="#" class="receta">recipe</a>
       <a href="#" class="cmp">compare</a>
       <a class="iconobtn" href="${im.archivo}" download="${nombre}"
          title="Download this image">${svg('descarga',15)}</a></span>`;
@@ -1278,6 +1347,14 @@ function tarjeta(im, antes){
   // en una comparacion antes/despues la imagen no se puede pulsar -- ese gesto
   // mueve el separador -- asi que la receta vive siempre en el pie
   c.querySelector('.receta').onclick=e=>{e.preventDefault();recetaDe(im, antes)};
+  // lo primero que se quiere al ver un resultado: lo mismo con otra semilla
+  c.querySelector('.otra').onclick=e=>{
+    e.preventDefault();
+    $('#seed').value=Math.floor(Math.random()*100000);
+    estimar();
+    $('#go').scrollIntoView({behavior:'smooth', block:'center'});
+    $('#go').click();
+  };
   f.append(c); f.dataset.src=im.archivo; return f;
 }
 
@@ -1421,7 +1498,7 @@ function tarjetaVitrina(p){
   const f=document.createElement('figure');
   f.tabIndex=0; f.dataset.k=p.clave;
   const et=(CASOS[p.caso]||{}).name||p.caso;
-  f.innerHTML=`<img src="${p.archivo}" alt="" loading="lazy">
+  f.innerHTML=`<img src="${p.archivo}" alt="${p.titulo}, made with this app" loading="lazy">
     <figcaption><b>${p.titulo}</b><small>${p.que}</small>
       <span class="vitCaso">${et}</span></figcaption>`;
   const abrir=()=>abrirDetalle(p.archivo, {...p.meta, caso_ui:p.caso},
@@ -1558,7 +1635,7 @@ It stays on disk; `+
                   'empty that folder yourself when you want it gone.')) return;
       const r=await (await fetch('/api/borrar',{method:'POST',
         body:JSON.stringify({nombre:it.nombre})})).json();
-      if(r.error){ alert(r.error); return }
+      if(r.error){ avisar(r.error, true); return }
       f.remove();
       const quedan=document.querySelectorAll('#glGrid figure').length;
       $('#glCuenta').textContent = quedan+' file'+(quedan===1?'':'s');
@@ -1573,7 +1650,7 @@ $('#glCarpeta').onclick=async()=>{
   const b=$('#glCarpeta'); b.disabled=true;
   try{
     const r=await (await fetch('/api/abrir_carpeta',{method:'POST'})).json();
-    if(r.error) alert(r.error+'\n\n'+r.carpeta);
+    if(r.error) avisar(r.error+' \u2014 '+r.carpeta, true);
   }finally{ b.disabled=false }
 };
 
@@ -1609,7 +1686,7 @@ function pintarEstadoMask(){
 let MK={ctx:null, pintando:false, modo:'pintar', tam:60, ratio:1};
 function abrirPincel(){
   const src=(S.img.source||[])[0];
-  if(!src){alert('Add the image you want to edit first.');return}
+  if(!src){avisar('Add the image you want to edit first.');return}
   const img=$('#mkImg'), cv=$('#mkCv');
   img.onload=()=>{
     cv.width=img.naturalWidth; cv.height=img.naturalHeight;
@@ -1680,7 +1757,7 @@ function mkTrazo(ev){
       if(v) algo=true;
       out.data[i]=out.data[i+1]=out.data[i+2]=v; out.data[i+3]=255;
     }
-    if(!algo){alert('Nothing is painted yet.');return}
+    if(!algo){avisar('Nothing is painted yet.');return}
     fc.putImageData(out,0,0);
     S.mascara=fuera.toDataURL('image/png');
     pintarEstadoMask(); $('#mk').close();
@@ -1689,36 +1766,132 @@ function mkTrazo(ev){
 })();
 
 /* ---------- actions ---------- */
+/* ---------- avisos sin modal ----------
+   alert() bloquea el hilo, no se puede copiar comodo, no lo anuncia ningun
+   lector y no se parece a nada del resto de la interfaz. Esto escribe donde el
+   usuario ya esta mirando: dentro del dialogo abierto si lo hay, y si no, bajo
+   el boton de generar. */
+function avisar(texto, mal){
+  const abierto=[...document.querySelectorAll('dialog')].find(d=>d.open);
+  if(abierto){
+    abierto.querySelectorAll('.notaDlg').forEach(n=>n.remove());
+    const n=document.createElement('div');
+    n.className='notaDlg'+(mal?' mal':''); n.setAttribute('role','status');
+    n.setAttribute('aria-live','polite'); n.textContent=texto;
+    abierto.prepend(n);
+    setTimeout(()=>n.remove(), 9000);
+    return;
+  }
+  const c=$('#avisos');
+  c.innerHTML=`<div class="nota${mal?' mal':''}">${texto}</div>`;
+  c.scrollIntoView({behavior:'smooth', block:'nearest'});
+  setTimeout(()=>{ if(c.textContent===texto) c.innerHTML=''; }, 9000);
+}
+
+/* ---------- cuanto va a tardar ----------
+   El coste es casi lineal en pasos y en pixeles, mas una parte fija. Se arranca
+   con lo medido aqui y despues de cada generacion se corrige con lo que acabo
+   de tardar de verdad, que es la unica cifra que vale para la tarjeta de quien
+   lo este usando. */
+/* Medido aqui a 25 pasos: 1 MP 62s, 2 MP 94s, 4 MP 239s. Cuadratico en
+   megapixeles porque la atencion crece con el cuadrado de los tokens; los pasos
+   pesan poco porque manda el coste fijo de cada llamada. */
+const CURVA={a:50.4, b:11.79};
+function factorMaquina(){
+  try{ const f=parseFloat(localStorage.getItem('qs_factor'));
+       if(f>0.05 && f<40) return f; }catch(_){}
+  return 1;
+}
+function baseSegundos(mp, pasos){
+  return (CURVA.a + CURVA.b*mp*mp) * (0.8 + 0.2*(pasos/25));
+}
+function aprender(segundos, mp, pasos){
+  const esperado=baseSegundos(mp, pasos);
+  if(esperado<=0) return;
+  // una constante por maquina, suavizada: una generacion rara no la tuerce
+  const f=factorMaquina()*0.7 + (segundos/esperado)*0.3;
+  try{ localStorage.setItem('qs_factor', String(f)); }catch(_){}
+}
+function enPalabras(sg){
+  if(sg<45) return `about ${Math.max(5,Math.round(sg/5)*5)} seconds`;
+  const m=sg/60;
+  if(m<1.6) return 'about a minute';
+  if(m<10){ const h=Math.round(m*2)/2;
+            return 'about '+(h%1?Math.floor(h)+'\u00bd':h)+' minutes'; }
+  return `about ${Math.round(m)} minutes`;
+}
+function estimar(){
+  if(!$('#accTam')) return;
+  const mp=+$('#mp').value, pasos=+$('#steps').value;
+  const n=Math.max(1,+$('#variants').value||1);
+  const sg=baseSegundos(mp, pasos)*factorMaquina()*n;
+  const tam=$('#medida').textContent.trim();
+  $('#accTam').innerHTML = tam ? `<b>${tam}</b>` : '';
+  $('#accTiempo').textContent = pesosListos
+    ? enPalabras(sg)+(n>1?` for ${n}`:'')
+    : 'the weights still have to download';
+  $('#accSep').hidden = !tam;
+}
+
+/* ---------- por que paso va, y como pararlo ---------- */
+let VIGILA=null;
+function seguirProgreso(){
+  $('#barra').hidden=false; $('#filaParar').hidden=false;
+  $('#barraLlena').style.width='0%';
+  $('#accPaso').textContent='starting\u2026';
+  VIGILA=setInterval(async()=>{
+    try{
+      const p=await (await fetch('/api/progreso')).json();
+      if(!p.activo || !p.total) return;
+      const pct=Math.round(p.paso/p.total*100);
+      $('#barraLlena').style.width=pct+'%';
+      $('#accPaso').textContent=`step ${p.paso} of ${p.total}`
+        +(p.restante!==null&&p.restante!==undefined?` \u00b7 ${enPalabras(p.restante)} left`:'');
+    }catch(_){}
+  }, 700);
+}
+function pararProgreso(){
+  if(VIGILA) clearInterval(VIGILA);
+  VIGILA=null;
+  $('#barra').hidden=true; $('#filaParar').hidden=true;
+  $('#accPaso').textContent='';
+}
+$('#parar').onclick=async()=>{
+  $('#parar').disabled=true; $('#accPaso').textContent='stopping after this step\u2026';
+  try{ await fetch('/api/cancelar',{method:'POST'}); }catch(_){}
+};
+
 const comunes=()=>({prompt:$('#prompt').value, steps:+$('#steps').value, seed:+$('#seed').value,
   variantes:+$('#variants').value, megapixeles:+$('#mp').value,
   lora:$('#lora').value||null, fuerza_lora:+$('#loraw').value});
 
 $('#verMask').onclick=async()=>{
   const src=(S.img.source||[])[0];
-  if(!src){alert('Add the image you want to edit first.');return}
+  if(!src){avisar('Add the image you want to edit first.');return}
   const b=$('#verMask'); b.disabled=true;
   b.textContent=S.mascara?'Building the preview...':'Segmenting...';
   try{
     const r=await (await fetch('/api/mascara',{method:'POST',body:JSON.stringify({
       imagen:src, frase:$('#seleccion').value, mascara:S.mascara||null,
       crecer:+$('#grow').value, umbral:+$('#thr').value})})).json();
-    if(r.error){alert(r.error);return}
+    if(r.error){avisar(r.error, true);return}
     $('#vacio').hidden=true;
     $('#gal').prepend(tarjeta({archivo:r.preview, tam:'covers '+r.cobertura+'%'}, src));
   }finally{b.disabled=false;b.textContent='Preview the selection'}
 };
 
 $('#go').onclick=async()=>{
-  if(!pesosListos){alert('The weights are still missing.');return}
+  if(!pesosListos){avisar('The weights are still missing.');return}
   const c=caso(), b=$('#go');
   const falta=c.zonas.filter(z=>!c.opt.includes(z)&&!(S.img[z]||[]).length);
-  if(falta.length){alert('Missing: '+falta.map(z=>ZONAS[z].n).join(', '));return}
-  const t0=Date.now(); b.disabled=true;
-  const tic=setInterval(()=>b.textContent=`Generating... ${((Date.now()-t0)/1000).toFixed(0)}s`,250);
+  if(falta.length){avisar('Still needed: '+falta.map(z=>ZONAS[z].n).join(', '));return}
+  const t0=Date.now(); b.disabled=true; b.textContent='Generating\u2026';
+  $('#avisos').innerHTML=''; $('#parar').disabled=false;
+  seguirProgreso();
   try{
     let r, antes=null;
     if(c.mode==='efecto'){
-      if(!S.efecto){alert('Pick a look first.');return}
+      if(!S.efecto){avisar('Pick a look first.');return}
       antes=(S.img.source||[])[0];
       r=await (await fetch('/api/efecto',{method:'POST',body:JSON.stringify({
         imagen:antes, efecto:S.efecto, mascara:S.mascara||null,
@@ -1744,7 +1917,10 @@ $('#go').onclick=async()=>{
         pose_lib:S.poseLib, pose_url:S.poseLib?null:((S.img.pose||[])[0]||null),
         ratio:S.ratio, transparencia:$('#transp').checked})})).json();
     }
-    if(r.error){alert('Error: '+r.error);return}
+    if(r.cancelado){ avisar('Stopped. Nothing was saved.'); return }
+    if(r.error){ avisar(r.error, true); return }
+    // lo que acaba de tardar afina la estimacion de la proxima
+    aprender((Date.now()-t0)/1000, +$('#mp').value, +$('#steps').value);
     $('#vacio').hidden=true;
     $('#avisos').innerHTML=(r.avisos||[]).map(a=>`<div class="nota">${a}</div>`).join('');
     $('#verPrompt').hidden=false;
@@ -1753,8 +1929,8 @@ $('#go').onclick=async()=>{
     r.imagenes.forEach(im=>$('#gal').prepend(tarjeta(im, antes)));
     if(r.resumen) $('#gal').prepend(tarjeta({archivo:r.resumen, tam:'recipe'}, null));
     ponerVitrina();
-  }catch(e){alert('Failed: '+e)}
-  finally{clearInterval(tic);b.disabled=false;b.textContent='Generate'}
+  }catch(e){ avisar('Could not finish: '+e, true) }
+  finally{ pararProgreso(); b.disabled=false; b.textContent='Generate'; estimar() }
 };
 let pendiente=null, pendienteEl=null;
 function elegirComparar(src, el){
@@ -1776,13 +1952,13 @@ $('#lupa').onclick=()=>$('#lupa').close();
 /* ---------- prompt library ---------- */
 $('#btnMejorar').onclick=async()=>{
   const t=$('#prompt').value.trim();
-  if(!t){alert('Write a few words first and this will turn them into a full prompt.');return}
+  if(!t){avisar('Write a few words first and this will turn them into a full prompt.');return}
   const b=$('#btnMejorar'); b.disabled=true; const antes=b.textContent;
   b.textContent='Rewriting...';
   try{
     const r=await (await fetch('/api/mejorar_prompt',{method:'POST',
       body:JSON.stringify({prompt:t})})).json();
-    if(r.error){alert(r.error);return}
+    if(r.error){avisar(r.error, true);return}
     S.promptPrevio=r.antes;              // un solo paso atras, que es lo que hace falta
     $('#prompt').value=r.texto;
     $('#btnDeshacer').hidden=false;
@@ -1805,7 +1981,10 @@ async function abrirBiblioteca(){
   }
   cont.innerHTML='';
   cats.forEach(c=>{
-    cont.innerHTML+=`<h4>${c.categoria}</h4>`;
+    // createElement y no innerHTML+=: asignar innerHTML vuelve a parsear TODO
+    // el contenedor y sustituye los nodos ya puestos por copias nuevas, que no
+    // se llevan el onclick. Solo funcionaban los botones de la ultima categoria.
+    const h=document.createElement('h4'); h.textContent=c.categoria; cont.append(h);
     c.items.forEach(it=>{
       const b=document.createElement('button'); b.type='button';
       b.innerHTML=`<b>${it.etiqueta}</b>${it.texto}`;
@@ -1828,15 +2007,15 @@ $('#btnClear').onclick=()=>{$('#prompt').value=''};
 $('#btnDesc').onclick=async()=>{
   // usa la primera imagen que haya cargada, en el orden en que importan
   const src=(S.img.source||[])[0]||(S.img.scene||[])[0]||(S.img.person||[])[0];
-  if(!src){alert('Load an image first — person, scene or the one you are editing.');return}
+  if(!src){avisar('Load an image first — person, scene or the one you are editing.');return}
   const b=$('#btnDesc'); b.disabled=true; const t0=Date.now();
   const tic=setInterval(()=>b.textContent=`Reading... ${((Date.now()-t0)/1000).toFixed(0)}s`,250);
   try{
     const r=await (await fetch('/api/describir',{method:'POST',
       body:JSON.stringify({imagen:src, tarea:'prompt'})})).json();
-    if(r.error){alert(r.error);return}
+    if(r.error){avisar(r.error, true);return}
     $('#prompt').value=r.texto;
-  }catch(e){alert('Failed: '+e)}
+  }catch(e){avisar('Could not finish: '+e, true)}
   finally{clearInterval(tic);b.disabled=false;b.textContent='Describe an image'}
 };
 

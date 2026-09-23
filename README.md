@@ -243,7 +243,7 @@ Not "better". Different in ways that decide whether it fits what you are doing.
 | **Refusals** | none of its own | a moderation policy that changes without notice |
 | **Reproducibility** | same seed, same weights, same image, in a year | the model is swapped underneath you |
 | **Identity from a photo** | reference images, no training run | usually not offered at all |
-| **Speed** | ~55 s for 1024px on a 24 GB laptop GPU | seconds |
+| **Speed** | 62 s at 1 MP, 239 s at 2K, on a 24 GB laptop GPU | seconds |
 | **Peak quality** | very good | usually better |
 | **Licence to sell the output** | **no** — Qwen Research License | usually yes |
 
@@ -373,13 +373,37 @@ someone else's, the meter says so, because then the fix is not here.
 
 ## Measured here (RTX 5090 Laptop, 24 GB)
 
+Every row is a single warm run at 25 steps, square, measured through the app's
+own API.
+
+| Quality | Output | Time | Against 1 MP |
+|---|---|---|---|
+| **1 MP** · fast | 1024 × 1024 | **62 s** | 1.0× |
+| **2 MP** · medium | 1440 × 1440 | **94 s** | 1.5× |
+| **4 MP** · 2K native | 2048 × 2048 | **239 s** | 3.8× |
+
+**Time grows with the square of the megapixels, not with the megapixels.**
+Attention cost rises with the square of the token count, and the measurements
+fit `50 + 11.8 × MP²` almost exactly — 62 / 98 / 239 predicted against 62 / 94 /
+239 measured. Doubling the pixels does not double the wait; going from 1 MP to
+4 MP is nearly four times the wait, not twice.
+
+**Steps are close to free, which is the surprise.** At 1 MP: 15 steps 49 s, 25
+steps 62 s, 40 steps 66 s. Sixty per cent more denoising for three and a half
+seconds, because what dominates is the fixed cost of each call — moving the
+weights across PCIe under model offload, and encoding the prompt. If you are
+choosing where to spend, spend it on steps and be careful with size.
+
 | | |
 |---|---|
-| 1024 px, 25 steps, warm | **55 s** |
 | VRAM peak | 21.3 GB |
 | model load (first call) | 27–35 s |
 | segmentation, 3 phrases | 0.9 s |
 | describe an image (Qwen3-VL 4-bit) | 5–9 s, 7.1 GB |
+
+The app does not make you read this table. It shows the output size and an
+estimate above the Generate button, and corrects that estimate from your own
+runs, so after one generation it is describing your card rather than mine.
 
 ### How long a generation takes, by card
 
@@ -388,15 +412,19 @@ detection picks, and the profile is the thing that decides the answer: what
 dominates is not raw compute but whether the weights fit, because sequential
 offload moves layers across PCIe on every step.
 
-| Your GPU | Profile | What it does | 1024 px, 25 steps |
-|---|---|---|---|
-| RTX 5090 / 4090 laptop, 24 GB | L | bf16, text encoder offloaded after encoding | **55 s** *(measured)* |
-| RTX 5090 / 6000 Ada, 32–48 GB | XL | bf16, nothing offloaded | ~35–45 s *(estimated)* |
-| RTX 4080 / 3090, 16–20 GB | M | bf16, sequential offload | ~2–4 min *(estimated)* |
-| RTX 4070 / 3080, 10–16 GB | S | nf4 quantised, sequential offload | ~4–8 min *(estimated)* |
-| under 10 GB | MINIMO | nf4, everything offloaded | ~10 min+, and the puppy |
-| Apple Silicon, 32 GB+ | M | bf16 on MPS, sequential offload | unmeasured — see below |
-| no compatible GPU | INVIABLE | CPU | over half an hour per image |
+Only the first row is measured, and only on Windows — there is no Apple
+Silicon here to time. The rest follow from the profile the hardware detection
+picks, scaled by the shape above.
+
+| Your GPU | Profile | 1 MP | 2 MP | 4 MP · 2K |
+|---|---|---|---|---|
+| RTX 5090 / 4090 laptop, 24 GB | L | **62 s** *(measured)* | **94 s** *(measured)* | **239 s** *(measured)* |
+| RTX 5090 / 6000 Ada, 32–48 GB | XL | ~40 s | ~60 s | ~2.5 min |
+| RTX 4080 / 3090, 16–20 GB | M | ~2–4 min | ~3–6 min | ~10–16 min |
+| RTX 4070 / 3080, 10–16 GB | S | ~4–8 min | ~6–12 min | not advisable |
+| under 10 GB | MINIMO | ~10 min+ | ~15 min+ | no |
+| Apple Silicon, 32 GB+ | M | unmeasured — see below | | |
+| no compatible GPU | INVIABLE | over half an hour | | |
 
 The estimates are extrapolations from one card, not benchmarks, and they are
 labelled that way on purpose. The jump between L and M is the one that hurts:
@@ -439,11 +467,11 @@ more than being self-contained, use ComfyUI.
 
 On macOS the command is `.venv/bin/python` and `cwd` is wherever you cloned it.
 
-Ten tools: `status`, `list_poses`, `list_loras`, `prompt_library`,
-`describe_image`, `generate`, `generate_batch`, `preview_selection`, `inpaint`,
-`unmount`.
+Twelve tools: `status`, `list_poses`, `list_loras`, `list_looks`,
+`prompt_library`, `describe_image`, `generate`, `generate_batch`,
+`preview_selection`, `inpaint`, `apply_look`, `unmount`.
 
-`inpaint` and `preview_selection` take either `select` (words) or `mask` (the
+`inpaint`, `apply_look` and `preview_selection` take either `select` (words) or `mask` (the
 path to a black and white image, white where the edit goes), so a script that
 already knows the region does not have to describe it back into words.
 

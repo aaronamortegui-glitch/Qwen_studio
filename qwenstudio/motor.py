@@ -131,6 +131,56 @@ def construir_prompt(n_persona: int, con_pose: bool, con_escena: bool, texto: st
     return (" ".join(partes) + " " + texto.strip()).strip()
 
 
+class Cancelado(Exception):
+    """Alguien pulso Stop. No es un fallo: es la respuesta pedida."""
+
+
+# Lo que esta pasando dentro de la pipeline, para que la UI lo cuente. Un dict
+# plano y un Event bastan: hay un solo trabajo a la vez, protegido por el lock
+# de la app.
+PROGRESO: dict = {"activo": False, "paso": 0, "total": 0, "empezo": 0.0,
+                  "primer_paso": 0.0}
+PARAR = threading.Event()
+
+
+def cancelar() -> None:
+    PARAR.set()
+
+
+def progreso() -> dict:
+    """Paso actual y una estimacion de lo que falta, medida sobre la marcha."""
+    p = dict(PROGRESO)
+    # el ritmo se mide desde el PRIMER paso, no desde que se monto el trabajo:
+    # antes del bucle esta la codificacion del texto, que en una tarjeta con
+    # offload tarda lo suyo y hacia que la cuenta atras empezara disparatada
+    if p["activo"] and p["paso"] > 1 and p["primer_paso"]:
+        por_paso = (time.time() - p["primer_paso"]) / (p["paso"] - 1)
+        p["restante"] = max(0, round((p["total"] - p["paso"]) * por_paso))
+    else:
+        p["restante"] = None
+    return p
+
+
+def _vigilante(total: int):
+    """El callback que diffusers llama al final de cada paso."""
+    PARAR.clear()
+    PROGRESO.update(activo=True, paso=0, total=int(total), empezo=time.time(),
+                    primer_paso=0.0)
+
+    def cb(tuberia, paso, tiempo, kw):
+        PROGRESO["paso"] = int(paso) + 1
+        if PROGRESO["paso"] == 1:
+            PROGRESO["primer_paso"] = time.time()
+        if PARAR.is_set():
+            raise Cancelado()
+        return kw
+    return cb
+
+
+def _fin():
+    PROGRESO.update(activo=False, paso=0, total=0, primer_paso=0.0)
+
+
 def avisos_de_uso(n_persona: int, con_escena: bool,
                   espera_persona: bool = True) -> list[str]:
     """Lo que conviene decir antes de generar. En ingles: lo lee el usuario."""
@@ -363,6 +413,7 @@ class Motor:
         self.error = ""
         self._lora = None          # (ruta, fuerza) actualmente aplicada
         self.atencion = "sdpa"
+        self._cb = None            # si la pipeline admite callback_on_step_end
 
     @property
     def listo(self) -> bool:
@@ -551,8 +602,24 @@ class Motor:
         elif not refs:
             kw["width"] = kw["height"] = int(res)
 
-        out = self.pipe(**kw)
+        if self._admite_callback():
+            kw["callback_on_step_end"] = _vigilante(steps)
+        try:
+            out = self.pipe(**kw)
+        finally:
+            _fin()
         return out.images[0], prompt
+
+    def _admite_callback(self) -> bool:
+        """No todas las pipelines lo aceptan; se comprueba una vez."""
+        if self._cb is None:
+            import inspect
+            try:
+                self._cb = ("callback_on_step_end"
+                            in inspect.signature(self.pipe.__call__).parameters)
+            except Exception:
+                self._cb = False
+        return self._cb
 
     def editar(self, *, imagen, texto, steps, seed, res=1024,
                referencias=None, ancho=None, alto=None):
@@ -591,7 +658,12 @@ class Motor:
                   true_cfg_scale=1.0, generator=gen, output_resolution=int(res))
         if ancho and alto:
             kw["width"], kw["height"] = int(ancho), int(alto)
-        out = self.pipe(**kw)
+        if self._admite_callback():
+            kw["callback_on_step_end"] = _vigilante(steps)
+        try:
+            out = self.pipe(**kw)
+        finally:
+            _fin()
         return out.images[0], prompt
 
     # ------------------------------------------------------------------ lora

@@ -187,6 +187,19 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, *a):
         pass
 
+    def handle_one_request(self):
+        """Un cliente que se va no es un fallo del servidor.
+
+        Cerrar una pestana a mitad de peticion levanta ConnectionReset o
+        ConnectionAborted, y socketserver lo imprime con traza completa. Con el
+        navegador abierto eso son veinte lineas por recarga, y un error de
+        verdad se pierde entre ellas.
+        """
+        try:
+            super().handle_one_request()
+        except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError):
+            self.close_connection = True
+
     def _send(self, code, body, ctype="application/json; charset=utf-8"):
         if isinstance(body, (dict, list)):
             body = json.dumps(body, ensure_ascii=False)
@@ -245,6 +258,9 @@ class Handler(BaseHTTPRequestHandler):
 
         if p == "/api/efectos":
             return self._send(200, EF.catalogo(LORAS))
+
+        if p == "/api/progreso":
+            return self._send(200, M.progreso())
 
         if p == "/api/vitrina":
             # Lo que la app hizo en esta maquina, con su receta al lado. Es lo
@@ -333,7 +349,7 @@ class Handler(BaseHTTPRequestHandler):
         try:
             b = json.loads(self.rfile.read(n) or b"{}")
         except Exception:
-            return self._send(400, {"error": "json invalido"})
+            return self._send(400, {"error": "the request body was not valid JSON"})
         p = self.path.split("?")[0]
 
         if p == "/api/descargar":
@@ -360,6 +376,12 @@ class Handler(BaseHTTPRequestHandler):
         if p == "/api/borrar":
             return self._send(200, self._borrar(b))
 
+        if p == "/api/cancelar":
+            # no toca el lock a proposito: el trabajo esta dentro y hay que
+            # poder interrumpirlo desde fuera mientras lo tiene cogido
+            M.cancelar()
+            return self._send(200, {"ok": True})
+
         if p == "/api/liberar":
             # soltar los modelos y luego devolver a la tarjeta lo reservado:
             # en ese orden, porque vaciar la cache antes de desmontar no suelta
@@ -376,6 +398,8 @@ class Handler(BaseHTTPRequestHandler):
         if p == "/api/lote":
             try:
                 return self._send(200, self._lote(b))
+            except M.Cancelado:
+                return self._send(200, {"cancelado": True})
             except Exception as e:
                 return self._send(200, {"error": f"{type(e).__name__}: {e}"})
 
@@ -392,6 +416,8 @@ class Handler(BaseHTTPRequestHandler):
                                         extra=b.get("extra", ""),
                                         max_tokens=int(b.get("max_tokens", 320)))
                 return self._send(200, {"texto": txt})
+            except M.Cancelado:
+                return self._send(200, {"cancelado": True})
             except Exception as e:
                 return self._send(200, {"error": f"{type(e).__name__}: {e}"})
 
@@ -402,18 +428,24 @@ class Handler(BaseHTTPRequestHandler):
         if p == "/api/mejorar_prompt":
             try:
                 return self._send(200, self._mejorar(b))
+            except M.Cancelado:
+                return self._send(200, {"cancelado": True})
             except Exception as e:
                 return self._send(200, {"error": f"{type(e).__name__}: {e}"})
 
         if p == "/api/efecto":
             try:
                 return self._send(200, self._efecto(b))
+            except M.Cancelado:
+                return self._send(200, {"cancelado": True})
             except Exception as e:
                 return self._send(200, {"error": f"{type(e).__name__}: {e}"})
 
         if p == "/api/reescalar":
             try:
                 return self._send(200, self._reescalar(b))
+            except M.Cancelado:
+                return self._send(200, {"cancelado": True})
             except Exception as e:
                 return self._send(200, {"error": f"{type(e).__name__}: {e}"})
 
@@ -423,18 +455,24 @@ class Handler(BaseHTTPRequestHandler):
         if p == "/api/mascara":
             try:
                 return self._send(200, self._mascara(b))
+            except M.Cancelado:
+                return self._send(200, {"cancelado": True})
             except Exception as e:
                 return self._send(200, {"error": f"{type(e).__name__}: {e}"})
 
         if p == "/api/inpaint":
             try:
                 return self._send(200, self._inpaint(b))
+            except M.Cancelado:
+                return self._send(200, {"cancelado": True})
             except Exception as e:
                 return self._send(200, {"error": f"{type(e).__name__}: {e}"})
 
         if p == "/api/generar":
             try:
                 return self._send(200, self._generar(b))
+            except M.Cancelado:
+                return self._send(200, {"cancelado": True})
             except Exception as e:
                 return self._send(200, {"error": f"{type(e).__name__}: {e}"})
 
