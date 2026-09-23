@@ -465,10 +465,11 @@ def construir() -> str:
                     "its own limits and nothing here can override them — but a long "
                     "unattended run finishes sooner if it is not being throttled the whole "
                     "way, and a number on screen beats guessing.", CUERPO),
-          Paragraph("Deleting from the gallery moves the file to a bin folder on disk "
-                    "rather than unlinking it. A grid of thumbnails that look alike is "
-                    "exactly where an irreversible click loses the good one; emptying the "
-                    "bin stays the user’s decision.", CUERPO),
+          Paragraph("Deleting, from the gallery or from the results column, moves the "
+                    "file to a bin folder on disk rather than unlinking it. A grid of "
+                    "thumbnails that look alike is exactly where an irreversible click "
+                    "loses the good one; emptying the bin stays the user’s decision.",
+                    CUERPO),
           Spacer(1, 9 * mm)]
 
     # --- 4. how to use it well ---------------------------------------------

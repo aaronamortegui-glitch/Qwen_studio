@@ -207,10 +207,13 @@ directly — there is no database to fall out of sync with the disk. Delete a
 file there and it is gone from here. Every tile and every result carries a
 download button, and **Open the folder** hands you to the file manager.
 
-Each tile also has a × that moves the file to `salidas/_papelera/` rather than
-unlinking it. A grid of thumbnails that look alike is exactly where a click you
-cannot undo loses the good one; the bin stays on disk and emptying it is your
-call, not the app's.
+Every gallery tile and every result carries a bin that moves the file to
+`salidas/_papelera/` rather than unlinking it — in the gallery as a × on the
+thumbnail, in the results column as an icon beside Download, so a run that
+produced six variants can be cut down to the one worth keeping without
+opening anything. A grid of thumbnails that look alike is exactly where a
+click you cannot undo loses the good one; the bin stays on disk and emptying
+it is your call, not the app's.
 
 <p align="center"><img src="docs/ui-dark.png" width="820" alt="The same screen in dark"></p>
 
@@ -234,8 +237,10 @@ Light by default, dark in Settings, or Auto to follow the system.
 | | Replace something | image + a selection + what goes there |
 
 Plus a **pose library** (30 skeletons across close-up, half and full body), a
-**prompt library** (additive snippets, one clause of a photograph each, built
-to stack), **image description and reasoning** with Qwen3-VL, **LoRA** loading,
+**prompt library** (one clause of a photograph each: a second pick from the
+same category swaps the first out rather than stacking both, so asking for
+golden hour after studio light means golden hour, and anything typed by hand
+is left alone), **image description and reasoning** with Qwen3-VL, **LoRA** loading,
 the seven official aspect ratios, 2K native output, a **before/after slider**
 on every edit, and a **contact sheet** per run showing inputs + result.
 

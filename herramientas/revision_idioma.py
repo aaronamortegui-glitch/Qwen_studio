@@ -60,6 +60,11 @@ CODIGO = re.compile(r"`[^`]*`|https?://\S+|\S*[/\\]\S*|\b\w+_\w+\b")
 # a regular expression that happens to list Spanish words is not a sentence
 REGEX = re.compile(r"\\b|\(\?:|\\w|\\s|\\S")
 LETRAS = re.compile(r"[^\W\d_]+", re.UNICODE)
+# interfaz.py is one long Python string holding HTML, CSS and JS, so its
+# comments are not Python comments and no check ever read them. Sixty lines
+# of Spanish lived in there. // is matched only when nothing precedes it on
+# the line but whitespace or code, never inside a URL.
+WEB = re.compile(r"(?<![:/])//(.*)$|/\*(.*?)\*/")
 
 
 def _castellano(frag: str) -> list[str]:
@@ -115,11 +120,16 @@ def revisar() -> list[str]:
         except OSError:
             continue
 
-        # comments, including the trailing ones the first check never saw
+        # comments, including the trailing ones the first check never saw and
+        # the JS and CSS ones living inside a Python string
         for i, linea in enumerate(codigo.splitlines(), 1):
             m = re.search(r"#(.*)$", linea)
             if m and len(_castellano(m.group(1))) >= UMBRAL:
                 fallos.append(f"{rel}:{i} comment in Spanish: {linea.strip()[:60]}")
+                continue
+            w = WEB.search(linea)
+            if w and len(_castellano(w.group(1) or w.group(2) or "")) >= UMBRAL:
+                fallos.append(f"{rel}:{i} web comment in Spanish: {linea.strip()[:60]}")
 
         try:
             arbol = ast.parse(codigo)

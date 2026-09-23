@@ -111,7 +111,7 @@ main{display:grid;grid-template-columns:minmax(340px,440px) 1fr;gap:20px;
 .card{background:var(--sf);border-radius:var(--r-l);padding:24px;box-shadow:var(--e1);
   border:1px solid var(--line-soft)}
 
-/* los pasos: el flujo es una secuencia, el numero dice algo */
+/* the steps: the flow is a sequence, so the number means something */
 h2{font-size:13px;margin:0 0 14px;color:var(--on-sf);font-weight:500;
   display:flex;align-items:center;gap:10px;letter-spacing:0}
 h2 i{width:22px;height:22px;border-radius:50%;background:var(--lima);
@@ -308,6 +308,9 @@ details>summary{cursor:pointer;font-size:13px;color:var(--link);margin-top:18px;
   cursor:pointer;padding:0;text-decoration:none}
 .iconobtn:hover{background:var(--sf-2)}
 .gal figcaption .acciones{display:flex;gap:6px;align-items:center}
+.gal .acciones .quitar{border:0;background:none;padding:0;cursor:pointer;
+  color:var(--on-sf-var);display:inline-flex;align-items:center}
+.gal .acciones .quitar:hover,.gal .acciones .quitar:focus-visible{color:var(--bad)}
 
 /* ---- LoRA a la vista ---- */
 .lora{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px;
@@ -333,7 +336,7 @@ details>summary{cursor:pointer;font-size:13px;color:var(--link);margin-top:18px;
   35%{transform:translateY(-7px);opacity:1}}
 @media (prefers-reduced-motion:reduce){.cargando i{animation:none;opacity:.7}}
 
-/* ---- la pantalla del perrito ---- */
+/* ---- the puppy screen ---- */
 .perrito{text-align:center;padding:12px 8px 4px}
 .perrito svg{width:190px;height:190px;max-width:70%}
 .perrito h2{display:block;font-size:22px;font-weight:400;letter-spacing:-.2px;
@@ -381,7 +384,7 @@ details>summary{cursor:pointer;font-size:13px;color:var(--link);margin-top:18px;
 .filaParar{display:flex;align-items:center;gap:10px;margin-top:9px;font-size:12px;
   color:var(--on-sf-var)}
 .filaParar .ghost{height:30px;padding:0 14px;font-size:12px}
-/* un aviso dentro de un dialogo se pone arriba del todo, donde se mira */
+/* a notice inside a dialog goes right at the top, where the eye is */
 .notaDlg{margin:0 0 12px;padding:10px 13px;border-radius:var(--r-s);
   background:var(--warn-cont);color:var(--on-sf);font-size:12.5px;line-height:1.5}
 .notaDlg.mal{background:var(--bad-cont);color:var(--on-bad-cont)}
@@ -429,7 +432,7 @@ details>summary{cursor:pointer;font-size:13px;color:var(--link);margin-top:18px;
   text-transform:uppercase;background:var(--lima);color:var(--tinta);
   border-radius:var(--r-full);padding:3px 10px;margin-right:9px;vertical-align:1px}
 #pie a{color:var(--link)}
-/* el subrayado que dice "es este": dos segundos y se va */
+/* the underline that says "this one": two seconds and it is gone */
 @keyframes senalar{0%,70%{box-shadow:0 0 0 3px var(--lima)}100%{box-shadow:0 0 0 3px transparent}}
 .senalado{animation:senalar 2.2s ease-out 1}
 @media(max-width:560px){#pie{padding:26px 16px 22px}}
@@ -510,6 +513,9 @@ dialog:not(#lupa) h3{margin:0 0 18px;font-size:22px;font-weight:400;
   background:var(--sf-1);color:var(--on-sf);border-radius:var(--r-s);padding:13px 15px;
   margin-bottom:8px;cursor:pointer;font:inherit;font-size:13px;line-height:1.5;transition:.15s}
 #plBody button:hover{border-color:var(--verde);background:var(--sf-2)}
+#plBody button[aria-pressed=true]{border-color:var(--ac-2);background:var(--sf-2)}
+#plBody button[aria-pressed=true] b::after{content:" · in the prompt";font-weight:400;
+  color:var(--on-sf-var);text-transform:none;letter-spacing:0}
 #plBody button b{display:block;font-size:12px;color:var(--link);margin-bottom:3px;font-weight:600}
 .opt{display:flex;align-items:flex-start;gap:14px;padding:15px 0;
   border-bottom:1px solid var(--line-soft)}
@@ -853,6 +859,7 @@ const IC={
  escalar:'<path d="M4 10V4h6"/><path d="M20 14v6h-6"/><path d="M4 4l7 7"/><path d="M20 20l-7-7"/>',
  carpeta:'<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
  sign:'<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M7 9.5h10M7 13h6"/><path d="M12 17v3"/>',
+ papelera:'<path d="M5 7h14"/><path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7"/><path d="M6.8 7l.8 11.1a2 2 0 0 0 2 1.9h4.8a2 2 0 0 0 2-1.9L17.2 7"/><path d="M10.5 11v5M13.5 11v5"/>',
 };
 const svg=(n,t=20)=>`<svg viewBox="0 0 24 24" width="${t}" height="${t}" fill="none"
   stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"
@@ -967,13 +974,13 @@ const EJ={
   free:null,
 };
 const S={caso:'portrait', img:{}, poseLib:null, ratio:'1:1', esEjemplo:true,
-         mascara:null, efecto:null};
+         mascara:null, efecto:null, frag:{}};
 const caso=()=>CASOS[S.caso];
 
 /* ---------- zones ---------- */
-// El prompt negativo solo existe por encima de CFG 1: sin segundo paso no hay
-// nada contra lo que empujar, asi que ensenar la caja seria ofrecer un control
-// que no hace nada.
+// The negative prompt only exists above CFG 1: with no second pass there is
+// nothing to push against, so showing the box would offer a control that
+// does nothing.
 function zonaNegativo(){
   const z=$('#zonaNeg'); if(!z) return;
   z.hidden = !(+(AJ.cfg||1) > 1);
@@ -984,8 +991,8 @@ function construirZonas(){
   const c=caso(), cont=$('#zonas'); cont.innerHTML='';
   c.zonas.forEach((z,i)=>{
     const op=c.opt.includes(z), m=ZONAS[z];
-    // la ranura de estilo sirve para dos cosas distintas segun el caso, y
-    // decir cual evita que alguien traiga un cuadro esperando que le copie la ropa
+    // the style slot does two different jobs depending on the case, and saying
+    // which one stops someone bringing a painting and expecting the clothes
     const desc = (z==='style' && c.mode==='estilo')
       ? 'The picture whose manner you want: its medium, its brushwork, its palette. '
         +'Its subject and its setting stay out of it.'
@@ -1009,10 +1016,10 @@ function engancharZona(d,z,multi){
     if(z==='pose')return derivarPose(fs[0]);
     if(multi){S.img[z]=S.img[z]||[]; for(const f of fs)S.img[z].push(await leer(f))}
     else S.img[z]=[await leer(fs[0])];
-    // una mascara pintada solo vale para la foto sobre la que se pinto
+    // a painted mask is only good for the photograph it was painted on
     if(z==='source'){S.mascara=null; pintarEstadoMask()}
-    // el tamano depende de cuantas referencias hay, asi que anadir una lo
-    // cambia: se recalcula aqui o el numero de arriba miente hasta el siguiente clic
+    // the size depends on how many references there are, so adding one changes
+    // it: recalculated here, or the number above lies until the next click
     tocado(); repintar(); medida();
   };
   d.onclick=e=>{if(!['BUTTON','A','INPUT','LABEL'].includes(e.target.tagName))inp.click()};
@@ -1045,9 +1052,9 @@ function repintar(){
 }
 function construirCampos(){
   const c=caso(), cont=$('#campos'); cont.innerHTML='';
-  // Los dos caminos de edicion recortan y recosen igual, asi que los dos llevan
-  // el pincel. En el reemplazo la region es obligatoria y ademas se puede nombrar
-  // con palabras; en el look es opcional y sin ella el efecto va al cuadro entero.
+  // Both editing paths crop and stitch the same way, so both carry the brush.
+  // In a replacement the region is required and can also be named in words; in
+  // a look it is optional, and without one the effect grades the whole frame.
   if(c.mode==='inpaint' || c.mode==='efecto'){
     const porTexto = c.mode==='inpaint';
     const campo = porTexto
@@ -1081,8 +1088,8 @@ function construirCampos(){
   const nPaso = (c.mode==='inpaint'||c.mode==='efecto')
     ? '4' : ($('#lblPrompt').dataset.n||'3');
   $('#lblPrompt').innerHTML=`<i>${nPaso}</i><span id="lblPromptTxt">${etiqueta}</span>`;
-  // es un <h2>, no un <label>: for= no ata nada, aria-labelledby si, y de paso
-  // el numero del paso no entra en el nombre que se anuncia
+  // it is an <h2>, not a <label>: for= binds nothing here, aria-labelledby does,
+  // and this way the step number stays out of the announced name
   $('#prompt').setAttribute('aria-labelledby','lblPromptTxt');
   // en estos dos el prompt no se escribe: uno se escoge y el otro es fijo
   $('#prompt').hidden = c.mode==='efecto';
@@ -1102,7 +1109,7 @@ function aplicarCaso(k){
     pintarCasos();
   }
   [...$('#casos').children].forEach(b=>b.setAttribute('aria-pressed',b.dataset.k===k));
-  $('#prompt').value=c.prompt; $('#transp').checked=!!c.transp;
+  $('#prompt').value=c.prompt; $('#transp').checked=!!c.transp; S.frag={};
   S.ratio=c.ratio; marcarRatio();
   const sinEntradas=!c.zonas.length;
   $('#secEntradas').hidden=sinEntradas;
@@ -1150,16 +1157,16 @@ const cr=$('#ratios');
   b.textContent=r; b.onclick=()=>{S.ratio=r;marcarRatio();medida()}; cr.append(b);
 });
 const marcarRatio=()=>[...cr.children].forEach(x=>x.setAttribute('aria-pressed',x.dataset.r===S.ratio));
-// Cuantas imagenes se le ponen delante al modelo. Cada una cuesta
-// activaciones, y el techo del perfil depende de cuantas hay: el servidor
-// aplica la misma cuenta en _tope(), y aqui se repite para poder DECIRLO
-// antes de pulsar en vez de recortar en silencio.
+// How many images the model is given. Each one costs activations, and the
+// profile's ceiling depends on how many there are: the server applies the
+// same arithmetic in _tope(), and it is repeated here so the cap can be SAID
+// before the click instead of applied in silence.
 function cuantasReferencias(){
   let n=0;
   for(const z of caso().zonas){
-    if(z==='source') continue;            // lo que se edita no es una referencia
-    // la pose de la libreria y la subida son la misma ranura: la peticion manda
-    // una sola, asi que contar las dos sobrestimaria y recortaria de mas
+    if(z==='source') continue;            // what is being edited is not a reference
+    // the library pose and an uploaded one are the same slot: the request sends
+    // only one, so counting both would overestimate and cap too hard
     if(z==='pose' && S.poseLib){ n++; continue }
     n += (S.img[z]||[]).length;
   }
@@ -1178,8 +1185,8 @@ function medida(){
   const tope = topePerfil(refs);
   const topeMp = (tope*tope)/(1024*1024);
   const real = Math.min(mp, topeMp);
-  // por que se recorto, dicho donde se ve el tamano. Medido: dos referencias
-  // a 2K tumbaron esta maquina entera, asi que el limite no es prudencia
+  // why it was capped, said where the size is read. Measured: two references at
+  // 2K took this whole machine down, so the limit is not caution
   const nota = real<mp
     ? (refs>1 ? ` · capped at ${tope} px: ${refs} references`
               : ` · capped at ${tope} px by your card`)
@@ -1224,7 +1231,7 @@ fetch('/api/poses').then(r=>r.json()).then(ls=>{
   POSES=ls;
   const g=$('#libGrid');
   if(!ls.length){g.innerHTML='<div class="hint">Empty. Build it with herramientas/build_pose_library.py</div>';return}
-  // filtros: encuadre primero (es lo que decide si la cara sale grande), luego actividad
+  // filters: framing first (it decides whether the face lands large), then activity
   const enc=[...new Set(ls.map(p=>p.framing))];
   const grp=[...new Set(ls.map(p=>p.group).filter(Boolean))];
   const f=$('#libFiltros'); f.innerHTML='';
@@ -1244,8 +1251,8 @@ function pintarPoses(){
     b.innerHTML=`<img src="${p.thumb}" alt="" data-foto="${p.thumb}" data-skel="${p.skeleton}">
       <span>${p.label}<br>
       <small>${p.framing_label||p.framing}${p.group_label?' · '+p.group_label:''}</small></span>`;
-    // la miniatura es la foto (se reconoce de un vistazo); al pasar por encima
-    // se ve el esqueleto, que es lo que de verdad recibe el modelo
+    // the thumbnail is the photo, recognised at a glance; hovering shows the
+    // skeleton, which is what the model actually receives
     const im=b.querySelector('img');
     b.onmouseenter=()=>im.src=im.dataset.skel;
     b.onmouseleave=()=>im.src=im.dataset.foto;
@@ -1255,7 +1262,7 @@ function pintarPoses(){
 }
 $('#lib').onclick=e=>{if(e.target.id==='lib')$('#lib').close()};
 fetch('/api/loras').then(r=>r.json()).then(ls=>{
-  // la fila solo aparece si hay algo que elegir
+  // the row only appears when there is something to choose from
   $('#filaLora').dataset.hay = ls.length ? '1' : '0';
   mostrarLora();
   ls.forEach(l=>{
@@ -1265,15 +1272,15 @@ fetch('/api/loras').then(r=>r.json()).then(ls=>{
 
 /* ---------- status ---------- */
 let pesosListos=false;
-// el techo del perfil, para poder decir el recorte antes de generar en vez de
-// aplicarlo en silencio. Hasta el primer tick vale 1024, que es el suelo.
+// the profile ceiling, so the cap can be stated before generating instead of
+// applied silently. Until the first tick it is 1024, which is the floor.
 let PERFIL={res_max:1024, res_max_ref:1024};
 let TURBO_HAY=false;
 async function tick(){
   let e;
   try{ e=await (await fetch('/api/estado')).json() }
   catch(_){
-    // el servidor no responde: es lo unico que la pagina no puede arreglar sola
+    // the server is not answering: the one thing this page cannot fix by itself
     ponerEstado('err','app not responding');
     $('#setup').innerHTML=`<div class="nota mal"><b>The app stopped responding.</b><br>
       It runs as a local server; if you closed its window, start it again with
@@ -1303,7 +1310,7 @@ async function tick(){
   if($('#cfgHw')) $('#cfgHw').textContent=hw;
 
   const s=$('#setup'); const antes=pesosListos; pesosListos=e.pesos_listos;
-  // el estado llega despues del primer pintado: la estimacion se entera aqui
+  // status arrives after the first paint, so the estimate learns of it here
   if(antes!==pesosListos && typeof estimar==='function') estimar();
   if(e.descarga.activa){
     const pct=e.descarga.total_gb?(e.descarga.gb/e.descarga.total_gb*100):0;
@@ -1407,13 +1414,13 @@ async function medirVram(){
   c.hidden=false;
   const frac=VRAM.usada_gb/Math.max(VRAM.total_gb,1);
   c.className='chip vram num'+(frac>=0.9?' err':frac>=0.75?' alto':'');
-  // el escritorio ya ocupa medio giga largo: por debajo de 1.5 no hay nada
-  // que avisar, solo ruido
+  // the desktop alone takes a good half gigabyte: under 1.5 there is nothing
+  // worth warning about, only noise
   const ajena = VRAM.ajena_gb!==undefined && VRAM.ajena_gb>=1.5
     ? ` \u00b7 ${VRAM.ajena_gb} GB elsewhere` : '';
   const grados = (VRAM.grados!==undefined && VRAM.grados!==null)
     ? ` \u00b7 ${VRAM.grados}\u00b0C` : '';
-  // recortar por calor no rompe nada, pero explica por que un lote va lento
+  // thermal throttling breaks nothing, but it explains why a batch crawls
   if(VRAM.estrangulada) c.className='chip vram num alto';
   c.textContent=`${VRAM.usada_gb} / ${VRAM.total_gb} GB${grados}${ajena}`;
   const partes=[];
@@ -1474,12 +1481,30 @@ function tarjeta(im, antes){
       <a href="#" class="receta">recipe</a>
       <a href="#" class="cmp">compare</a>
       <a class="iconobtn" href="${im.archivo}" download="${nombre}"
-         title="Download this image">${svg('descarga',15)}</a></span>`;
+         title="Download this image">${svg('descarga',15)}</a>
+      <button type="button" class="quitar"
+        title="Move this one to the bin">${svg('papelera',15)}</button></span>`;
+  // the same bin the gallery uses: the file moves to salidas/_papelera and
+  // stays on disk, because a grid of near-identical thumbnails is exactly
+  // where an irreversible click loses the one that was good
+  c.querySelector('.quitar').onclick=async e=>{
+    e.preventDefault();
+    if(!confirm(`Move ${nombre} to salidas/_papelera?
+
+It stays on disk; `+'empty that folder yourself when you want it gone.')) return;
+    try{
+      const r=await (await fetch('/api/borrar',{method:'POST',
+        body:JSON.stringify({nombre})})).json();
+      if(r.error){ avisar(r.error, true); return }
+    }catch(err){ avisar('Could not delete it: '+err, true); return }
+    f.remove();
+    ponerVitrina();
+  };
   c.querySelector('.cmp').onclick=e=>{e.preventDefault();elegirComparar(im.archivo,c.querySelector('.cmp'))};
-  // en una comparacion antes/despues la imagen no se puede pulsar -- ese gesto
-  // mueve el separador -- asi que la receta vive siempre en el pie
+  // in a before/after comparison the image cannot be clicked -- that gesture
+  // moves the divider -- so the recipe always lives in the caption
   c.querySelector('.receta').onclick=e=>{e.preventDefault();recetaDe(im, antes)};
-  // lo primero que se quiere al ver un resultado: lo mismo con otra semilla
+  // the first thing wanted on seeing a result: the same again, another seed
   c.querySelector('.otra').onclick=e=>{
     e.preventDefault();
     $('#seed').value=Math.floor(Math.random()*100000);
@@ -1519,7 +1544,7 @@ function abrirDetalle(url, meta, extra){
   $('#dtTitulo').textContent = DT.extra.titulo || 'How this was made';
   $('#dtQue').textContent = DT.extra.que || '';
   $('#dtQue').hidden = !DT.extra.que;
-  // una edicion no se entiende sin la foto de la que salio
+  // an edit makes no sense without the photo it came from
   $('#dtAntes').innerHTML = DT.extra.antes
     ? `<img src="${DT.extra.antes}" alt="">`
       +`<span>Made from ${DT.extra.antes_de ? 'the <b>'+DT.extra.antes_de+'</b> example'
@@ -1558,8 +1583,8 @@ $('#dtUsarPrompt').onclick=()=>{
   $('#dt').close();
 };
 $('#dtAbrirCaso').onclick=()=>{
-  // lleva al camino del que salio la imagen y deja el prompt escrito: de mirar
-  // un ejemplo a tener el suyo hay un clic, no cinco
+  // opens the path the image came from with the prompt already written: from
+  // looking at an example to having your own is one click, not five
   const cu=DT.extra.caso_ui;
   if(!CASOS[cu]) return;
   limpiarEjemplo();
@@ -1573,8 +1598,8 @@ $('#dtAbrirCaso').onclick=()=>{
   document.querySelector('.card').scrollIntoView({behavior:'smooth',block:'start'});
 };
 $('#dtUsarImagen').onclick=async()=>{
-  // la ranura depende del caso: en los de edicion es la foto de partida y en
-  // los demas la referencia de persona
+  // the slot depends on the case: in the editing ones it is the starting photo,
+  // everywhere else the person reference
   const c=caso();
   const z = c.zonas.includes('source') ? 'source'
           : c.zonas.includes('person') ? 'person' : null;
@@ -1598,8 +1623,8 @@ function irA(destino){
   if(que==='gal'){ abrirGaleria(); return }
   if(que==='dlg'){ $('#'+cual)?.showModal(); return }
   if(que==='foco'){
-    // estos dos viven pegados a la caja del prompt, y en "Apply a look" esa
-    // barra no existe: primero un caso donde si este, y luego senalarlo
+    // these two sit against the prompt box, and in "Apply a look" that bar does
+    // not exist: switch to a case that has it first, then point at it
     if(caso().mode==='efecto') aplicarCaso('blank');
     arriba();
     setTimeout(()=>{
@@ -1642,8 +1667,8 @@ function tarjetaVitrina(p){
 function pintarVitrina(){
   const cont=$('#vitrina'); if(!cont) return;
   const viejo=cont.querySelectorAll('.vitGrupo'); viejo.forEach(x=>x.remove());
-  // el orden de los grupos es el del manifiesto, no alfabetico: primero para
-  // que sirve cada camino y despues hasta donde estira el estilo
+  // the group order is the manifest's, not alphabetical: what each path is for
+  // first, and how far the style stretches after
   const grupos=[];
   VIT.forEach(p=>{
     const n=p.grupo||'';
@@ -1812,7 +1837,7 @@ function pintarEstadoMask(){
   });
   const av=$('#avisoMaskAv');
   if(av) av.hidden=!hay;
-  // en el look los ajustes de mascara solo tienen sentido cuando hay una pintada
+  // in a look the mask settings only mean anything once something is painted
   if(caso().mode==='efecto') $('#avInpaint').hidden=!hay;
 }
 let MK={ctx:null, pintando:false, modo:'pintar', tam:60, ratio:1};
@@ -1875,12 +1900,12 @@ function mkTrazo(ev){
   $('#mkCerrar').onclick=()=>$('#mk').close();
   $('#mkUsar').onclick=()=>{
     const cv=$('#mkCv');
-    // lo pintado sale blanco sobre negro, que es lo que espera el servidor
+    // what was painted comes out white on black, which is what the server wants
     const fuera=document.createElement('canvas');
     fuera.width=cv.width; fuera.height=cv.height;
     const fc=fuera.getContext('2d');
-    // el color del pincel es para verlo; lo que sale es blanco donde hay pintura
-    // y negro donde no, leido del alfa, no del color
+    // the brush colour is only there to be seen; what comes out is white where
+    // there is paint and black where there is none, read from alpha, not colour
     const src=cv.getContext('2d').getImageData(0,0,cv.width,cv.height).data;
     const out=fc.createImageData(cv.width,cv.height);
     let algo=false;
@@ -1940,7 +1965,7 @@ function baseSegundos(mp, pasos){
 function aprender(segundos, mp, pasos){
   const esperado=baseSegundos(mp, pasos);
   if(esperado<=0) return;
-  // una constante por maquina, suavizada: una generacion rara no la tuerce
+  // one constant per machine, smoothed: a single odd run does not bend it
   const f=factorMaquina()*0.7 + (segundos/esperado)*0.3;
   try{ localStorage.setItem('qs_factor', String(f)); }catch(_){}
 }
@@ -1997,10 +2022,10 @@ $('#parar').onclick=async()=>{
   try{ await fetch('/api/cancelar',{method:'POST'}); }catch(_){}
 };
 
-// El turbo manda sobre los pasos y sobre el detail pass, asi que hay un solo
-// sitio que decide los tres y lo usan tanto la peticion como la estimacion.
-// Mandar cfg 3 y que el servidor lo baje a 1 funcionaria, pero el numero de
-// arriba mentiria, que es lo que esta app lleva toda la sesion evitando.
+// Turbo overrules both the step count and the detail pass, so one place decides
+// all three and both the request and the estimate read it. Sending cfg 3 and
+// letting the server drop it to 1 would work, but then the number above would
+// lie, which is the thing this app has spent the whole session avoiding.
 function loQueVaACorrer(){
   if(AJ.turbo && TURBO_HAY) return {pasos:+(AJ.turbo_pasos||4), cfg:1, negativo:''};
   const c = +(AJ.cfg||1);
@@ -2015,7 +2040,7 @@ const comunes=()=>{
     cfg:v.cfg, negativo:v.negativo};
 };
 
-// lo que se deja fuera casi nunca cambia entre imagenes, asi que se recuerda
+// what is left out hardly ever changes between images, so it is remembered
 document.addEventListener('change', e=>{
   if(e.target && e.target.id==='negativo'){
     AJ.negativo = e.target.value;
@@ -2079,8 +2104,8 @@ $('#go').onclick=async()=>{
         crecer:+$('#grow').value, difuminado:+$('#feather').value,
         umbral:+$('#thr').value, padding:+$('#pad').value})})).json();
     }else{
-      // sin "antes": la escena es una referencia, no una version previa de
-      // este resultado. Para comparar entre generaciones esta el boton compare.
+      // no "before": the scene is a reference, not an earlier version of this
+      // result. Comparing across generations is what the compare button is for.
       antes=null;
       r=await (await fetch('/api/generar',{method:'POST',body:JSON.stringify({...comunes(),
         personas:S.img.person||[], escena:(S.img.scene||[])[0]||null,
@@ -2130,15 +2155,15 @@ $('#btnMejorar').onclick=async()=>{
   b.textContent='Rewriting...';
   try{
     const r=await (await fetch('/api/mejorar_prompt',{method:'POST',
-      // editar y generar no se piden igual, asi que el reescritor usa unas
-      // reglas u otras segun el caso en el que estes
-      // y la referencia, si la hay: el reescritor la mira antes de nombrar
-      // la ropa, en vez de adivinarla
+      // editing and generating are not asked for the same way, so the rewriter
+      // applies one set of rules or the other depending on the case
+      // and the reference, if there is one: the rewriter looks at it before
+      // naming the clothing, instead of guessing
       body:JSON.stringify({prompt:t, edicion:['editar','inpaint','efecto',
         'estilo'].includes(caso().mode),
         referencia:(S.img.extra||S.img.style||[])[0]||null})})).json();
     if(r.error){avisar(r.error, true);return}
-    S.promptPrevio=r.antes;              // un solo paso atras, que es lo que hace falta
+    S.promptPrevio=r.antes;              // one step back, which is all that is needed
     $('#prompt').value=r.texto;
     $('#btnDeshacer').hidden=false;
   }finally{ b.disabled=false; b.textContent=antes }
@@ -2160,18 +2185,34 @@ async function abrirBiblioteca(){
   }
   cont.innerHTML='';
   cats.forEach(c=>{
-    // createElement y no innerHTML+=: asignar innerHTML vuelve a parsear TODO
-    // el contenedor y sustituye los nodos ya puestos por copias nuevas, que no
-    // se llevan el onclick. Solo funcionaban los botones de la ultima categoria.
+    // createElement and not innerHTML+=: assigning innerHTML reparses the WHOLE
+    // container and replaces the nodes already placed with fresh copies, which
+    // do not carry the onclick. Only the last category's buttons worked.
     const h=document.createElement('h4'); h.textContent=c.categoria; cont.append(h);
     c.items.forEach(it=>{
       const b=document.createElement('button'); b.type='button';
       b.innerHTML=`<b>${it.etiqueta}</b>${it.texto}`;
+      b.setAttribute('aria-pressed', S.frag[c.categoria]===it.texto);
       b.onclick=()=>{
         const t=$('#prompt');
-        // los puntos de partida sustituyen, los fragmentos se suman
-        t.value = c.categoria==='Starting points' ? it.texto
-                : (t.value.trim() ? t.value.trim()+' '+it.texto : it.texto);
+        S.promptPrevio=t.value;
+        if(c.categoria==='Starting points'){
+          // a starting point is the whole prompt, so it replaces everything
+          // and nothing layered on the previous one still applies
+          t.value=it.texto; S.frag={};
+        }else{
+          // a second pick from the same category swaps the first out instead
+          // of stacking both: picking golden hour after studio light means
+          // golden hour, not a prompt asking for two kinds of light at once.
+          // Anything typed by hand is left alone, and a fragment the user has
+          // since edited is no longer found, so that one is appended.
+          const puesto=S.frag[c.categoria];
+          t.value = (puesto && t.value.includes(puesto))
+                  ? t.value.replace(puesto, it.texto)
+                  : (t.value.trim() ? t.value.trim()+' '+it.texto : it.texto);
+          S.frag[c.categoria]=it.texto;
+        }
+        $('#btnDeshacer').hidden=false;
         $('#pl').close();
       };
       cont.append(b);
@@ -2180,11 +2221,11 @@ async function abrirBiblioteca(){
 }
 $('#btnPl').onclick=abrirBiblioteca;
 $('#pl').onclick=e=>{if(e.target.id==='pl')$('#pl').close()};
-$('#btnClear').onclick=()=>{$('#prompt').value=''};
+$('#btnClear').onclick=()=>{$('#prompt').value=''; S.frag={}};
 
 /* ---------- describe an image with the VLM ---------- */
 $('#btnDesc').onclick=async()=>{
-  // usa la primera imagen que haya cargada, en el orden en que importan
+  // uses the first image loaded, in the order they matter
   const src=(S.img.source||[])[0]||(S.img.scene||[])[0]||(S.img.person||[])[0];
   if(!src){avisar('Load an image first — person, scene or the one you are editing.');return}
   const b=$('#btnDesc'); b.disabled=true; const t0=Date.now();
@@ -2348,8 +2389,8 @@ $('#cfg').onclick=e=>{if(e.target.id==='cfg')$('#cfg').close()};
   else if(abrir==='efectos') setTimeout(()=>$('#ef')?.showModal(), 400);
   else if(abrir==='ajustes') setTimeout(()=>{
     $('#cfg')?.showModal();
-    // abre por donde esta lo que cambia cada generacion, no por el principio:
-    // la lista es larga y los tres ajustes de motor viven al final
+    // opens where the things that change every run are, not at the top: the
+    // list is long and the three engine settings live at the end
     setTimeout(()=>$('#aj_cfg')?.closest('.opt')
       ?.scrollIntoView({block:'start'}), 120);
   }, 500);
