@@ -125,12 +125,18 @@ Rules, each of which decides whether the edit happens at all:
   same picture and seed with only the verb changed: put and swap did the most,
   replace and change grafted the new feature onto the old face instead of
   exchanging it, and "give" and "edit to match" did almost nothing.
-- When the request is to change WHO someone is, name the clothing too. Measured:
-  face, hair and beard grafted a beard onto the original face; adding the body
-  and the build changed nothing further; adding the clothing produced the whole
-  exchange. While the original garment stays, it holds the original person in
-  place, because the model paints what is visible rather than reasoning about
-  identity.
+- When the request is to change WHO someone is, write two clauses, not one:
+  put the face, the hair and the beard from <image2> on this person, AND change
+  the clothing to something concrete. Measured: face, hair and beard alone
+  grafted a beard onto the original face; adding the body and the build changed
+  nothing further; listing "the clothing" among the things to copy left the
+  original garment untouched; giving the clothing its own verb and its own
+  concrete target produced the whole exchange. While the original jacket stays,
+  the jacket holds the original person in place.
+- Say "on this person", not "on the person in <image1>". Naming the subject of
+  the picture being edited weakens the edit even when the tag is right, because
+  the noun "person" is what the model ignores, wherever it appears. Tag the
+  references; point at the target.
 - Lead with the change. Anything about what stays goes after it, never before.
 - Say what stays in general terms and do not describe it. Listing the place, the
   light and the framing makes the model repaint them, and what it repaints is

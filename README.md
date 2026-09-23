@@ -520,6 +520,27 @@ the average.
 | a look or an edit, 1 MP | 832 × 1088 | **26 s** | 9.2 GB |
 | rescale to 2K | 1792 × 2048 | **156 s** | 18.2 GB |
 
+The rows above are without the detail pass. It is on by default and it runs a
+second forward pass, so everything below costs roughly 1.8× what the same job
+costs without it. These are the numbers the app actually produces today,
+measured across every use case in one pass with one photograph:
+
+| With the detail pass on | Output | Time | Peak VRAM |
+|---|---|---|---|
+| portrait from one reference | 1344 × 1760 | 166 s | 18.5 GB |
+| into a scene, two references | 1248 × 832 | 106 s | 17.1 GB |
+| a pose, two references | 896 × 1184 | 73 s | 16.9 GB |
+| **a pose and a style, three references** | 896 × 1184 | 87 s | **21.0 GB** |
+| a look on a photograph | 512 × 512 | 14 s | 8.2 GB |
+| replace a garment, by mask | 512 × 512 | 89 s | 13.1 GB |
+| the same by instruction, no mask | 512 × 512 | 14 s | 8.4 GB |
+| rescale | 1536 × 1536 | 87 s | 13.5 GB |
+
+**Three references is the expensive corner**, and the only row that comes near
+the ceiling. Note also that a look or an instruction edit costs what the source
+photograph costs, not what the setting asks for: both rows above are 512 px
+because the photograph was, and both took 14 seconds.
+
 **Three ceilings, and a hard floor under all of them.** Generating at 2K costs
 7.5 GB; one reference at 2K costs 18.2 to 19.2; two references at 2K took this
 machine down. So the profile carries a size without a reference, a size with

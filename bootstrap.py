@@ -138,6 +138,13 @@ def expectativas(p) -> str:
         lineas.append("  No VRAM ceiling on Apple Silicon: the mechanism that enforces")
         lineas.append("  one is CUDA-only, and claiming otherwise would be a comfort")
         lineas.append("  rather than a guard.")
+    if p.vram_limite_gb:
+        lineas.append("")
+        lineas.append("  The expensive corner is three reference pictures at once")
+        lineas.append("  -- a person, a pose and a style together. On the card this")
+        lineas.append("  was measured on that reached 21 GB of 24, which is why")
+        lineas.append("  several references drop to a smaller size automatically.")
+
     if p.cuantizacion == "int4":
         lineas.append("")
         lineas.append("  Weights load in nf4. On this architecture that is not the")

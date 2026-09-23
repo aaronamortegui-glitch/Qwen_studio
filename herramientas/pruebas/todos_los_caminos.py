@@ -468,6 +468,47 @@ def caso_editar():
     return f"{r['imagenes'][0]['tam']}, {d:.0f} levels from the source"
 
 
+def caso_editar_fondo():
+    """Instruction editing again, moving the subject somewhere else.
+
+    Separate from the other edit case because it is a different demand: the
+    garment case changes a small named thing and leaves the frame alone, this
+    one replaces everything around the subject and must not touch the subject.
+    It is also the use the app had no path to at all before -- putting someone
+    in another place without a mask.
+
+    Person swapping is deliberately NOT tested here. It works in one direction
+    and not the other depending on which photograph is the target, and the
+    model's own card lists face swaps among its weak points. A test that passes
+    half the time measures nothing.
+    """
+    import numpy as np
+    from PIL import Image
+
+    r = pedir("/api/editar", {
+        "imagen": data_url(PERSONA), "referencias": [data_url(ESCENA)],
+        "prompt": "Change the background to the room from <image2>.",
+        "megapixeles": 1, "steps": 16, "seed": 42, "cfg": 3.0, "negativo": ""})
+    assert not r.get("error"), r.get("error")
+    f = os.path.join(SALIDAS, os.path.basename(r["imagenes"][0]["archivo"]))
+    out = Image.open(f).convert("RGB")
+    antes = Image.open(PERSONA).convert("RGB")
+    assert out.size == antes.size, f"{out.size} against the source {antes.size}"
+
+    # El fondo tiene que moverse y el centro quedarse: se miran por separado,
+    # porque una diferencia global no distingue "cambio el fondo" de "cambio
+    # la foto entera", que es justo el fallo que hay que cazar.
+    def trozo(im, caja):
+        return np.asarray(im.resize((256, 256)).crop(caja), np.float32)
+    borde = (0, 0, 64, 256)
+    centro = (80, 40, 176, 200)
+    df = float(np.abs(trozo(antes, borde) - trozo(out, borde)).mean())
+    dc = float(np.abs(trozo(antes, centro) - trozo(out, centro)).mean())
+    assert df > 12, f"the background barely moved ({df:.0f})"
+    assert dc < df, f"the subject moved as much as the background ({dc:.0f} vs {df:.0f})"
+    return f"background {df:.0f}, subject {dc:.0f}"
+
+
 CASOS = [
     ("status", caso_estado), ("catalogues", caso_catalogos),
     ("new portrait", caso_retrato), ("aspect ratio 16:9", caso_ratio),
@@ -479,6 +520,7 @@ CASOS = [
     ("look, painted region", caso_look_region),
     ("match a style", caso_transferir_estilo),
     ("instruction edit", caso_editar),
+    ("background swap", caso_editar_fondo),
     ("enlarge", caso_reescalar),
     ("detail pass (CFG)", caso_cfg),
     ("describe (Qwen3-VL)", caso_describir), ("batch", caso_lote),

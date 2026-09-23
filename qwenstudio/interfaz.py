@@ -553,6 +553,7 @@ if(t!=='auto')document.documentElement.setAttribute('data-theme',t);})();</scrip
     <div class="casos" id="casos"></div>
 
     <div class="sec" id="secEntradas"><h2 id="tituloEntradas"><i>2</i>Inputs</h2></div>
+    <div class="nota" id="notaCaso" hidden></div>
     <div id="zonas"></div>
     <div id="campos"></div>
 
@@ -904,7 +905,10 @@ const CASOS={
       +'overcoat over a charcoal roll-neck, on a wide city street at golden hour with the '
       +'traffic blurred behind, framed three-quarter length, warm low sun raking from behind '
       +'and to the left, shallow depth of field, 85mm lens.'},
-  cutout:{cat:'photo', icon:'cutout', name:'Transparent cutout', hint:'PNG with a real alpha channel.',
+  cutout:{cat:'photo', icon:'cutout', name:'Transparent cutout',
+    nota:'Works from a clean background. From a busy one the alpha comes out '
+        +'partial and the figure can end up see-through — run Enlarge or '
+        +'a plain-background portrait first.', hint:'PNG with a real alpha channel.',
     mode:'generate', zonas:['person'], opt:[], transp:true, ratio:'3:4',
     prompt:'Full body colour cutout of the subject, standing square to camera in a plain '
       +'charcoal t-shirt and dark jeans, even studio light with no cast shadow, clean edges '
@@ -1105,6 +1109,9 @@ function aplicarCaso(k){
   $('#zonas').hidden=sinEntradas;
   $('#tituloEntradas').innerHTML='<i>2</i>'+(c.mode==='inpaint'?'Image':'Inputs');
   $('#lblPrompt').dataset.n=sinEntradas?'2':'3';
+  const nc=$('#notaCaso');
+  nc.hidden = !c.nota;
+  if(c.nota) nc.textContent = c.nota;
   construirZonas(); construirCampos(); medida(); estimar();
   if(S.esEjemplo) cargarEjemplo(k); else document.getElementById('notaEjemplo')?.remove();
 }
