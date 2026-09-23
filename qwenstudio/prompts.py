@@ -320,7 +320,7 @@ RELEVANTES: dict[str, tuple[str, ...]] = {
     # the free edit takes whole instructions, which are its starting points,
     # and nothing else: a clause of a photograph appended to an instruction
     # is a second edit nobody asked for
-    "editar": (),
+    "editar": ("Lighting", "Camera", "Style and grade"),
     "restyle": ("Style and grade", "Lighting"),
     "enlarge": ("Style and grade", "Camera"),
     "upscale": (),
@@ -329,23 +329,32 @@ RELEVANTES: dict[str, tuple[str, ...]] = {
 }
 
 
-def _comportamiento(categoria: str, caso: str | None) -> dict:
+# Categories whose entries are a whole subject, not a clause. Each one already
+# names the framing, the backdrop and the light, so two of them in one prompt
+# contradict each other -- an editorial portrait in a sunlit gallery plus a
+# studio headshot on seamless grey is two photographs, and the model answers by
+# picking one or splitting the difference. They replace the instruction.
+SUJETO = ("Starting points", "Portrait", "Full body", "Lettering",
+          "Edits (what to put there)")
+
+
+def _comportamiento(categoria: str) -> dict:
     """What a click on this category does, and which box it writes into.
 
-    Some entries ARE the whole prompt and replace what is there; others are one
-    clause of a photograph and are added to it. Which one a category is depends
-    on the path: on the replacement path the prompt IS the description of what
-    goes there, so those entries replace, while anywhere else the same text is
-    one more thing to say. Saying it in the data lets the interface print it on
-    the button instead of the user finding out by clicking.
+    Three kinds, and the difference is not cosmetic. A subject category is a
+    whole picture and replaces the instruction. A clause category names one
+    thing about it -- the light, the lens, the place, the wardrobe, the grade --
+    and is added to the complement, where several can live together because
+    each one talks about something different. And a selection phrase is neither:
+    it names what to edit and belongs in its own field. Saying it in the data
+    lets the interface print it on the button instead of the user finding out by
+    clicking.
     """
-    if categoria == "Starting points":
-        return {"modo": "reemplaza", "destino": "prompt"}
     if categoria == "What to select":
         return {"modo": "reemplaza", "destino": "seleccion"}
-    if categoria == "Edits (what to put there)" and caso == "replace":
-        return {"modo": "reemplaza", "destino": "prompt"}
-    return {"modo": "suma", "destino": "prompt"}
+    if categoria in SUJETO:
+        return {"modo": "reemplaza", "destino": "instruccion"}
+    return {"modo": "suma", "destino": "complemento"}
 
 
 def catalogo_de(caso: str | None = None) -> list[dict]:
@@ -357,11 +366,11 @@ def catalogo_de(caso: str | None = None) -> list[dict]:
     fuera = []
     if caso and caso in BASES:
         fuera.append({"categoria": "Starting points",
-                      **_comportamiento("Starting points", caso),
+                      **_comportamiento("Starting points"),
                       "items": [{"etiqueta": e, "texto": t} for e, t in BASES[caso]]})
     permitidas = RELEVANTES.get(caso or "", tuple(BIBLIOTECA)) if caso else tuple(BIBLIOTECA)
     for c, items in BIBLIOTECA.items():
         if c in permitidas:
-            fuera.append({"categoria": c, **_comportamiento(c, caso),
+            fuera.append({"categoria": c, **_comportamiento(c),
                           "items": [{"etiqueta": e, "texto": t} for e, t in items]})
     return fuera

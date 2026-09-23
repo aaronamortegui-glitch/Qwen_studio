@@ -253,45 +253,44 @@ each was measured to be a trade rather than a free win:
 On a machine that cannot run this usefully, the installer and the app both say
 so plainly — with a puppy — and then let you through anyway.
 
-### The prompt library, and the two jobs a prompt has
+### Two boxes, because a prompt says two different kinds of thing
 
-The box under the picture does one of two jobs, and which one it is decides
-what the library should do when you click.
+**Instruction** says what to make. **Look and feel** says how it should look.
+They are separate fields, and the split is not tidiness — it came out of a
+prompt that produced a picture nobody asked for.
 
-On the **photo paths** — a new portrait, a character in a scene, a pose — the
-app writes the instruction itself: the identity clause that names `<image1>`,
-the pose, the scene description read by the VLM. Your text is the *complement*.
-So there the library offers clauses of a photograph, and a pick is **added** to
-whatever you wrote. "New portrait" gets seven portrait styles — studio
-headshot, editorial, corporate, environmental, candid, black and white,
-close-up — plus lighting, camera, setting, clothing and grade.
+The box held an editorial portrait in a sunlit concrete gallery. Picking
+*Studio headshot* from the library appended a second whole description — a
+seamless light grey backdrop, framed from the chest up — so the prompt was
+asking for two photographs. The model does not refuse that; it picks one or
+splits the difference, and the result looks like a mistake with no error
+message.
 
-On the **editing paths** your text *is* the instruction, so there the entries
-are whole instructions and a pick **replaces** the box. "Tell it what to
-change" offers six, written the way the measurements say to write them: the
-operation first, the attribute named and never the person, `put X on` rather
-than `replace X with`, and the clothing named whenever the point is to change
-who someone is.
+The categories divide cleanly once you read them:
 
-Every entry says which it does, on the button, because the only other way to
-find out is to click and lose what you had. Three more rules fell out of
-building it:
+| kind | categories | what a click does |
+|---|---|---|
+| a whole subject | Starting points, Portrait, Full body, Lettering, Edits | **becomes the Instruction**, replacing what was there |
+| one clause about it | Lighting, Camera, Setting, Clothing, Style and grade | **added to Look and feel** |
+| what to edit | What to select | **fills the selection field** |
 
-- **A second pick from the same group swaps the first out** rather than
-  stacking both. Golden hour after studio light means golden hour, not a prompt
-  asking for two kinds of light at once, which the model answers by splitting
-  the difference.
-- **Anything typed by hand is left alone.** A fragment you have since edited is
-  no longer found in the box, so that one is appended instead of replaced, and
-  Undo covers the pick either way.
-- **"What to select" writes into the selection field**, not the prompt. It
-  holds phrases like *the sweater*, and putting those in the prompt — which is
-  what it used to do — described a sweater instead of selecting one.
+A subject already names its own framing, backdrop and light, so two of them
+contradict. A clause names one thing, so several live together — golden hour
+*and* a leather jacket *and* medium format are one photograph. Within a group
+a second pick swaps the first out: golden hour after studio light means golden
+hour, not a prompt asking for two kinds of light at once.
 
-Three paths had no catalogue of their own and fell through to "show
-everything", which is how the edit screen came to offer *Lettering*. They have
-one now; `enlarge` and `restyle` take grade and camera clauses, and the free
-edit takes instructions only.
+Both boxes go to the model as one string with the complement last, where the
+weight is. Everything that hands over a finished prompt — a recipe, *Describe
+an image*, the rewriter — fills the Instruction and clears the complement,
+because that text already has its look folded in.
+
+Every entry says on its own button which of the three it is, since the only
+other way to find out is to click and lose what you had. Two more things this
+turned up: *What to select* holds phrases like *the sweater* and was appending
+them to the prompt, which describes a sweater instead of selecting one; and
+three paths had no catalogue of their own and fell through to "show
+everything", which is how the edit screen came to be offering *Lettering*.
 
 ---
 

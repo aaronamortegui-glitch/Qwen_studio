@@ -570,6 +570,11 @@ if(t!=='auto')document.documentElement.setAttribute('data-theme',t);})();</scrip
     <div class="sec"></div>
     <h2 id="lblPrompt"><i>3</i>Instruction</h2>
     <textarea id="prompt"></textarea>
+    <div id="zonaExtra">
+      <label class="lblNeg" for="complemento">Look and feel</label>
+      <textarea id="complemento" rows="2"
+        placeholder="lighting, lens, setting, wardrobe, grade"></textarea>
+    </div>
     <div id="zonaNeg" hidden>
       <label class="lblNeg" for="negativo">What to keep out</label>
       <textarea id="negativo" rows="2"
@@ -1105,6 +1110,12 @@ function construirCampos(){
   $('#avInpaint').hidden = c.mode!=='inpaint' && !(c.mode==='efecto' && S.mascara);
   $('#avanzado').open=!!c.abierto;
 }
+// the complement is per picture, not per session: switching path, clearing
+// the box or pasting a whole prompt all mean the old one no longer applies
+function limpiarComplemento(){
+  const c=$('#complemento'); if(c) c.value='';
+  S.frag={};
+}
 function aplicarCaso(k){
   S.caso=k; const c=CASOS[k];
   if(CASOS[k].cat!==CAT){
@@ -1113,7 +1124,7 @@ function aplicarCaso(k){
     pintarCasos();
   }
   [...$('#casos').children].forEach(b=>b.setAttribute('aria-pressed',b.dataset.k===k));
-  $('#prompt').value=c.prompt; $('#transp').checked=!!c.transp; S.frag={};
+  $('#prompt').value=c.prompt; $('#transp').checked=!!c.transp; limpiarComplemento();
   S.ratio=c.ratio; marcarRatio();
   const sinEntradas=!c.zonas.length;
   $('#secEntradas').hidden=sinEntradas;
@@ -1583,7 +1594,8 @@ $('#dtCopiar').onclick=async()=>{
     'select the text and copy it by hand.'; }
 };
 $('#dtUsarPrompt').onclick=()=>{
-  $('#prompt').value=DT.meta.prompt||'';
+  // a recipe is the prompt as it was sent, complement already folded in
+  $('#prompt').value=DT.meta.prompt||''; limpiarComplemento();
   $('#dt').close();
 };
 $('#dtAbrirCaso').onclick=()=>{
@@ -1593,7 +1605,7 @@ $('#dtAbrirCaso').onclick=()=>{
   if(!CASOS[cu]) return;
   limpiarEjemplo();
   aplicarCaso(cu);
-  if(DT.meta.prompt) $('#prompt').value=DT.meta.prompt;
+  if(DT.meta.prompt){ $('#prompt').value=DT.meta.prompt; limpiarComplemento(); }
   if(DT.meta.efecto){
     const e=EFECTOS.find(x=>x.nombre===DT.meta.efecto);
     if(e){ S.efecto=e.id; pintarElegido(); }
@@ -2036,9 +2048,17 @@ function loQueVaACorrer(){
   return {pasos:+$('#steps').value, cfg:c,
           negativo:(c>1 ? ($('#negativo')||{}).value||'' : '')};
 }
+// The instruction says what to make; the complement says how it should look.
+// They are two boxes because a whole portrait description and a clause about
+// the light are not the same kind of sentence, and pouring both into one box
+// is how a prompt ends up asking for two photographs. The model still gets
+// one string, with the complement last, where the weight is.
+const promptCompleto=()=>[$('#prompt').value.trim(),
+                          ($('#complemento')||{}).value?.trim()||'']
+                         .filter(Boolean).join(' ');
 const comunes=()=>{
   const v = loQueVaACorrer();
-  return {prompt:$('#prompt').value, steps:v.pasos, seed:+$('#seed').value,
+  return {prompt:promptCompleto(), steps:v.pasos, seed:+$('#seed').value,
     variantes:+$('#variants').value, megapixeles:+$('#mp').value,
     lora:$('#lora').value||null, fuerza_lora:+$('#loraw').value,
     cfg:v.cfg, negativo:v.negativo};
@@ -2089,7 +2109,7 @@ $('#go').onclick=async()=>{
       antes=(S.img.source||[])[0];
       r=await (await fetch('/api/estilo',{method:'POST',body:JSON.stringify({
         imagen:antes, estilo:(S.img.style||[])[0]||null,
-        prompt:$('#prompt').value, steps:+$('#steps').value,
+        prompt:promptCompleto(), steps:+$('#steps').value,
         seed:+$('#seed').value, megapixeles:+$('#mp').value})})).json();
     }else if(c.mode==='editar'){
       antes=(S.img.source||[])[0];
@@ -2153,7 +2173,7 @@ $('#lupa').onclick=()=>$('#lupa').close();
 
 /* ---------- prompt library ---------- */
 $('#btnMejorar').onclick=async()=>{
-  const t=$('#prompt').value.trim();
+  const t=promptCompleto();
   if(!t){avisar('Write a few words first and this will turn them into a full prompt.');return}
   const b=$('#btnMejorar'); b.disabled=true; const antes=b.textContent;
   b.textContent='Rewriting...';
@@ -2194,14 +2214,12 @@ async function abrirBiblioteca(){
   // complement, so everything here adds to it. On the editing paths your text
   // IS the instruction, so the entries are whole instructions and replace it.
   // The catalogue already knows which, so nobody has to find out by clicking.
-  const manda = cats.some(c=>c.modo==='reemplaza' && c.destino==='prompt');
   const nota=document.createElement('p'); nota.className='hint';
-  nota.textContent = manda
-    ? 'On this path your text is the instruction, so these replace what is in '
-      + 'the box. The clauses further down are added to it instead.'
-    : 'On this path the app writes the instruction \u2014 keeping the face, the '
-      + 'pose, the scene. What you pick here is added to your own words, and a '
-      + 'second pick from the same group swaps the first out.';
+  nota.textContent = 'A whole subject goes in Instruction and replaces what is '
+    + 'there \u2014 two of them in one prompt ask for two photographs. A clause '
+    + 'about the light, the lens, the place, the wardrobe or the grade goes in '
+    + 'Look and feel, where several live together and a second pick from the '
+    + 'same group swaps the first out.';
   cont.append(nota);
   cats.forEach(c=>{
     // createElement and not innerHTML+=: assigning innerHTML reparses the WHOLE
@@ -2211,6 +2229,8 @@ async function abrirBiblioteca(){
     c.items.forEach(it=>{
       const reemplaza = c.modo==='reemplaza';
       const seleccion = c.destino==='seleccion';
+      const caja = seleccion ? '#seleccion'
+                 : c.destino==='complemento' ? '#complemento' : '#prompt';
       const puesto = S.frag[c.categoria];
       const enUso = !reemplaza && puesto===it.texto;
       const b=document.createElement('button'); b.type='button';
@@ -2219,22 +2239,23 @@ async function abrirBiblioteca(){
       const et=document.createElement('b'); et.textContent=it.etiqueta;
       const chip=document.createElement('span'); chip.className='plModo';
       chip.textContent = seleccion ? 'sets what to select'
-                       : reemplaza ? 'use this instead'
-                       : enUso     ? 'in the prompt \u00b7 pick another to swap'
-                                   : 'add to the prompt';
+                       : reemplaza ? 'becomes the instruction'
+                       : enUso     ? 'in look and feel \u00b7 pick another to swap'
+                                   : 'add to look and feel';
       et.append(chip);
       const tx=document.createElement('span'); tx.className='plTexto';
       tx.textContent=it.texto;
       b.append(et,tx);
       b.setAttribute('aria-pressed', enUso);
       b.onclick=()=>{
-        const t = seleccion ? $('#seleccion') : $('#prompt');
+        const t = $(caja);
         if(!t){ avisar('That box is not on this screen.'); return }
-        if(!seleccion) S.promptPrevio=t.value;
+        if(caja==='#prompt') S.promptPrevio=t.value;
         if(reemplaza){
-          // this entry is the whole thing, so it replaces what is there and
-          // nothing layered on the previous one still applies
-          t.value=it.texto; if(!seleccion) S.frag={};
+          // a whole subject: it becomes the instruction, and whatever was
+          // layered on the previous subject no longer describes this one
+          t.value=it.texto;
+          if(caja==='#prompt') limpiarComplemento();
         }else{
           // a second pick from the same category swaps the first out instead
           // of stacking both: picking golden hour after studio light means
@@ -2246,7 +2267,7 @@ async function abrirBiblioteca(){
                   : (t.value.trim() ? t.value.trim()+' '+it.texto : it.texto);
           S.frag[c.categoria]=it.texto;
         }
-        if(!seleccion) $('#btnDeshacer').hidden=false;
+        if(caja==='#prompt') $('#btnDeshacer').hidden=false;
         $('#pl').close();
       };
       cont.append(b);
@@ -2255,7 +2276,7 @@ async function abrirBiblioteca(){
 }
 $('#btnPl').onclick=abrirBiblioteca;
 $('#pl').onclick=e=>{if(e.target.id==='pl')$('#pl').close()};
-$('#btnClear').onclick=()=>{$('#prompt').value=''; S.frag={}};
+$('#btnClear').onclick=()=>{$('#prompt').value=''; limpiarComplemento()};
 
 /* ---------- describe an image with the VLM ---------- */
 $('#btnDesc').onclick=async()=>{
@@ -2268,7 +2289,7 @@ $('#btnDesc').onclick=async()=>{
     const r=await (await fetch('/api/describir',{method:'POST',
       body:JSON.stringify({imagen:src, tarea:'prompt'})})).json();
     if(r.error){avisar(r.error, true);return}
-    $('#prompt').value=r.texto;
+    $('#prompt').value=r.texto; limpiarComplemento();
   }catch(e){avisar('Could not finish: '+e, true)}
   finally{clearInterval(tic);b.disabled=false;b.textContent='Describe an image'}
 };
