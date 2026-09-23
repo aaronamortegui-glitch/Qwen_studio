@@ -127,6 +127,10 @@ input,textarea,select{width:100%;padding:12px 14px;border:1px solid var(--line);
   border-radius:var(--r-s);background:var(--sf);color:var(--on-sf);font:inherit;
   transition:border-color .15s,box-shadow .15s}
 textarea{min-height:92px;resize:vertical;line-height:1.55}
+#zonaNeg{margin-top:10px}
+#zonaNeg .lblNeg{display:block;margin-bottom:6px;font-size:12px;font-weight:600;
+  letter-spacing:.04em;text-transform:uppercase;color:var(--on-sf-var)}
+#negativo{min-height:52px}
 input:focus,textarea:focus,select:focus{outline:0;border-color:var(--verde);
   box-shadow:0 0 0 3px rgba(42,78,69,.16)}
 input[type=range]{padding:0;border:0;background:transparent;accent-color:var(--verde)}
@@ -544,6 +548,11 @@ if(t!=='auto')document.documentElement.setAttribute('data-theme',t);})();</scrip
     <div class="sec"></div>
     <h2 id="lblPrompt"><i>3</i>Instruction</h2>
     <textarea id="prompt"></textarea>
+    <div id="zonaNeg" hidden>
+      <label class="lblNeg" for="negativo">What to keep out</label>
+      <textarea id="negativo" rows="2"
+        placeholder="blurry, deformed hands, extra fingers, watermark"></textarea>
+    </div>
     <div class="efElegido" id="zonaEfecto" hidden>
       <span id="efMini"></span>
       <span style="flex:1"><b id="efNombre">No look picked yet</b>
@@ -572,7 +581,9 @@ if(t!=='auto')document.documentElement.setAttribute('data-theme',t);})();</scrip
       <div class="chips" id="ratios"></div>
       <div class="grid2" style="margin-top:10px">
         <div><label for="mp">Quality</label><select id="mp">
-          <option value="1">1 MP · fast</option><option value="2">2 MP · medium</option>
+          <option value="0.5">720 px · draft</option>
+          <option value="1">1 MP · working size</option>
+          <option value="2">2 MP · medium</option>
           <option value="4">4 MP · 2K native</option></select></div>
         <div><span class="etiq">Output</span>
           <div class="medida" id="medida" role="status">1024 × 1024</div></div>
@@ -812,6 +823,7 @@ const IC={
  portrait:'<circle cx="12" cy="8.5" r="3.6"/><path d="M4.8 20c.6-3.8 3.6-5.8 7.2-5.8s6.6 2 7.2 5.8"/>',
  scene:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 15.5l4.5-4a2 2 0 0 1 2.7 0L16 17"/><circle cx="15.5" cy="9.5" r="1.6"/>',
  pose:'<circle cx="12" cy="4.4" r="2"/><path d="M12 6.6v7M12 8.6L7.5 11M12 8.6l4.5 2.4M12 13.6L8.6 20M12 13.6L15.4 20"/>',
+ enlarge:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 8l-3 3 3 3M16 8l3 3-3 3M11 8l-3 3M13 16l3-3"/>',
  replace:'<path d="M4 7h9a4 4 0 0 1 0 8H8"/><path d="M10.5 12.5L8 15l2.5 2.5"/><rect x="15" y="4" width="5" height="5" rx="1"/>',
  cutout:'<path d="M12 4v8"/><circle cx="7" cy="16" r="2.6"/><circle cx="17" cy="16" r="2.6"/><path d="M9 14.4L17 5M15 14.4L7 5"/>',
  free:'<path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="9"/>',
@@ -887,6 +899,13 @@ const CASOS={
 
   look:{cat:'edit', icon:'efecto', name:'Apply a look', hint:'Pick the treatment from a grid.',
     mode:'efecto', zonas:['source'], opt:[], ratio:'auto', prompt:''},
+  restyle:{cat:'edit', icon:'style', name:'Match a style',
+    hint:'Your photo, painted the way another picture is.',
+    mode:'estilo', zonas:['source','style'], opt:[], ratio:'auto',
+    prompt:''},
+  enlarge:{cat:'edit', icon:'enlarge', name:'Rescale to 2K',
+    hint:'The picture redrawn larger, not stretched. Detail comes back.',
+    mode:'reescalar', zonas:['source'], opt:[], ratio:'auto', prompt:''},
   replace:{cat:'edit', icon:'replace', name:'Replace something', hint:'Name it or paint it, then say what goes there.',
     mode:'inpaint', zonas:['source','extra'], opt:['extra'], ratio:'auto',
     prompt:'A dark green leather biker jacket, zipped all the way up. It is the only '
@@ -927,14 +946,27 @@ const S={caso:'portrait', img:{}, poseLib:null, ratio:'1:1', esEjemplo:true,
 const caso=()=>CASOS[S.caso];
 
 /* ---------- zones ---------- */
+// El prompt negativo solo existe por encima de CFG 1: sin segundo paso no hay
+// nada contra lo que empujar, asi que ensenar la caja seria ofrecer un control
+// que no hace nada.
+function zonaNegativo(){
+  const z=$('#zonaNeg'); if(!z) return;
+  z.hidden = !(+(AJ.cfg||1) > 1);
+}
 function construirZonas(){
   const c=caso(), cont=$('#zonas'); cont.innerHTML='';
   c.zonas.forEach((z,i)=>{
     const op=c.opt.includes(z), m=ZONAS[z];
+    // la ranura de estilo sirve para dos cosas distintas segun el caso, y
+    // decir cual evita que alguien traiga un cuadro esperando que le copie la ropa
+    const desc = (z==='style' && c.mode==='estilo')
+      ? 'The picture whose manner you want: its medium, its brushwork, its palette. '
+        +'Its subject and its setting stay out of it.'
+      : m.d;
     const d=document.createElement('div');
     d.className='zona'+(op?' opt':''); d.id='z_'+z;
     d.innerHTML=`<div class="n">${svg(m.icon||'upload',21)}</div>
-      <div><b>${m.n}${op?' <span class="opt-tag">optional</span>':''}</b><small>${m.d}</small></div>
+      <div><b>${m.n}${op?' <span class="opt-tag">optional</span>':''}</b><small>${desc}</small></div>
       <div class="tira" id="t_${z}"></div>`;
     cont.append(d); engancharZona(d,z,z==='person');
   });
@@ -1012,6 +1044,8 @@ function construirCampos(){
   }
   const etiqueta = c.mode==='inpaint' ? 'What should go there instead'
     : c.mode==='efecto' ? 'The look'
+    : c.mode==='estilo' ? 'Anything to add (optional)'
+    : c.mode==='reescalar' ? 'Nothing to write: the picture is its own instruction'
     : 'Instruction';
   // los dos caminos de edicion ya han gastado el 3 en la region
   const nPaso = (c.mode==='inpaint'||c.mode==='efecto')
@@ -1863,7 +1897,8 @@ $('#parar').onclick=async()=>{
 
 const comunes=()=>({prompt:$('#prompt').value, steps:+$('#steps').value, seed:+$('#seed').value,
   variantes:+$('#variants').value, megapixeles:+$('#mp').value,
-  lora:$('#lora').value||null, fuerza_lora:+$('#loraw').value});
+  lora:$('#lora').value||null, fuerza_lora:+$('#loraw').value,
+  cfg:+(AJ.cfg||1), negativo:(+(AJ.cfg||1)>1 ? $('#negativo').value : '')});
 
 $('#verMask').onclick=async()=>{
   const src=(S.img.source||[])[0];
@@ -1898,6 +1933,17 @@ $('#go').onclick=async()=>{
         difuminado:+$('#feather').value, padding:+$('#pad').value,
         megapixeles:+$('#mp').value, variantes:+$('#variants').value,
         steps:+$('#steps').value, seed:+$('#seed').value})})).json();
+    }else if(c.mode==='estilo'){
+      antes=(S.img.source||[])[0];
+      r=await (await fetch('/api/estilo',{method:'POST',body:JSON.stringify({
+        imagen:antes, estilo:(S.img.style||[])[0]||null,
+        prompt:$('#prompt').value, steps:+$('#steps').value,
+        seed:+$('#seed').value, megapixeles:+$('#mp').value})})).json();
+    }else if(c.mode==='reescalar'){
+      antes=(S.img.source||[])[0];
+      r=await (await fetch('/api/reescalar',{method:'POST',body:JSON.stringify({
+        imagen:antes, steps:+$('#steps').value, seed:+$('#seed').value,
+        cfg:+(AJ.cfg||1), negativo:(+(AJ.cfg||1)>1 ? $('#negativo').value : '')})})).json();
     }else if(c.mode==='inpaint'){
       antes=(S.img.source||[])[0];
       r=await (await fetch('/api/inpaint',{method:'POST',body:JSON.stringify({...comunes(),
@@ -2026,15 +2072,21 @@ const OPCIONES=[
  ['resumen','check','Contact sheet per run','Saves one image with the inputs, the operator and the result.'],
  ['mantener_montado','check','Keep models mounted',
   'Skips unmounting between blocks. Faster for batches, but three models will not fit at once — turn it off if generation stalls.'],
- ['steps','num','Default steps','25 is what ComfyUI recommends, 40 what the model card says.'],
+ ['steps','num','Default steps','Swept by eye at 1 MP on a watch movement and a hand: 8 is mush, 12 leaves it soft, 16 resolves the screws, and 20 and 25 add nothing worth the extra 5 and 11 seconds. 16 is the knee; 12 is a draft.'],
  ['megapixeles','num','Default quality (MP)','1 is fast, 4 is 2K native.'],
  ['vlm_bits','sel','Vision model precision','4-bit uses ~7 GB, 8-bit ~13 GB and describes a little better.'],
  ['afinar_mascara','check','Sharpen text selections with SAM 2',
   'CLIPSeg finds the thing you named; SAM 2 makes the edge follow it. Measured: asking for the yellow sweater went from 28.3% of the frame to 22.2%, and the difference was the hair falling across it. Adds ~150 MB and under a second.'],
  ['limite_c','num','Cool down between batch images (\u00b0C)',
   'Before each image of a batch, wait until the card drops below this. 0 turns it off. Not protection from damage \u2014 the firmware already enforces its own limit \u2014 but a long unattended run finishes sooner if it is not being throttled the whole way.'],
+ ['cfg','num','Detail pass (CFG)',
+  'Above 1 the model runs a second pass against what you say to keep out, which costs about 80% more time. Measured at 16 steps: on a watch movement it went from a gold blur to resolved jewels and screws, but on a portrait it invented a second person the prompt never asked for, and a letterpress poster came out flatter. Reach for it when there is fine detail to resolve and you can name what you do not want. 3 is the useful value; at 1 there is no second pass and the box below the prompt is hidden.'],
  ['vae','vae','Decoder',
   'Measured on the same seed: the HDR decoder gives +19% saturation and +27% edge energy with contrast and exposure unchanged. It interprets rather than reproduces — SSIM drops from 0.958 to 0.944 — so switch to stock for a faithful reproduction. Needs modelos/vae_hdr.safetensors.'],
+ ['turbo','check','Turbo adapter (draft speed)',
+  'Runs everything at 8 steps with the Viggle turbo adapter. Measured warm at 1 MP: generation 28s → 20s, and an edit that has to keep a face 29s → 19s, with the face indistinguishable. Side by side the base model still made the better picture, so this is for iterating rather than for the final frame. Ignores the step setting. Needs modelos/turbo.safetensors.'],
+ ['muestreo','muestreo','Sampling',
+  'Ancestral turns on stochastic sampling. Measured at one seed and 16 steps: far more skin texture on a face (edge energy 7.5 against 3.8), but it dropped a background the prompt had asked for and came out flatter on a lettering job. The karras, exponential and beta schedules are not offered — the first two return smears because their sigma remapping fights the dynamic shifting this model ships with, and the third needs scipy.'],
 ];
 let AJ={};
 function aplicarTema(t){
@@ -2055,6 +2107,9 @@ function pintarAjustes(){
     else if(tipo==='vae'){ ctrl=`<select id="aj_${k}">
       <option value="hdr"${AJ[k]==='hdr'?' selected':''}>HDR</option>
       <option value="stock"${AJ[k]==='stock'?' selected':''}>Stock</option></select>` }
+    else if(tipo==='muestreo'){ ctrl=`<select id="aj_${k}">
+      <option value="base"${AJ[k]==='base'?' selected':''}>Base</option>
+      <option value="ancestral"${AJ[k]==='ancestral'?' selected':''}>Ancestral</option></select>` }
     else { ctrl=`<input type="number" id="aj_${k}" value="${AJ[k]}" min="1" max="60">` }
     row.innerHTML = tipo==='check'
       ? `${ctrl}<div><b>${tit}</b><small>${desc}</small></div>`
@@ -2062,11 +2117,13 @@ function pintarAjustes(){
     b.append(row);
     const el=row.querySelector('#aj_'+k);
     el.onchange=()=>{
-      const v = tipo==='check' ? el.checked : (tipo==='vae' ? el.value : +el.value);
+      const v = tipo==='check' ? el.checked
+              : (tipo==='vae'||tipo==='muestreo') ? el.value : +el.value;
       AJ[k]=v;
       fetch('/api/ajustes',{method:'POST',body:JSON.stringify({[k]:v})});
       if(k==='steps') $('#steps').value=v, $('#vSteps').textContent=v;
       if(k==='megapixeles') $('#mp').value=v, medida();
+      if(k==='cfg') zonaNegativo();
     };
   });
 }
@@ -2124,7 +2181,7 @@ async function cargarEjemplo(k){
 }
 
 fetch('/api/ajustes').then(r=>r.json()).then(a=>{
-  AJ=a; pintarAjustes();
+  AJ=a; pintarAjustes(); zonaNegativo();
   $('#steps').value=a.steps; $('#vSteps').textContent=a.steps;
   $('#mp').value=a.megapixeles; medida();
 });
@@ -2149,6 +2206,13 @@ $('#cfg').onclick=e=>{if(e.target.id==='cfg')$('#cfg').close()};
   if(abrir==='mask') setTimeout(abrirPincel, 500);
   else if(abrir==='galeria') setTimeout(abrirGaleria, 400);
   else if(abrir==='efectos') setTimeout(()=>$('#ef')?.showModal(), 400);
+  else if(abrir==='ajustes') setTimeout(()=>{
+    $('#cfg')?.showModal();
+    // abre por donde esta lo que cambia cada generacion, no por el principio:
+    // la lista es larga y los tres ajustes de motor viven al final
+    setTimeout(()=>$('#aj_cfg')?.closest('.opt')
+      ?.scrollIntoView({block:'start'}), 120);
+  }, 500);
   // ?receta=<archivo> abre la ficha de un resultado concreto: sirve para
   // mandarle a alguien como se hizo una imagen, no solo la imagen
   const receta=q.get('receta');

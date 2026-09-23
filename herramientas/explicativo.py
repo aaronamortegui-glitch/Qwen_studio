@@ -286,6 +286,8 @@ def construir() -> str:
               ["", "Transparent cutout", "person → PNG with a real alpha channel"],
               ["", "Free", "everything, nothing assumed"],
               ["Edit a photo", "Apply a look", "image + a treatment picked from a grid"],
+              ["", "Match a style", "image + a picture whose manner you want"],
+              ["", "Rescale to 2K", "image, redrawn larger rather than stretched"],
               ["", "Replace something", "image + a selection + what goes there"],
           ], [an * .22, an * .3, an * .48]),
           Spacer(1, 4 * mm),
@@ -472,10 +474,30 @@ def construir() -> str:
          "it. Saying the garment is closed and that nothing shows underneath is what turns a "
          "layer into a replacement."),
         ("Prompts go positive but imperative.",
-         "There is no negative guidance at cfg 1, so “ignore the background” just "
-         "injects the concept. But softening the verb breaks it too: “the face is "
-         "hers” does not transfer, “the subject's face must match &lt;image1&gt; "
-         "exactly” does."),
+         "At the default cfg of 1 there is no negative guidance, so “ignore the "
+         "background” just injects the concept. But softening the verb breaks it too: "
+         "“the face is hers” does not transfer, “the subject's face must "
+         "match &lt;image1&gt; exactly” does."),
+        ("A negative prompt does not exist below cfg 1.",
+         "The pipeline accepts a negative prompt at any cfg, and at 1 it is silently "
+         "inert: same seed, byte-identical image, identical time, because the second "
+         "forward pass is never run. Raised to 3 with something to push against, the "
+         "same prompt turned a blurred watch movement into resolved jewels and screws "
+         "for 80% more time. The control is offered only above 1, because a control "
+         "that looks like it works and does not is worse than no control."),
+        ("Style is a description, not a picture.",
+         "Handing the model a painting as &lt;image2&gt; and asking for its style barely "
+         "moves the image, and what does come across is the painting's subject: a "
+         "lighthouse landed in a portrait, and a botanical watercolour replaced the "
+         "sitter with its own rosemary and fig. Naming the technique in words — flat "
+         "colours, no gradients, crisp geometric edges — is what works. So the app "
+         "reads the reference with Qwen3-VL first, asking only how the picture is made "
+         "and never what it shows, and sends that sentence with a single image."),
+        ("Steps are cheap on the clock and not cheap in the picture.",
+         "At 1 MP the clock barely moves between 8 and 25 steps — 18 s to 38 s — "
+         "which made steps look free. The picture disagrees: 8 is mush, 12 leaves a watch "
+         "movement soft, 16 resolves its screws, and 20 and 25 add nothing. Measuring "
+         "the wrong quantity is how a default ends up at 12."),
         ("int8 quantisation was counterproductive.",
          "The hypothesis was that it would save memory. Measured: 2.8 s/step and 24.1 GB "
          "peak, against 1.26 s/step and 21.2 GB unquantised — bitsandbytes int8 casts "
@@ -495,10 +517,11 @@ def construir() -> str:
           KeepTogether([Paragraph("Numbers", H3),
           _tabla([
               ["", ""],
-              ["1 MP (1024 px), 25 steps, warm", "62 s"],
-              ["2 MP (1440 px), 25 steps", "94 s"],
-              ["4 MP (2048 px, 2K native), 25 steps", "239 s"],
-              ["VRAM peak", "21.3 GB"],
+              ["1 MP (1024 px), 16 steps, warm", "26 s, 7.3 GB peak"],
+              ["2 MP (1440 px), 16 steps", "51 s, 7.3 GB peak"],
+              ["4 MP (2048 px, 2K native), 16 steps", "122 s, 7.5 GB peak"],
+              ["A look or an edit, 1 MP", "26 s, 9.2 GB peak"],
+              ["Rescale to 2K", "156 s, 18.2 GB peak"],
               ["Model load, first call", "27–35 s"],
               ["Segmentation, three phrases", "0.9 s"],
               ["Describe an image (Qwen3-VL, 4-bit)", "5–9 s, 7.1 GB"],
@@ -506,6 +529,17 @@ def construir() -> str:
               ["Weights", "~31 GB, downloaded once"],
           ], [an * .55, an * .45], cabecera=False)]),
           Spacer(1, 4 * mm),
+          Paragraph("Those figures are nf4 on both the transformer and the text encoder, "
+                    "which on this architecture is not the poor mode but the good one: "
+                    "faster than bf16, half the memory, and the only way 2K works at all. "
+                    "The same seed in bf16 and in nf4 gives two different pictures, so a "
+                    "recipe only reproduces within one precision.", TENUE_P),
+          Spacer(1, 3 * mm),
+          Paragraph("Two ceilings, not one. Generating at 2K peaks at 7.5 GB; rescaling to "
+                    "2K, where the picture is its own reference, peaks at 18.2. The profile "
+                    "carries both numbers, because quoting only the first is how a card "
+                    "gets promised a size it will page on.", TENUE_P),
+          Spacer(1, 3 * mm),
           Paragraph("ComfyUI is still about four times faster for the same image: it uses "
                     "int8_convrot weights with kernels built for them, a better memory "
                     "manager, and prefix caching of text and reference tokens worth roughly "
@@ -517,7 +551,7 @@ def construir() -> str:
     # --- 5. como se comprueba y licencias ---------------------------------
     f += [CondPageBreak(45 * mm),
           Paragraph("How it is checked", H2),
-          Paragraph("Fourteen cases run against the live app. They check the shape of what "
+          Paragraph("Nineteen cases run against the live app. They check the shape of what "
                     "came back, not just the absence of an exception: a 1024 square returned "
                     "when 16:9 was asked for is broken even though nothing raised.", CUERPO),
           Paragraph("Where the instruction can be read off the image — a blazer, a "

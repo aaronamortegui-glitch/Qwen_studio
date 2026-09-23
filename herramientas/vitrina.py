@@ -45,6 +45,10 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SALIDAS = os.path.join(RAIZ, "salidas")
 EJEMPLOS = os.path.join(RAIZ, "ejemplos")
 DESTINO = os.path.join(EJEMPLOS, "vitrina")
+# Anything that ships as an example is generated well above the app's own
+# default: at 12 steps the fine detail is still soft, and a showcase piece
+# that undersells the model is worse than an empty column. Do not lower it.
+PASOS = 30
 MANIFIESTO = os.path.join(EJEMPLOS, "vitrina.json")
 REGISTRO = os.path.join(DESTINO, "_origen.json")
 LADO = 1100
@@ -313,6 +317,14 @@ PIEZAS: list[dict] = [
                "reproduction with no shading.",
      "que": "Orthographic, no shading, numbered callouts. A drawing whose job is to be "
             "read rather than admired \u2014 a different discipline entirely."},
+    {"clave": "restyle", "titulo": "Match a style", "caso": "restyle", "grupo": CAMINOS,
+     "seed": 6105, "fuente": "retrato", "endpoint": "/api/estilo",
+     "ref_estilo": "acuarela",
+     "que": "The portrait remade in the manner of the watercolour below it — same "
+            "person, same pose, same framing, a different medium. The reference is "
+            "never passed to the generator as a picture: it is read first, and only "
+            "the description of how it is made travels, because handing the model the "
+            "painting hands it the rosemary and the fig as well."},
 ]
 
 
@@ -332,15 +344,27 @@ def _pedir(ruta: str, carga: dict, timeout: int = 3600) -> dict:
         return json.loads(r.read())
 
 
-def generar() -> dict:
-    """Run every piece through the app. Returns clave -> file it produced."""
+def generar(solo: set[str] | None = None) -> dict:
+    """Run every piece through the app. Returns clave -> file it produced.
+
+    With `solo`, only those are regenerated and the rest are taken from the
+    last run: adding one piece should not cost thirty generations. A piece
+    another one is built on has to exist already, which it does whenever the
+    whole set has been run once.
+    """
     hechas: dict[str, str] = {}
+    if solo and os.path.exists(REGISTRO):
+        with open(REGISTRO, encoding="utf-8") as f:
+            hechas = {k: os.path.join(SALIDAS, v) for k, v in json.load(f).items()}
+
     for p in PIEZAS:
+        if solo and p["clave"] not in solo:
+            continue
         t0 = time.time()
         fuente = p.get("fuente")
         if fuente:                                   # una edicion
             carga = {"imagen": _data_url(hechas[fuente]),
-                     "steps": 30, "seed": p["seed"], "variantes": 1,
+                     "steps": PASOS, "seed": p["seed"], "variantes": 1,
                      "megapixeles": 1,
                      "difuminado": p.get("difuminado", 12),
                      "padding": p.get("padding", 0.35)}
@@ -351,9 +375,11 @@ def generar() -> dict:
             if p.get("prompt"):
                 carga["prompt"] = p["prompt"]
                 carga.update(crecer=8, umbral=0.5)
+            if p.get("ref_estilo"):
+                carga["estilo"] = _data_url(hechas[p["ref_estilo"]])
             r = _pedir(p["endpoint"], carga)
         else:                                        # una generacion
-            carga = {"prompt": p["prompt"], "steps": 30, "seed": p["seed"],
+            carga = {"prompt": p["prompt"], "steps": PASOS, "seed": p["seed"],
                      "variantes": 1, "megapixeles": 1, "lora": None, "fuerza_lora": 1.0,
                      "personas": [_data_url(hechas[p["persona"]])] if p.get("persona") else [],
                      "escena": _data_url(hechas[p["escena"]]) if p.get("escena") else None,
@@ -449,5 +475,11 @@ def empacar(hechas: dict | None = None) -> None:
 if __name__ == "__main__":
     if "--empacar" in sys.argv:
         empacar()
+    elif "--solo" in sys.argv:
+        claves = {x for x in sys.argv[sys.argv.index("--solo") + 1].split(",") if x}
+        faltan = claves - {p["clave"] for p in PIEZAS}
+        if faltan:
+            raise SystemExit("  no such pieces: " + ", ".join(sorted(faltan)))
+        empacar(generar(claves))
     else:
         empacar(generar())

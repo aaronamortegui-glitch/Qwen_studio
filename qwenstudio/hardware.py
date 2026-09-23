@@ -103,8 +103,10 @@ class Perfil:
     disco_libre_gb: float
     dtype: str
     cuantizacion: str
+    cuantizacion_te: str     # el text encoder sigue al transformer: a medias sale peor
     offload: str
-    res_max: int
+    res_max: int           # sin referencia
+    res_max_ref: int       # con una foto delante, que cuesta el doble largo
     nivel: str               # XL | L | M | S | MINIMO | INVIABLE
     torch_index: str         # indice de pip para instalar torch
     avisos: list
@@ -150,27 +152,52 @@ def detectar(destino_modelos: str | None = None) -> Perfil:
         torch_index = ""
 
     # --- eleccion de nivel -------------------------------------------------
-    # Nota medida el 2026-09-21 en una RTX 5090 Laptop (24 GB): cuantizar a int8
-    # con bitsandbytes resulto CONTRAPRODUCENTE -- 2.8 s/paso y 24.1 GB de pico,
-    # contra 1.26 s/paso y 21.2 GB sin cuantizar. bnb int8 castea bf16<->fp16 en
-    # cada matmul. Por eso int8 no aparece en la escalera: el transformer en
-    # bf16 son 14.2 GB y cabe de sobra si el text encoder se descarga tras
-    # codificar, que es justo lo que hace el offload de modelo.
+    # La tabla sale de lo medido el 2026-09-22 en una RTX 5090 Laptop (24 GB),
+    # retrato CON foto de referencia, 30 pasos, misma semilla:
+    #
+    #   bf16          1 MP   73 s  23.9 GB  |  4 MP  no termina, pagina
+    #   nf4 solo TE   1 MP  112 s  19.0 GB  |  cuantizar a medias es lo peor
+    #   nf4 ambos     1 MP   56 s  12.9 GB  |  4 MP  467 s, 24.0 GB de pico
+    #   int8 ambos    1 MP  pagina 24.1 GB  |  bnb int8 no es el Q8 de GGUF
+    #
+    # Re-medido el 2026-09-23 con nf4 y el tiling del VAE puesto, muestreando
+    # nvidia-smi cada 0.2 s. Los picos cambiaron tanto que la tabla anterior ya
+    # no describia esta app:
+    #
+    #   generar 1 MP   26 s    7.3 GB      generar 2 MP   51 s   7.3 GB
+    #   generar 4 MP  122 s    7.5 GB      editar  1 MP   26 s   9.2 GB
+    #   reescalar a 2K (la imagen es su propia referencia)  156 s  18.2 GB
+    #
+    # Generar a 2K cuesta 7.5 GB y editar a 2K cuesta 18.2. Son dos techos
+    # distintos y antes habia uno solo, que es como se prometio 2048 a tarjetas
+    # que luego paginaban en cuanto se les ponia una foto delante.
+    #
+    # Lo que este archivo decia antes se midio sin referencia y prometia 2048
+    # en 24 GB. Con referencia eso no se sostiene. Y al revés de lo que ponia:
+    # en 24 GB nf4 no es el modo pobre, es el bueno -- mas rapido que bf16,
+    # la mitad de memoria, unica via a 2K, y a la misma semilla la calidad no
+    # se distingue. bf16 solo gana si los pesos caben enteros.
     if backend == "cuda":
         if vram >= 40:
-            nivel, dtype, cuant, off, res = "XL", "bfloat16", "none", "none", 2048
+            # aqui si caben los 29.6 GB de pesos sin trocear
+            nivel, dtype, cuant, off = "XL", "bfloat16", "none", "none"
+            res, res_ref = 2048, 2048
         elif vram >= 20:
-            nivel, dtype, cuant, off, res = "L", "bfloat16", "none", "model", 2048
-        elif vram >= 16:
-            nivel, dtype, cuant, off, res = "M", "bfloat16", "none", "sequential", 1536
-        elif vram >= 10:
-            # aqui el transformer bf16 ya no entra; nf4 es la unica via y ademas
-            # bnb en 4 bits es mas rapido que en 8
-            nivel, dtype, cuant, off, res = "S", "bfloat16", "int4", "sequential", 1024
+            # medido en 24 GB: 7.5 GB generando a 2K, 18.2 reescalando a 2K
+            nivel, dtype, cuant, off = "L", "bfloat16", "int4", "model"
+            res, res_ref = 2048, 2048
+        elif vram >= 12:
+            # generar a 2K cabe de sobra; editar a 2K no, y por eso son dos
+            nivel, dtype, cuant, off = "M", "bfloat16", "int4", "model"
+            res, res_ref = 2048, 1024
+        elif vram >= 8:
+            nivel, dtype, cuant, off = "S", "bfloat16", "int4", "sequential"
+            res, res_ref = 1536, 1024
         else:
-            nivel, dtype, cuant, off, res = "MINIMO", "bfloat16", "int4", "sequential", 1024
-            avisos.append(f"Only {vram:.0f} GB of VRAM. It will run, but slowly and with "
-                          f"quality reduced by 4-bit quantisation.")
+            nivel, dtype, cuant, off = "MINIMO", "bfloat16", "int4", "sequential"
+            res, res_ref = 1024, 1024
+            avisos.append(f"Only {vram:.0f} GB of VRAM. It will run, but slowly, and a "
+                          f"reference photo may not fit at all.")
         if ram < 24:
             avisos.append(f"With {ram:.0f} GB of RAM, offloading to system memory is "
                           f"tight; 32 GB or more is comfortable.")
@@ -179,21 +206,27 @@ def detectar(destino_modelos: str | None = None) -> Perfil:
         # bitsandbytes no soporta MPS, asi que en Mac no hay cuantizacion:
         # el ajuste es dtype y offload.
         if vram >= 64:
-            nivel, dtype, cuant, off, res = "XL", "bfloat16", "none", "none", 2048
+            nivel, dtype, cuant, off = "XL", "bfloat16", "none", "none"
+            res, res_ref = 2048, 2048
         elif vram >= 48:
-            nivel, dtype, cuant, off, res = "L", "bfloat16", "none", "model", 2048
+            nivel, dtype, cuant, off = "L", "bfloat16", "none", "model"
+            res, res_ref = 2048, 2048
         elif vram >= 32:
-            nivel, dtype, cuant, off, res = "M", "bfloat16", "none", "sequential", 1536
+            nivel, dtype, cuant, off = "M", "bfloat16", "none", "sequential"
+            res, res_ref = 1536, 1536
         elif vram >= 24:
-            nivel, dtype, cuant, off, res = "S", "float16", "none", "sequential", 1024
+            nivel, dtype, cuant, off = "S", "float16", "none", "sequential"
+            res, res_ref = 1024, 1024
             avisos.append("With 24 GB unified, layers are swapped constantly; a 1024 px "
                           "image can take several minutes.")
         else:
-            nivel, dtype, cuant, off, res = "INVIABLE", "float16", "none", "sequential", 1024
+            nivel, dtype, cuant, off = "INVIABLE", "float16", "none", "sequential"
+            res, res_ref = 1024, 1024
             avisos.append(f"With {vram:.0f} GB unified the model does not fit usefully. "
                           f"A Mac needs 24 GB at minimum, 32 GB to be comfortable.")
     else:
-        nivel, dtype, cuant, off, res = "INVIABLE", "float32", "none", "sequential", 1024
+        nivel, dtype, cuant, off = "INVIABLE", "float32", "none", "sequential"
+        res, res_ref = 1024, 1024
         avisos.append("No compatible GPU. On CPU a single image can take over half an "
                       "hour; not a practical way to use this.")
 
@@ -201,11 +234,17 @@ def detectar(destino_modelos: str | None = None) -> Perfil:
         avisos.append(f"{disco:.0f} GB free; the weights need ~{DESCARGA_GB} GB, plus "
                       f"room to work.")
 
+    # medido: cuantizar solo uno de los dos es peor que no cuantizar ninguno
+    # (nf4 solo en el text encoder dio 112 s contra 73 s en bf16), asi que el
+    # encoder sigue al transformer y no se decide por separado
+    cuant_te = cuant
+
     viable = nivel != "INVIABLE" and disco >= DESCARGA_GB
 
     return Perfil(so=so, maquina=maquina, acelerador=acelerador, backend=backend,
                   vram_gb=round(vram, 1), ram_gb=round(ram, 1), disco_libre_gb=round(disco, 1),
-                  dtype=dtype, cuantizacion=cuant, offload=off, res_max=res, nivel=nivel,
+                  dtype=dtype, cuantizacion=cuant, cuantizacion_te=cuant_te,
+                  offload=off, res_max=res, res_max_ref=res_ref, nivel=nivel,
                   torch_index=torch_index, avisos=avisos, viable=viable)
 
 
@@ -224,7 +263,9 @@ def resumen(p: Perfil) -> str:
         f"  dtype          {p.dtype}",
         f"  Quantisation   {p.cuantizacion}",
         f"  Offload        {p.offload}",
-        f"  Max resolution {p.res_max}",
+        f"  Max resolution {p.res_max}"
+        + (f" ({p.res_max_ref} with a reference photo)"
+           if p.res_max_ref != p.res_max else ""),
     ]
     if p.avisos:
         L.append("")

@@ -414,10 +414,30 @@ class Motor:
         self._lora = None          # (ruta, fuerza) actualmente aplicada
         self.atencion = "sdpa"
         self._cb = None            # si la pipeline admite callback_on_step_end
+        self._sched_base = None    # the scheduler config the weights shipped with
+        self._muestreo = "base"    # which MUESTREO entry is installed right now
 
     @property
     def listo(self) -> bool:
         return self.pipe is not None
+
+    # Measured on 2026-09-23, warm, 1 MP, same seed. Against base at 16 steps:
+    # generation 28 s -> 20 s, and a black-and-white edit that has to keep a
+    # face 29 s -> 19 s, with the face indistinguishable. At its advertised 4
+    # steps it returns ghost hands whichever shift_terminal it is given, so the
+    # number that ships is 8 and it is not a knob.
+    TURBO_PASOS = 8
+    TURBO_ARCHIVO = "turbo.safetensors"
+
+    def turbo_disponible(self) -> bool:
+        """True when the turbo adapter is sitting in modelos/.
+
+        It lives there and not in loras/ because it is an engine setting, like
+        the alternative VAE: it changes how everything is made rather than
+        adding a look, so it has no business in the effects list.
+        """
+        return os.path.exists(os.path.join(self.cfg["ruta_modelos"],
+                                           self.TURBO_ARCHIVO))
 
     def vae_disponible(self) -> bool:
         """True when the alternative VAE weights are sitting in modelos/."""
@@ -541,6 +561,15 @@ class Motor:
                 except Exception:
                     pass
 
+            # El pico de memoria a 4 MP no es la difusion: es el decodificado
+            # del VAE al final. Medido hoy, 19.2 GB durante los pasos y 24.0 GB
+            # justo en el decode. Trocear ataca ese pico y no toca el resto.
+            try:
+                pipe.vae.enable_tiling()
+                pipe.vae.enable_slicing()
+            except Exception:
+                pass
+
             off = self.cfg.get("offload", "none")
             backend = self.cfg.get("backend", "cpu")
             if off == "sequential":
@@ -553,13 +582,72 @@ class Motor:
                 pipe.to("mps")
 
             self.pipe = pipe
+            self._sched_base, self._muestreo = None, "base"
         except Exception as e:
             self.error = f"{type(e).__name__}: {e}"
         finally:
             self.cargando = False
 
+    # What ComfyUI offers in its sampler and scheduler dropdowns is, for this
+    # model, a handful of fields on FlowMatchEulerDiscreteScheduler. They cost
+    # no memory and no time, which makes them the only lever left that can
+    # change a result without making it slower. Only one sigma schedule may be
+    # on at a time; diffusers asserts that.
+    # Measured on 2026-09-23, same prompt and seed at 16 steps, all five that
+    # FlowMatchEuler exposes. Only two survived:
+    #
+    #   karras, exponential  smeared, unusable. Their sigma remapping fights
+    #                        this model's use_dynamic_shifting, which is on.
+    #   beta                 needs scipy, which is not a dependency here, so
+    #                        it raised ImportError and fell back to base.
+    #   ancestral            works, and trades prompt adherence for texture:
+    #                        far more skin detail on a face (sharpness 7.5
+    #                        against 3.8) but it dropped a background the
+    #                        prompt asked for, and it was the flatter of the
+    #                        two on a lettering job. An option, not a default.
+    #
+    # Shipping the three that break would be shipping three traps, so they are
+    # not here. The mechanism still refuses gracefully if one is asked for.
+    MUESTREO = {
+        "base": {},
+        "ancestral": {"stochastic_sampling": True},
+        # what the turbo LoRA ships in its own scheduler config. Judging a
+        # 4-step adapter under the 30-step model's terminal shift is not a
+        # measurement of the adapter, it is a measurement of the mismatch.
+        "turbo": {"shift_terminal": None},
+    }
+
+    def ajustar_muestreo(self, nombre: str) -> str:
+        """Rebuild the scheduler with one of MUESTREO. Returns what was applied.
+
+        Always rebuilt from the config the weights shipped with, never from
+        the running one, so the flags cannot pile up across calls.
+        """
+        if self.pipe is None:
+            return ""
+        cambios = self.MUESTREO.get(nombre)
+        if cambios is None:
+            return ""
+        if getattr(self, "_muestreo", None) == nombre:
+            return nombre
+        if getattr(self, "_sched_base", None) is None:
+            self._sched_base = dict(self.pipe.scheduler.config)
+        cfg = dict(self._sched_base)
+        cfg.update(cambios)
+        try:
+            self.pipe.scheduler = type(self.pipe.scheduler).from_config(cfg)
+            self._muestreo = nombre
+            return nombre
+        except Exception as e:
+            # a rejected combination leaves the shipped scheduler in place,
+            # which is the one that is known to work
+            print(f"  [sampling] {nombre} refused: {type(e).__name__}: {e}", flush=True)
+            self.pipe.scheduler = type(self.pipe.scheduler).from_config(self._sched_base)
+            self._muestreo = "base"
+            return ""
+
     def generar(self, *, personas, pose, escena, texto, steps, seed,
-                estilo=None, estilo_modo="look",
+                estilo=None, estilo_modo="look", cfg=1.0, negativo="",
                 ancho=None, alto=None, res=1024, transparencia=False):
         """personas/pose/escena son PIL.Image o None. Devuelve (PIL.Image, prompt).
 
@@ -594,7 +682,13 @@ class Motor:
 
         gen = torch.Generator(device="cpu").manual_seed(int(seed))
         kw = dict(prompt=prompt, num_inference_steps=int(steps),
-                  true_cfg_scale=1.0, generator=gen, output_resolution=int(res))
+                  true_cfg_scale=float(cfg), generator=gen,
+                  output_resolution=int(res))
+        # A negative prompt only exists above 1.0: at 1.0 the second forward
+        # pass is not run, so passing one would cost nothing and do nothing,
+        # which is worse than not offering it.
+        if float(cfg) > 1.0 and negativo.strip():
+            kw["negative_prompt"] = negativo.strip()
         if refs:
             kw["image"] = refs
         if ancho and alto:
@@ -622,7 +716,7 @@ class Motor:
         return self._cb
 
     def editar(self, *, imagen, texto, steps, seed, res=1024,
-               referencias=None, ancho=None, alto=None):
+               referencias=None, ancho=None, alto=None, modo="material"):
         """Plain edit of one image: no identity scaffolding.
 
         Used by the inpainting path, where `imagen` is already the crop around
@@ -636,7 +730,29 @@ class Motor:
 
         refs = [imagen] + list(referencias or [])
         prompt = texto.strip()
-        if len(refs) > 1:
+        if len(refs) > 1 and modo == "estilo":
+            # aqui la referencia no dice de que esta hecha una cosa: dice como
+            # se pinta todo. Se nombra lo que se conserva y lo que se sustituye,
+            # porque lo que no se nombra el modelo lo negocia por su cuenta.
+            extras = ", ".join(f"<image{i+2}>" for i in range(len(refs) - 1))
+            prompt = (f"<image1> is the picture whose content is kept: the same subject, "
+                      f"the same pose, the same composition and the same framing. "
+                      f"{extras} is the style reference. Redraw everything in <image1> in "
+                      f"the visual language of {extras}: its medium and its surface, its "
+                      f"brushwork and mark-making, its texture, its palette, and the way it "
+                      f"draws edges, light and shadow. "
+                      + (f"{prompt} " if prompt else "")
+                      + f"The result shows what <image1> shows, made the way {extras} was "
+                      f"made.")
+        elif modo == "estilo" and prompt:
+            # una sola imagen y la tecnica en palabras. Lo que se conserva va
+            # delante y la manera de pintarlo al final, porque en este modelo
+            # lo ultimo es lo que mas pesa.
+            prompt = (f"Keep what <image1> shows: the same subject, the same pose, "
+                      f"the same composition and the same framing. Change only how "
+                      f"the picture is made. Redraw all of it this way: {prompt} "
+                      f"Nothing of the original photograph's surface remains.")
+        elif len(refs) > 1:
             extras = ", ".join(f"<image{i+2}>" for i in range(len(refs) - 1))
             una = len(refs) == 2
             # "show what to put there" era demasiado vago. La regla medida en
@@ -668,29 +784,43 @@ class Motor:
 
     # ------------------------------------------------------------------ lora
 
-    def aplicar_lora(self, ruta: str | None, fuerza: float = 1.0) -> None:
-        """Attach a LoRA, swap it, or detach it. Cheap when nothing changes.
+    def aplicar_lora(self, ruta: str | None, fuerza: float = 1.0,
+                     turbo: bool = False) -> None:
+        """Attach the engine and user adapters, swap them, or detach them.
 
-        Reloading the same adapter on every call would cost seconds, so the
-        currently attached (path, strength) is remembered and a repeat is a
-        no-op.
+        Two slots, because they answer different questions: turbo changes how
+        fast everything is made, and the user's LoRA changes what it looks
+        like, so asking for one must not silently drop the other. Reloading
+        costs seconds, so the current (path, strength, turbo) is remembered and
+        a repeat is a no-op.
         """
         if self.pipe is None:
             return
-        objetivo = (ruta, float(fuerza)) if ruta else None
+        objetivo = (ruta, float(fuerza) if ruta else 0.0, bool(turbo))
         if objetivo == self._lora:
             return
         try:
             if self._lora is not None:
                 self.pipe.unload_lora_weights()
                 self._lora = None
-            if objetivo:
-                import os
+
+            nombres: list[str] = []
+            pesos: list[float] = []
+            if turbo and self.turbo_disponible():
+                self.pipe.load_lora_weights(self.cfg["ruta_modelos"],
+                                            weight_name=self.TURBO_ARCHIVO,
+                                            adapter_name="turbo")
+                nombres.append("turbo")
+                pesos.append(1.0)
+            if ruta:
                 self.pipe.load_lora_weights(os.path.dirname(ruta),
                                             weight_name=os.path.basename(ruta),
                                             adapter_name="user")
-                self.pipe.set_adapters(["user"], adapter_weights=[float(fuerza)])
-                self._lora = objetivo
+                nombres.append("user")
+                pesos.append(float(fuerza))
+            if nombres:
+                self.pipe.set_adapters(nombres, adapter_weights=pesos)
+            self._lora = objetivo
         except Exception as e:
             # a LoRA for another architecture is a user error, not a crash:
             # report it and carry on with the base model
@@ -707,6 +837,7 @@ class Motor:
             pass
         self.pipe = None
         self._lora = None
+        self._sched_base, self._muestreo = None, "base"
         try:
             import gc
 

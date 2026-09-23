@@ -93,9 +93,9 @@ their boxes, and the contact sheet of a real run with exactly those inputs. The
 first screen shows *this + this = this* instead of an empty form. Drop your own
 photo over any box and the example steps aside.
 
-<p align="center"><img src="docs/ui-vitrina.png" width="820" alt="The showcase: thirty images this install produced, in two groups, each one clickable for its recipe"></p>
+<p align="center"><img src="docs/ui-vitrina.png" width="820" alt="The showcase: thirty-one images this install produced, in two groups, each one clickable for its recipe"></p>
 
-And the results column is not empty on the first run. It opens with **thirty
+And the results column is not empty on the first run. It opens with **thirty-one
 images this install produced**, in two groups — what each path does, and how
 far the style stretches — each one clickable for the prompt, the seed and
 the settings behind it, and for a button that opens the use case it came from
@@ -187,6 +187,19 @@ Looks are picked from a grid, not typed. Every thumbnail is that effect applied
 to this install's own reference photo, generated here — so the grid shows this
 model doing this thing, not a screenshot of someone else's pipeline.
 
+<p align="center"><img src="docs/ui-restyle.png" width="820" alt="Match a style: two slots, the photo and the picture whose manner you want"></p>
+
+Match a style asks for two pictures and keeps them straight: the photograph
+supplies everything you can see, and the reference supplies only how it is
+made. The slot says so, because the first thing anyone tries is dropping in a
+picture of a person and expecting the clothes.
+
+<p align="center"><img src="docs/ui-settings.png" width="820" alt="The engine settings: detail pass, decoder, turbo adapter and sampling, each with the measurement behind it"></p>
+
+The four settings that change how every image is made sit together, and each
+one carries the measurement that decided its default rather than an adjective.
+None of them is on by default, because none of them measured as a free win.
+
 <p align="center"><img src="docs/ui-gallery.png" width="820" alt="The gallery: everything written to the outputs folder"></p>
 
 **Everything you make lands in `salidas/`** and the Gallery reads that folder
@@ -217,6 +230,7 @@ Light by default, dark in Settings, or Auto to follow the system.
 | | Transparent cutout | person → PNG with a real alpha channel |
 | | Free | everything, nothing assumed |
 | **Edit a photo** | Apply a look | image + a treatment picked from a grid, optionally a painted region |
+| | Match a style | image + a picture whose manner you want |
 | | Replace something | image + a selection + what goes there |
 
 Plus a **pose library** (30 skeletons across close-up, half and full body), a
@@ -224,6 +238,15 @@ Plus a **pose library** (30 skeletons across close-up, half and full body), a
 to stack), **image description and reasoning** with Qwen3-VL, **LoRA** loading,
 the seven official aspect ratios, 2K native output, a **before/after slider**
 on every edit, and a **contact sheet** per run showing inputs + result.
+
+Three engine settings sit in the panel, each off or neutral by default because
+each was measured to be a trade rather than a free win:
+
+| Setting | What it does | Measured |
+|---|---|---|
+| **Detail pass (CFG)** | a second forward pass against what you say to keep out | +80% time. Turned a blurred watch movement into resolved jewels and screws. On a portrait at 16 steps it invented a second person the prompt never asked for. **Without a negative prompt it does nothing at all** — identical output, identical time |
+| **Turbo adapter** | everything at 8 steps with the Viggle adapter | generation 28 s → 20 s, an edit that must keep a face 29 s → 19 s, face indistinguishable. At the 4 steps it advertises it returns ghost hands. Side by side the base model still made the better picture |
+| **Sampling** | `base`, or `ancestral` (stochastic) | ancestral: far more skin texture on a face, but it dropped a background the prompt asked for and came out flatter on lettering. The karras, exponential and beta schedules are not offered — the first two return smears, because their sigma remapping fights the dynamic shifting this model ships with, and the third needs scipy |
 
 On a machine that cannot run this usefully, the installer and the app both say
 so plainly — with a puppy — and then let you through anyway.
@@ -276,6 +299,37 @@ repeated inside its own instruction, because the text encoder reserves one
 vision slot per tag and that binding is what keeps them apart.
 
 The order is not yours to choose, and that is deliberate — see below.
+
+The **Style** slot serves two different jobs, and the interface says which one
+you are in. In the generation paths it lends a grade — contrast, grain, the
+quality of the light. In **Match a style** it lends a whole visual language,
+and it is not handed to the generator as a picture at all. See below.
+
+---
+
+## Match a style
+
+Take a photograph and remake it the way another picture is made: same subject,
+same pose, same framing, a different medium.
+
+The naive version of this does not work, and finding out why is the useful
+part. Handing the model the painting as `<image2>` and asking for *the style of
+`<image2>`* barely moves the image. Worse, what does come across is the
+painting's **subject**: a lighthouse from an illustration landed in the middle
+of a portrait, and a botanical watercolour replaced the sitter entirely with
+its own rosemary and fig. One case in three survived.
+
+What works is words. Measured against three phrasings, the only one that moved
+the picture named the technique — *flat vector shapes, a small number of flat
+colours, no gradients, no photographic texture, crisp geometric edges*. So the
+app reads the reference with Qwen3-VL first, asking only **how** the picture is
+made and never what it shows, and sends that description to the generator with
+a single image. Three of three keep the sitter that way.
+
+The reference picture is still passed when the vision model could not read it,
+which is better than nothing. The description it produced is written into the
+result's recipe as `tecnica_leida`, so when a restyle goes wrong you can see
+whether it failed at reading or at painting — two different repairs.
 
 ---
 
@@ -373,33 +427,57 @@ someone else's, the meter says so, because then the fix is not here.
 
 ## Measured here (RTX 5090 Laptop, 24 GB)
 
-Every row is a single warm run at 25 steps, square, measured through the app's
-own API.
+Every row is a single warm run through the app's own API, at the defaults the
+app ships with today: **nf4 on both the transformer and the text encoder, 16
+steps, VAE tiling on**. Peak VRAM is `nvidia-smi` sampled every 0.2 s, because
+the number that decides whether a card can do this at all is the peak and not
+the average.
 
-| Quality | Output | Time | Against 1 MP |
+| What | Output | Time | Peak VRAM |
 |---|---|---|---|
-| **1 MP** · fast | 1024 × 1024 | **62 s** | 1.0× |
-| **2 MP** · medium | 1440 × 1440 | **94 s** | 1.5× |
-| **4 MP** · 2K native | 2048 × 2048 | **239 s** | 3.8× |
+| generate, 1 MP | 1024 × 1024 | **26 s** | 7.3 GB |
+| generate, 2 MP | 1440 × 1440 | **51 s** | 7.3 GB |
+| generate, 4 MP · 2K native | 2048 × 2048 | **122 s** | 7.5 GB |
+| a look or an edit, 1 MP | 832 × 1088 | **26 s** | 9.2 GB |
+| rescale to 2K | 1792 × 2048 | **156 s** | 18.2 GB |
+
+**Two ceilings, not one.** Generating at 2K costs 7.5 GB; rescaling to 2K,
+where the picture is its own reference, costs 18.2. This README used to quote
+one number and promise 2048 to cards that paged the moment a photo went in
+front of them. The profile now carries both, and the app applies whichever the
+operation calls for.
+
+**nf4 is not the poor mode, it is the good one.** Against bf16 on this card it
+is faster (56 s against 73 s at the old 25-step default), uses half the memory,
+and is the only way 2K works at all — under bf16 a 4 MP job with a reference
+paged for hours. At the same seed the two are indistinguishable by eye. bf16
+only wins where the whole 29.6 GB of weights fits resident, which means 40 GB
+and up.
+
+> **A recipe made in bf16 does not reproduce in nf4 at the same seed.**
+> Changing the precision changes every step slightly, and sixteen steps amplify
+> that into a different picture. The seed in a recipe is only a promise within
+> one precision. The app records the quantisation in the recipe for this
+> reason.
 
 **Time grows with the square of the megapixels, not with the megapixels.**
-Attention cost rises with the square of the token count, and the measurements
-fit `50 + 11.8 × MP²` almost exactly — 62 / 98 / 239 predicted against 62 / 94 /
-239 measured. Doubling the pixels does not double the wait; going from 1 MP to
-4 MP is nearly four times the wait, not twice.
+Attention cost rises with the square of the token count. Doubling the pixels
+does not double the wait; going from 1 MP to 4 MP is nearly five times it.
 
-**Steps are close to free, which is the surprise.** At 1 MP: 15 steps 49 s, 25
-steps 62 s, 40 steps 66 s. Sixty per cent more denoising for three and a half
-seconds, because what dominates is the fixed cost of each call — moving the
-weights across PCIe under model offload, and encoding the prompt. If you are
-choosing where to spend, spend it on steps and be careful with size.
+**Steps are cheap on the clock and not cheap in the picture.** That distinction
+cost a regeneration to learn. At 1 MP the clock barely moves — 8 steps 18 s, 12
+steps 21 s, 16 steps 27 s, 20 steps 33 s, 25 steps 38 s — but the picture moves
+a great deal up to 16 and almost none after. Swept on a subject built to break
+first, a watch movement and a hand: 8 steps is mush, 12 leaves the movement
+soft, 16 resolves its screws and jewels, and 20 and 25 add nothing worth the
+extra 5 and 11 seconds. **16 is the knee.** 12 is a draft.
 
 | | |
 |---|---|
-| VRAM peak | 21.3 GB |
 | model load (first call) | 27–35 s |
 | segmentation, 3 phrases | 0.9 s |
 | describe an image (Qwen3-VL 4-bit) | 5–9 s, 7.1 GB |
+| read the technique of a style reference | 5–9 s, once per restyle |
 
 The app does not make you read this table. It shows the output size and an
 estimate above the Generate button, and corrects that estimate from your own
@@ -407,44 +485,29 @@ runs, so after one generation it is describing your card rather than mine.
 
 ### How long a generation takes, by card
 
-Only the first row was measured. The rest follow from the profile the hardware
-detection picks, and the profile is the thing that decides the answer: what
-dominates is not raw compute but whether the weights fit, because sequential
-offload moves layers across PCIe on every step.
+Only the first row is measured, and only on Windows — there is no Apple Silicon
+here to time. The rest follow from the profile the hardware detection picks,
+scaled by the shape above. They are extrapolations from one card, not
+benchmarks, and they are labelled that way on purpose.
 
-Only the first row is measured, and only on Windows — there is no Apple
-Silicon here to time. The rest follow from the profile the hardware detection
-picks, scaled by the shape above.
-
-| Your GPU | Profile | 1 MP | 2 MP | 4 MP · 2K |
+| Your GPU | Profile | 1 MP | 4 MP · 2K | Ceiling with a reference |
 |---|---|---|---|---|
-| RTX 5090 / 4090 laptop, 24 GB | L | **62 s** *(measured)* | **94 s** *(measured)* | **239 s** *(measured)* |
-| RTX 5090 / 6000 Ada, 32–48 GB | XL | ~40 s | ~60 s | ~2.5 min |
-| RTX 4080 / 3090, 16–20 GB | M | ~2–4 min | ~3–6 min | ~10–16 min |
-| RTX 4070 / 3080, 10–16 GB | S | ~4–8 min | ~6–12 min | not advisable |
-| under 10 GB | MINIMO | ~10 min+ | ~15 min+ | no |
-| Apple Silicon, 32 GB+ | M | unmeasured — see below | | |
-| no compatible GPU | INVIABLE | over half an hour | | |
+| RTX 5090 / 4090 laptop, 24 GB | L | **26 s** *(measured)* | **122 s** *(measured)* | 2048 *(measured)* |
+| 40 GB and up | XL | ~18 s | ~80 s | 2048 |
+| 20–24 GB | L | ~26 s | ~2 min | 2048 |
+| 12–20 GB | M | ~40 s | ~3 min | 1024 |
+| 8–12 GB | S | ~3–6 min | not advisable | 1024 |
+| under 8 GB | MINIMO | ~10 min+ | no | 1024 |
+| Apple Silicon, 32 GB+ | M | unmeasured | unmeasured | — |
+| no compatible GPU | INVIABLE | over half an hour | no | — |
 
-The estimates are extrapolations from one card, not benchmarks, and they are
-labelled that way on purpose. The jump between L and M is the one that hurts:
-20 GB keeps the transformer resident, 16 GB does not, and everything below that
-line pays the PCIe tax on every step of every image.
+The line that matters is 12 GB. Above it the nf4 transformer stays resident and
+the card is doing arithmetic; below it, sequential offload moves layers across
+PCIe on every step of every image and the card is mostly waiting on the bus.
 
-Other operations on the measured card: an edit or a look runs 45–65 s, the
-first model load costs 27–35 s once, segmentation is under a second, and
-describing an image with Qwen3-VL takes 5–9 s.
-
----
-
-Three load configurations were compared. Keeping the transformer and the text
-encoder both resident — even with the text encoder in 4-bit — does **not** fit
-in 24 GB: weights alone reach 20.8 GB and activations push it into thrashing.
-The default (bf16 + model offload) is the fastest of the three on this card.
-
-**ComfyUI is still ~4× faster for the same image**, and it is worth being
-precise about why, because the obvious answer turned out to be wrong. The PR
-that added Qwen-Image 2.1 to ComfyUI,
+**ComfyUI is still faster for the same image**, and it is worth being precise
+about why, because the obvious answer turned out to be wrong. The PR that added
+Qwen-Image 2.1 to ComfyUI,
 [Comfy-Org/ComfyUI#16400](https://github.com/Comfy-Org/ComfyUI/pull/16400),
 highlights prefix caching of text and reference tokens — worth roughly 1.7× on
 edits — and this README used to say that was something diffusers does not do.
@@ -592,19 +655,33 @@ crop-and-stitch as a replacement, so everything outside the paint returns
 unchanged. The
 thumbnails are that effect applied to this install's own reference photo,
 generated here, so the grid shows this model doing this thing rather than
-someone else's pipeline. Ten looks in three groups: grades, relighting, and the
-three Blender viewport modes from the
-[Look Development Pack](https://civitai.com/models/2953686/look-development-pack-for-qwen-image-21),
-which is a genuine Qwen-Image 2.1 LoRA. Effects needing a LoRA stay visible
-when the file is missing and say which one they need, rather than disappearing.
+someone else's pipeline. Effects needing a LoRA stay visible when the file is
+missing and say which one they need, rather than disappearing.
 
-**Upscaling is implemented but not offered in the interface.** The technique
-works — the image goes back in as its own reference and the model redraws it
-larger, which recovers real detail rather than interpolating pixels — but it
-took **754 seconds** here for 775×1024 → 1792×2048. Twelve minutes for one
-upscale is not a feature. The endpoint and the reasoning are in
-[`referencia/`](referencia/README.md), along with the workflows this was read
-from; the button comes back when the number does.
+Sixteen looks in five groups: grades, relighting, the three Blender viewport
+modes from the
+[Look Development Pack](https://civitai.com/models/2953686/look-development-pack-for-qwen-image-21)
+(a genuine Qwen-Image 2.1 LoRA), and two groups added from what
+[TostUI](https://github.com/camenduru/TostUI) exposes — **Redraw** (Anime,
+Photographic, Chibi) and **Repair** (Deblur, More detail). Those six are
+prompts rather than weights, so they cost nothing but the writing. Two things
+they taught, both worth the regeneration they cost:
+
+- The preservation clause the grading looks use — *the face stays exactly as it
+  is* — contradicts a look whose whole job is to redraw, and the model answers
+  a contradiction by doing nothing. The redrawing looks name what is actually
+  kept instead.
+- Three of them showed nothing at all against the shared reference photo,
+  because that photo is already a sharp photograph. A thumbnail that undersells
+  the effect is worse than no thumbnail, so Photographic now starts from a
+  drawing and Deblur and More detail from that same photo broken on purpose.
+
+**Rescaling to 2K is back in the interface.** The technique always worked — the
+image goes back in as its own reference and the model redraws it larger, which
+recovers real detail instead of interpolating pixels — but under bf16 it took
+**754 seconds** for 775×1024 → 1792×2048, and twelve minutes for one upscale is
+not a feature. With nf4 and VAE tiling the same job is **156 seconds** at a
+18.2 GB peak. The button came back when the number did.
 
 ---
 
@@ -653,7 +730,7 @@ swapping entirely.
 .venv\Scripts\python.exe herramientas\pruebas\todos_los_caminos.py
 ```
 
-Fourteen cases, run against the live app. They check the **shape** of what came
+Nineteen cases, run against the live app. They check the **shape** of what came
 back, not just the absence of an exception — a 1024 square returned when 16:9
 was asked for is broken even though nothing raised.
 
@@ -663,8 +740,7 @@ what caught the layered-jacket bug above: the image was the right size, the
 mask was right, and the edit was wrong.
 
 ```bash
-.venv\Scripts\python.exe herramientas
-evision_ui.py
+.venv\Scripts\python.exe herramientas\revision_ui.py
 ```
 
 A static pass over the interface, which is one Python string holding HTML, CSS
@@ -703,13 +779,17 @@ Hardware is detected before anything is installed and decides dtype,
 quantisation, offload and maximum resolution. The download is the same in every
 profile; the profile changes how it is loaded.
 
-| VRAM (CUDA) | dtype | quant | offload | max |
-|---|---|---|---|---|
-| ≥ 40 GB | bf16 | — | — | 2048 |
-| 20–40 | bf16 | — | model | 2048 |
-| 16–20 | bf16 | — | sequential | 1536 |
-| 10–16 | bf16 | nf4 | sequential | 1024 |
-| < 10 | bf16 | nf4 | sequential | 1024, and the puppy |
+| VRAM (CUDA) | dtype | quant | offload | max | max with a reference |
+|---|---|---|---|---|---|
+| ≥ 40 GB | bf16 | — | — | 2048 | 2048 |
+| 20–40 | bf16 | nf4 | model | 2048 | 2048 |
+| 12–20 | bf16 | nf4 | model | 2048 | 1024 |
+| 8–12 | bf16 | nf4 | sequential | 1536 | 1024 |
+| < 8 | bf16 | nf4 | sequential | 1024 | 1024, and the puppy |
+
+The two ceilings are the point. Generating at 2K peaks at 7.5 GB; rescaling to
+2K, where the picture is its own reference, peaks at 18.2. A single number
+promised the first and delivered the second.
 
 On Apple Silicon there is no quantisation (bitsandbytes has no MPS backend);
 the profile adjusts dtype and offload instead, and refuses under 24 GB of

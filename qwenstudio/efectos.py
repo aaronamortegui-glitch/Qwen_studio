@@ -87,6 +87,73 @@ EFECTOS: dict[str, dict] = {
                   "face. The composition, the framing, the pose and the face stay exactly "
                   "as they are.",
     },
+    # --------------------------------------------------------- redibujar
+    # Estos seis salen de lo que TostUI expone como casos propios. No llevan
+    # pesos: son encargos, y por eso cuestan lo que cuesta escribirlos.
+    #
+    # Ojo con la clausula final. En los de grado se dice que la cara se queda
+    # "exactamente como esta" porque solo cambia el tratamiento; aqui cambia la
+    # manera de dibujar, asi que pedir eso a la vez se contradice y el modelo
+    # resuelve la contradiccion no haciendo nada. Se nombra lo que de verdad se
+    # conserva -- quien es, la pose, el encuadre -- y se deja libre el resto.
+    "anime": {
+        "nombre": "Anime",
+        "grupo": "Redraw",
+        "prompt": "Redraw this photograph as a frame of modern television anime: clean "
+                  "cel shading with hard shadow edges, flat saturated colour, crisp ink "
+                  "outlines, and simplified features that still read as the same person. "
+                  "The same person, the same pose, the same composition and the same "
+                  "framing. Nothing of the photographic surface remains.",
+    },
+    "realismo": {
+        "nombre": "Photographic",
+        "grupo": "Redraw",
+        "miniatura_desde": "ejemplos/vitrina/anime.jpg",
+        "prompt": "Redraw this picture as a photograph taken on a full-frame camera: real "
+                  "skin with pores and fine stray hairs, fabric with a visible weave, "
+                  "depth of field that falls off behind the subject, and light that "
+                  "behaves physically. The same subject, the same pose, the same "
+                  "composition and the same framing, made photographically.",
+    },
+    "chibi": {
+        "nombre": "Chibi",
+        "grupo": "Redraw",
+        # la proporcion es el efecto entero, asi que aqui la composicion SI
+        # cambia: se nombra lo que se reconoce (ropa, pose, color de pelo) y no
+        # el encuadre, que es lo que en los otros se protege
+        "prompt": "Redraw the subject as a chibi character: the head about a third of the "
+                  "whole figure, large simplified eyes, a small rounded body and hands, "
+                  "clean cel shading and flat bright colour on a simple background. The "
+                  "same clothing, the same hair and the same pose, so the person is still "
+                  "recognisable.",
+    },
+    # ------------------------------------------------------------ reparar
+    "nitidez": {
+        "nombre": "Deblur",
+        "grupo": "Repair",
+        "miniatura_danar": "desenfoque",
+        "prompt": "Redraw this photograph in focus: the subject sharp, the eyes crisp, "
+                  "the hair separated into individual strands and the weave of the fabric "
+                  "resolved. The composition, the framing, the pose and the face stay "
+                  "exactly as they are.",
+    },
+    "detalle": {
+        "nombre": "More detail",
+        "grupo": "Repair",
+        "miniatura_danar": "resolucion",
+        "prompt": "Redraw this photograph with the detail a larger negative would hold: "
+                  "eyelashes and single hairs, pores and fine skin texture, clean edges "
+                  "on every object and the grain of the materials. The composition, the "
+                  "framing, the pose and the face stay exactly as they are.",
+    },
+    "ventana": {
+        "nombre": "Window light",
+        "grupo": "Light",
+        "prompt": "Relight this photograph with soft daylight from a large window to one "
+                  "side: a gentle gradient across the face, open shadows that keep their "
+                  "detail, and a cool cast on the shadow side. The composition, the "
+                  "framing, the pose and the face stay exactly as they are.",
+    },
     "clay": {
         "nombre": "Clay render",
         "grupo": "3D viewport",
@@ -130,6 +197,9 @@ def catalogo(dir_loras: str) -> list[dict]:
             "lora": lora,
             "fuerza": e.get("fuerza", 1.0),
             "listo": listo,
+            # only the thumbnail generator reads these; the grid ignores them
+            "miniatura_desde": e.get("miniatura_desde"),
+            "miniatura_danar": e.get("miniatura_danar"),
             "thumb": f"/efectos/{k}.jpg" if os.path.exists(thumb) else None,
         })
     fuera.sort(key=lambda x: (x["grupo"], x["nombre"]))

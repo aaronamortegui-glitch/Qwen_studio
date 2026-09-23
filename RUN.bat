@@ -5,5 +5,6 @@ if not exist ".venv\Scripts\python.exe" (
   pause
   exit /b 1
 )
+set PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 ".venv\Scripts\python.exe" -m qwenstudio.app
 pause

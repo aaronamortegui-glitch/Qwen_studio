@@ -95,6 +95,53 @@ def lloriquear(nivel: str, acelerador: str, vram: float) -> None:
     print(f"  {acelerador} - {vram:.1f} GB - profile {nivel}")
 
 
+# Lo que este instalador no decia y costaba una tarde: cuanto tarda cada cosa
+# en la maquina que acaba de detectar, y donde esta el techo de verdad. Las
+# cifras de la fila L estan medidas aqui el 2026-09-23 (nf4 en ambos
+# componentes, 16 pasos, tiling del VAE); el resto se escala desde ellas y se
+# dice que es una extrapolacion, porque lo es.
+ESPERA = {           # nivel -> (1 MP, 2K, nota)
+    "XL":     ("~18 s", "~80 s", ""),
+    "L":      ("26 s", "122 s", "measured on an RTX 5090 Laptop, 24 GB"),
+    "M":      ("~40 s", "~3 min", ""),
+    "S":      ("~3-6 min", "not advisable", "layers move across PCIe every step"),
+    "MINIMO": ("~10 min+", "no", "layers move across PCIe every step"),
+}
+
+
+def expectativas(p) -> str:
+    """What this machine will actually feel like, before ~33 GB come down."""
+    uno, dos_k, nota = ESPERA.get(p.nivel, ("?", "?", ""))
+    lineas = [
+        "-" * 66,
+        "  What to expect on this machine",
+        "-" * 66,
+        f"  one image at 1 MP          {uno}",
+        f"  one image at 2K            {dos_k}",
+        f"  largest size               {p.res_max} px"
+        + (f", {p.res_max_ref} px with a photo in front of it"
+           if p.res_max_ref != p.res_max else ""),
+    ]
+    if p.res_max_ref != p.res_max:
+        lineas.append("")
+        lineas.append("  Those are two numbers because they were measured as two:")
+        lineas.append("  generating at 2K peaks at 7.5 GB, and rescaling to 2K, where")
+        lineas.append("  the picture is its own reference, peaks at 18.2 GB. Quoting")
+        lineas.append("  only the first is how people end up watching a progress bar")
+        lineas.append("  that is really a page fault.")
+    if p.cuantizacion == "int4":
+        lineas.append("")
+        lineas.append("  Weights load in nf4. On this architecture that is not the")
+        lineas.append("  poor mode: it is faster than bf16, uses half the memory, and")
+        lineas.append("  is the only way 2K works. At the same seed the two are")
+        lineas.append("  indistinguishable by eye -- but they are not the same")
+        lineas.append("  picture, so a recipe made in bf16 will not reproduce here.")
+    if nota:
+        lineas.append("")
+        lineas.append(f"  ({nota})")
+    return chr(10).join(lineas)
+
+
 def main() -> None:
     print("=" * 66)
     print("  QwenStudio - install")
@@ -107,6 +154,8 @@ def main() -> None:
     print("-" * 66)
     perfil = detectar(APP)
     print(resumen(perfil))
+    print()
+    print(expectativas(perfil))
     print()
 
     if not perfil.viable or perfil.nivel == "MINIMO":

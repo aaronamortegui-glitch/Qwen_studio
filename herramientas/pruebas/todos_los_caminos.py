@@ -350,6 +350,84 @@ def caso_ajustes():
     return "persist and restore"
 
 
+def caso_transferir_estilo():
+    """Match a style: the manner of one picture, the subject of the other.
+
+    The failure this guards against is not an exception. It is the reference
+    lending its *subject* -- a lighthouse, a sprig of rosemary -- which is what
+    happened until the technique started travelling as words. So the check is
+    that the result still looks like the source photograph in layout while
+    having stopped looking like a photograph at all.
+    """
+    from PIL import Image
+
+    r = pedir("/api/estilo", {"imagen": data_url(ESCENA), "estilo": data_url(ESTILO),
+                              "prompt": "", "megapixeles": 1, "steps": 16, "seed": 31})
+    assert not r.get("error"), r.get("error")
+    meta = r["imagenes"][0]
+    out = Image.open(os.path.join(SALIDAS, os.path.basename(meta["archivo"])))
+    src = Image.open(ESCENA)
+    assert out.size == src.size, f"{out.size} against the source {src.size}"
+    leida = (r.get("prompt") or "")
+    assert "<image1>" in leida, "the style clause never reached the prompt"
+    return f"{meta['tam']}, technique read into the prompt"
+
+
+def caso_reescalar():
+    """Rescale to 2K: bigger, and bigger by redrawing rather than stretching."""
+    from PIL import Image
+
+    src = Image.open(ESCENA)
+    r = pedir("/api/reescalar", {"imagen": data_url(ESCENA), "steps": 16, "seed": 32})
+    assert not r.get("error"), r.get("error")
+    out = Image.open(os.path.join(SALIDAS,
+                     os.path.basename(r["imagenes"][0]["archivo"])))
+    assert max(out.size) > max(src.size), f"{out.size} is no larger than {src.size}"
+    # redibujar recupera detalle; interpolar no. La energia de gradiente por
+    # pixel cae cuando algo se estira, y aqui no debe caer.
+    import numpy as np
+    def nitidez(im):
+        a = np.asarray(im.convert("L"), dtype=np.float32)
+        return float((np.abs(np.diff(a, axis=1)).mean()
+                      + np.abs(np.diff(a, axis=0)).mean()) / 2)
+    antes, despues = nitidez(src), nitidez(out)
+    assert despues > antes * .6, f"edge energy fell {antes:.2f} -> {despues:.2f}"
+    return f"{src.width}x{src.height} -> {out.width}x{out.height}, edges {antes:.1f} -> {despues:.1f}"
+
+
+def caso_cfg():
+    """The detail pass, and the thing about it that surprises.
+
+    Above 1 the pipeline runs a second forward pass against the negative
+    prompt. Without a negative prompt there is nothing to push against, so the
+    result is byte-identical to CFG 1 in the same time -- a control that looks
+    like it works and does not. Both halves are checked.
+    """
+    import numpy as np
+    from PIL import Image
+
+    def correr(**extra):
+        c = {"prompt": "A brass compass on a weathered sea chart, raking light.",
+             "steps": 12, "seed": 33, "variantes": 1, "megapixeles": 1,
+             "lora": None, "fuerza_lora": 1.0, "personas": [], "escena": None,
+             "estilo": None, "estilo_modo": "look", "pose_lib": None,
+             "pose_url": None, "ratio": "1:1", "transparencia": False,
+             "espera_persona": False}
+        c.update(extra)
+        r = pedir("/api/generar", c)
+        assert not r.get("error"), r.get("error")
+        f = os.path.join(SALIDAS, os.path.basename(r["imagenes"][0]["archivo"]))
+        return np.asarray(Image.open(f).convert("RGB"), dtype=np.float32)
+
+    uno = correr()
+    mudo = correr(cfg=3.0)                      # sin negativo: no debe cambiar nada
+    tres = correr(cfg=3.0, negativo="blurry, deformed, watermark")
+    assert np.array_equal(uno, mudo), "CFG without a negative prompt changed the image"
+    d = float(np.abs(uno - tres).mean())
+    assert d > 5, f"CFG with a negative prompt barely moved it ({d:.1f})"
+    return f"no-op without a negative prompt, {d:.0f} levels of difference with one"
+
+
 CASOS = [
     ("status", caso_estado), ("catalogues", caso_catalogos),
     ("new portrait", caso_retrato), ("aspect ratio 16:9", caso_ratio),
@@ -359,6 +437,9 @@ CASOS = [
     ("inpaint by brush", caso_pincel),
     ("look, whole frame", caso_look_entero),
     ("look, painted region", caso_look_region),
+    ("match a style", caso_transferir_estilo),
+    ("rescale to 2K", caso_reescalar),
+    ("detail pass (CFG)", caso_cfg),
     ("describe (Qwen3-VL)", caso_describir), ("batch", caso_lote),
     ("settings", caso_ajustes),
 ]

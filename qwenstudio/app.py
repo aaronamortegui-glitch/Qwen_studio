@@ -19,6 +19,13 @@ import uuid
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+# El asignador de CUDA fragmenta cuando se le piden formas distintas una
+# detras de otra, que es exactamente lo que hace esta app: un texto a imagen,
+# luego un retrato con referencia, luego un 2K. Con segmentos expandibles el
+# bloque reservado se estira en vez de dejar huecos. Va antes de que nada
+# reserve memoria, y no cuesta nada cuando no hay CUDA.
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+
 APP = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 import sys
 sys.path.insert(0, APP)
@@ -46,8 +53,29 @@ EJEMPLOS = os.path.join(APP, "ejemplos")
 AJUSTES_DEF = {
     "describir_escena": True,     # describir la escena con el VLM antes de generar
     "resumen": True,              # generar la hoja de contacto en cada corrida
-    "steps": 25,
+    # 16 steps. Swept by eye at 1 MP on one fixed seed, on a subject built to
+    # break first -- a watch movement, knurling, a hand: 8 steps is mush, 12
+    # still has a soft movement, 16 resolves its screws and jewels, and 20 and
+    # 25 add nothing worth 5 and 11 more seconds (18 / 21 / 27 / 33 / 38 s).
+    # So the knee is between 12 and 16, and 12 is a draft rather than a result.
+    "steps": 16,
+    # 1 MP: el tamano con el que se trabaja. 2K ya funciona y esta a un clic;
+    # poner 0 aqui significa "lo que aguante la tarjeta detectada".
     "megapixeles": 1,
+    # Sampler and scheduler, the FlowMatchEuler fields ComfyUI puts in its
+    # dropdowns. "base" is what the weights shipped with. See motor.MUESTREO.
+    "muestreo": "base",
+    # The turbo adapter, off. It is a third faster on everything measured and
+    # it keeps a face, but with the two sheets side by side the base model was
+    # the better picture, so speed is something you reach for while iterating
+    # rather than what you get without asking.
+    "turbo": False,
+    # Detail pass. Above 1 the pipeline runs a second forward pass against the
+    # negative prompt, which costs ~80% more time. Measured at 16 steps: a
+    # watch movement went from a gold blur to resolved jewels and screws, but a
+    # portrait grew a second person the prompt never asked for and a letterpress
+    # poster came out flatter. A lever, not a better default.
+    "cfg": 1,
     "vlm_bits": 4,                # 4 u 8; 8 describe algo mejor y ocupa ~13 GB
     "mantener_montado": False,    # no desmontar entre bloques (para lotes)
     # hdr por defecto: medido el 2026-09-22 con la misma semilla, +19% de
@@ -64,10 +92,27 @@ AJUSTES_DEF = {
 }
 
 
+def _tope(con_referencia: bool) -> int:
+    """The profile's resolution ceiling, which is two numbers and not one.
+
+    Measured on 2026-09-23: generating at 2K peaks at 7.5 GB and rescaling to
+    2K with the image as its own reference peaks at 18.2. Promising the first
+    number to a card that will meet the second is how this project used to
+    hand people a 2048 that paged the moment a photo went in front of it.
+    """
+    if con_referencia:
+        return int(cfg.get("res_max_ref", cfg.get("res_max", 1024)))
+    return int(cfg.get("res_max", 1024))
+
+
 def leer_ajustes() -> dict:
     a = dict(AJUSTES_DEF)
+    # el techo del perfil, resuelto aqui para no repetirlo en cada llamada
+    if not a.get("megapixeles"):
+        tope = int(cfg.get("res_max", 1024))
+        a["megapixeles"] = 4 if tope >= 2048 else (2 if tope >= 1536 else 1)
     try:
-        with open(AJUSTES, encoding="utf-8") as f:
+        with open(AJUSTES, encoding="utf-8-sig") as f:
             a.update({k: v for k, v in json.load(f).items() if k in AJUSTES_DEF})
     except Exception:
         pass
@@ -83,7 +128,7 @@ def guardar_ajustes(nuevos: dict) -> dict:
 ENTRADAS = os.path.join(APP, "entradas")
 DWPOSE_PY = r"D:\AIToolkit\AI-Toolkit\venv\Scripts\python.exe"   # opcional
 
-cfg = json.load(open(CONFIG, encoding="utf-8"))
+cfg = json.load(open(CONFIG, encoding="utf-8-sig"))
 estado_descarga = M.Descarga()
 motor = M.Motor(cfg)
 _lock = threading.Lock()
@@ -112,6 +157,30 @@ def usar(quien: str) -> list[str]:
 
 # ------------------------------------------------------------------ util
 
+def _turbo(b: dict) -> bool:
+    """Whether the engine adapter runs for this request.
+
+    The request wins over the setting so a draft can be fast without touching
+    the panel, and a missing file means off rather than an error: the adapter
+    is not part of the download.
+    """
+    quiere = b.get("turbo")
+    if quiere is None:
+        quiere = leer_ajustes().get("turbo")
+    return bool(quiere) and motor.turbo_disponible()
+
+
+def _pasos(b: dict) -> int:
+    """The step count this request actually runs at.
+
+    Turbo is not a knob. Measured usable at 8 and returning ghost hands at the
+    4 it advertises, so when it is on it brings its own number.
+    """
+    if _turbo(b):
+        return motor.TURBO_PASOS
+    return int(b.get("steps", leer_ajustes()["steps"]))
+
+
 def _img_de_data_url(data_url: str):
     from PIL import Image
     m = re.match(r"data:image/[\w.+-]+;base64,(.*)$", data_url, re.S)
@@ -122,7 +191,8 @@ def _img_de_data_url(data_url: str):
 
 # lo que se guarda dentro del archivo, y el orden en que se lee
 CAMPOS_META = ("prompt", "caso", "efecto", "seed", "steps", "tam", "ratio",
-               "megapixeles", "vae", "lora", "fuerza_lora", "orden", "modelo")
+               "megapixeles", "vae", "lora", "fuerza_lora", "orden", "modelo",
+               "tecnica_leida")
 
 
 def _guardar(img, prefijo="out", meta: dict | None = None) -> str:
@@ -139,6 +209,12 @@ def _guardar(img, prefijo="out", meta: dict | None = None) -> str:
     info = PngImagePlugin.PngInfo()
     if meta:
         info.add_text("generator", "QwenStudio / Qwen-Image 2.1")
+        # una clave que no este en la lista no llega al archivo, y callarselo
+        # cuesta caro: cuesta creer que fallo el paso que la calculo
+        sobra = [k for k in meta if k not in CAMPOS_META]
+        if sobra:
+            print(f"  [meta] no se guarda, falta en CAMPOS_META: {', '.join(sobra)}",
+                  flush=True)
         for k in CAMPOS_META:
             v = meta.get(k)
             if v is None or v == "" or v == []:
@@ -220,7 +296,7 @@ class Handler(BaseHTTPRequestHandler):
             d = estado_descarga
             return self._send(200, {
                 "perfil": {k: cfg[k] for k in ("acelerador", "backend", "nivel", "dtype",
-                                               "cuantizacion", "offload", "res_max",
+                                               "cuantizacion", "offload", "res_max", "res_max_ref",
                                                "vram_gb", "ram_gb")},
                 "avisos_perfil": cfg.get("avisos", []),
                 "pesos_listos": M.pesos_completos(cfg["ruta_modelos"]),
@@ -433,6 +509,14 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as e:
                 return self._send(200, {"error": f"{type(e).__name__}: {e}"})
 
+        if p == "/api/estilo":
+            try:
+                return self._send(200, self._estilo(b))
+            except M.Cancelado:
+                return self._send(200, {"cancelado": True})
+            except Exception as e:
+                return self._send(200, {"error": f"{type(e).__name__}: {e}"})
+
         if p == "/api/efecto":
             try:
                 return self._send(200, self._efecto(b))
@@ -507,11 +591,11 @@ class Handler(BaseHTTPRequestHandler):
             r = P.ruta(b["pose_lib"])
             pose = Image.open(r).convert("RGB") if r else None
 
-        mp = min(float(b.get("megapixeles", 1)), (int(cfg["res_max"]) ** 2) / (1024 * 1024))
+        mp = min(float(b.get("megapixeles", 1)), (_tope(True) ** 2) / (1024 * 1024))
         res = int((mp * 1024 * 1024) ** 0.5)
         ratio = b.get("ratio", "auto")
         ancho, alto = (None, None) if ratio == "auto" else M.dimensiones(ratio, mp)
-        steps = int(b.get("steps", 25))
+        steps = _pasos(b)
         base = int(b.get("seed", 0)) or int(time.time()) % 100000
         transp = bool(b.get("transparencia"))
 
@@ -520,11 +604,14 @@ class Handler(BaseHTTPRequestHandler):
             motor.cargar()
             if not motor.listo:
                 return {"error": motor.error or "could not load the model"}
+        motor.ajustar_muestreo("turbo" if _turbo(b) else
+                               str(b.get("muestreo") or leer_ajustes()["muestreo"]))
 
         hechas = []
         with _lock:
             motor.aplicar_lora(os.path.join(LORAS, b["lora"]) if b.get("lora") else None,
-                               float(b.get("fuerza_lora", 1.0)))
+                               float(b.get("fuerza_lora", 1.0)),
+                               turbo=_turbo(b))
             for i, texto in enumerate(prompts):
                 lim = int(leer_ajustes().get("limite_c", 0))
                 if lim and i:
@@ -536,10 +623,12 @@ class Handler(BaseHTTPRequestHandler):
                 img, armado = motor.generar(personas=personas, pose=pose, escena=escena,
                                             texto=str(texto), res=res, ancho=ancho,
                                             alto=alto, transparencia=transp, steps=steps,
+                                            cfg=float(b.get("cfg", 1.0)),
+                                            negativo=str(b.get("negativo", "")),
                                             seed=base + i)
                 hechas.append({"archivo": "/salidas/" + _guardar(img, "lote", {
                                    "prompt": armado, "caso": "batch", "seed": base + i,
-                                   "steps": int(b.get("steps", 25)), "vae": motor.vae_actual,
+                                   "steps": _pasos(b), "vae": motor.vae_actual,
                                    "tam": f"{img.width}x{img.height}",
                                    "modelo": "Qwen-Image 2.1"}),
                                "seed": base + i, "prompt": str(texto),
@@ -653,7 +742,8 @@ class Handler(BaseHTTPRequestHandler):
         except Exception as e:
             return {"error": f"{type(e).__name__}: {e}", "carpeta": SALIDAS}
 
-    def _editar_entero(self, img, texto, b, lora=None, fuerza=1.0, escala=1.0):
+    def _editar_entero(self, img, texto, b, lora=None, fuerza=1.0, escala=1.0,
+                       referencias=None, modo="material"):
         """Edit the whole frame: no mask, no crop, the original as reference.
 
         `escala` multiplies each side of the output. The aspect ratio always
@@ -665,20 +755,24 @@ class Handler(BaseHTTPRequestHandler):
             motor.cargar()
             if not motor.listo:
                 return None, (motor.error or "could not load the model")
+        motor.ajustar_muestreo("turbo" if _turbo(b) else
+                               str(b.get("muestreo") or leer_ajustes()["muestreo"]))
 
-        tope = int(cfg["res_max"])
+        tope = _tope(True)
         aw = max(256, min(tope, round(img.width * escala / 32) * 32))
         ah = max(256, min(tope, round(img.height * escala / 32) * 32))
 
         with _lock:
             motor.usar_vae(b.get("vae") or leer_ajustes().get("vae", "hdr"))
-            motor.aplicar_lora(os.path.join(LORAS, lora) if lora else None, float(fuerza))
+            motor.aplicar_lora(os.path.join(LORAS, lora) if lora else None,
+                               float(fuerza), turbo=_turbo(b))
             gen, prompt = motor.editar(imagen=img, texto=texto,
-                                       steps=int(b.get("steps", 25)),
+                                       steps=_pasos(b),
                                        seed=int(b.get("seed", 0)) or int(time.time()) % 100000,
-                                       res=int(math.sqrt(aw * ah)), ancho=aw, alto=ah)
+                                       res=int(math.sqrt(aw * ah)), ancho=aw, alto=ah,
+                                       referencias=referencias or [], modo=modo)
             if lora:                       # un efecto no deja el LoRA puesto
-                motor.aplicar_lora(None, 1.0)
+                motor.aplicar_lora(None, 1.0, turbo=_turbo(b))
         return (gen, prompt), None
 
     def _mejorar(self, b):
@@ -709,7 +803,7 @@ class Handler(BaseHTTPRequestHandler):
         if err:
             return None, err
 
-        mp = min(float(b.get("megapixeles", 1)), (int(cfg["res_max"]) ** 2) / (1024 * 1024))
+        mp = min(float(b.get("megapixeles", 1)), (_tope(True) ** 2) / (1024 * 1024))
         res = int((mp * 1024 * 1024) ** 0.5)
         caja, crop, mcrop = IN.recorte(img, m, padding=float(b.get("padding", 0.35)))
         ratio = (caja[2] - caja[0]) / max(1, (caja[3] - caja[1]))
@@ -722,21 +816,24 @@ class Handler(BaseHTTPRequestHandler):
             motor.cargar()
             if not motor.listo:
                 return None, (motor.error or "could not load the model")
+        motor.ajustar_muestreo("turbo" if _turbo(b) else
+                               str(b.get("muestreo") or leer_ajustes()["muestreo"]))
 
         refs = [_img_de_data_url(d) for d in b.get("referencias", [])]
         base = int(b.get("seed", 0)) or int(time.time()) % 100000
         salidas, prompt = [], texto
         with _lock:
             motor.usar_vae(b.get("vae") or leer_ajustes().get("vae", "hdr"))
-            motor.aplicar_lora(os.path.join(LORAS, lora) if lora else None, float(fuerza))
+            motor.aplicar_lora(os.path.join(LORAS, lora) if lora else None,
+                               float(fuerza), turbo=_turbo(b))
             for k in range(max(1, min(4, int(b.get("variantes", 1))))):
                 gen, prompt = motor.editar(imagen=crop, texto=texto,
-                                           steps=int(b.get("steps", 25)), seed=base + k,
+                                           steps=_pasos(b), seed=base + k,
                                            res=res, referencias=refs, ancho=aw, alto=ah)
                 final = IN.pegar(img, gen, mcrop, caja,
                                  difuminado=int(b.get("difuminado", 12)))
                 receta = {"prompt": prompt, "caso": caso, "seed": base + k,
-                          "steps": int(b.get("steps", 25)), "vae": motor.vae_actual,
+                          "steps": _pasos(b), "vae": motor.vae_actual,
                           "lora": lora, "fuerza_lora": fuerza if lora else None,
                           "tam": f"{final.width}x{final.height}",
                           "modelo": "Qwen-Image 2.1"}
@@ -747,7 +844,7 @@ class Handler(BaseHTTPRequestHandler):
             if lora:
                 # se descarga al salir: cada ejecucion vuelve a aplicar el suyo,
                 # y asi ninguno se queda puesto para la siguiente que no lo pida
-                motor.aplicar_lora(None, 1.0)
+                motor.aplicar_lora(None, 1.0, turbo=_turbo(b))
         return {"imagenes": salidas, "caja": list(caja), "prompt": prompt,
                 "crop": f"{caja[2]-caja[0]}x{caja[3]-caja[1]}", "generado": f"{aw}x{ah}"}, None
 
@@ -790,6 +887,65 @@ class Handler(BaseHTTPRequestHandler):
                               "tam": f"{gen.width}x{gen.height}"}],
                 "prompt": prompt, "efecto": e["nombre"],
                 "segundos": round(time.time() - t0, 1)}
+
+    def _estilo(self, b):
+        """Redraw a photograph in the visual language of a reference picture.
+
+        Not the same as applying a look: a look is a treatment this app already
+        knows, and this takes the manner of an image the user brings.
+        """
+        img = _img_de_data_url(b["imagen"])
+        ref = b.get("estilo")
+        if not ref:
+            return {"error": "add the picture whose style you want"}
+        t0 = time.time()
+        estilo_img = _img_de_data_url(ref)
+
+        # Medido: pedir "el estilo de <image2>" no mueve casi nada; nombrar la
+        # tecnica si. Asi que primero se lee el cuadro con el VLM y lo que sale
+        # -- formas planas, empaste visible, trama de semitono, lo que sea --
+        # va al generador como texto, que es a lo que este modelo responde.
+        tecnica = ""
+        if b.get("leer_estilo", True):
+            try:
+                dev = "cuda" if cfg.get("backend") == "cuda" else "cpu"
+                usar("vision")
+                VIS.cargar(cfg["ruta_modelos"], dev, bits=int(leer_ajustes()["vlm_bits"]))
+                if VIS.disponible():
+                    with _lock:
+                        tecnica = VIS.preguntar(
+                            estilo_img, "free",
+                            extra=("Describe only HOW this picture is made, never what it "
+                                   "shows. Name the medium, the mark-making, the surface "
+                                   "and texture, how many colours and which, how edges and "
+                                   "shadows are drawn, and whether there are gradients. "
+                                   "Two sentences, concrete and visual, no adjectives of "
+                                   "praise."),
+                            max_tokens=140).strip()
+            except Exception:
+                tecnica = ""
+
+        texto = (b.get("prompt") or "").strip()
+        if tecnica:
+            texto = (texto + " " if texto else "") + tecnica
+
+        # Con la tecnica leida la referencia sobra, y peor que sobrar: estorba.
+        # Se la deja solo cuando no se pudo leer el cuadro.
+        refs = [] if tecnica and not b.get("ref_estilo") else [estilo_img]
+        res, err = self._editar_entero(img, texto, b,
+                                       referencias=refs, modo="estilo")
+        if err:
+            return {"error": err}
+        gen, prompt = res
+        return {"imagenes": [{"archivo": "/salidas/" + _guardar(gen, "estilo", {
+                                  "prompt": prompt, "caso": "restyle",
+                                  "tecnica_leida": tecnica,
+                                  "seed": b.get("seed"), "steps": b.get("steps", 25),
+                                  "vae": motor.vae_actual,
+                                  "tam": f"{gen.width}x{gen.height}",
+                                  "modelo": "Qwen-Image 2.1"}),
+                              "tam": f"{gen.width}x{gen.height}"}],
+                "prompt": prompt, "segundos": round(time.time() - t0, 1)}
 
     def _reescalar(self, b):
         """Redraw the image larger, using it as its own reference.
@@ -860,7 +1016,7 @@ class Handler(BaseHTTPRequestHandler):
         escena = _img_de_data_url(b["escena"]) if b.get("escena") else None
         estilo = _img_de_data_url(b["estilo"]) if b.get("estilo") else None
 
-        steps = int(b.get("steps", 25))
+        steps = _pasos(b)
         base = int(b.get("seed", 0)) or int(time.time()) % 100000
         variantes = max(1, min(6, int(b.get("variantes", 1))))
         transp = bool(b.get("transparencia"))
@@ -868,7 +1024,9 @@ class Handler(BaseHTTPRequestHandler):
         # el perfil limita el area, no el lado: un 16:9 a 4 MP es mas ancho que
         # res_max pero cuesta lo mismo que un cuadrado de res_max
         mp = float(b.get("megapixeles", 1))
-        tope_mp = (int(cfg["res_max"]) ** 2) / (1024 * 1024)
+        con_ref = bool(personas or escena is not None or estilo is not None
+                       or pose is not None)
+        tope_mp = (_tope(con_ref) ** 2) / (1024 * 1024)
         mp = min(mp, tope_mp)
         ratio = b.get("ratio", "1:1")
         if ratio == "auto":
@@ -902,18 +1060,23 @@ class Handler(BaseHTTPRequestHandler):
             motor.cargar()
             if not motor.listo:
                 return {"error": motor.error or "could not load the model"}
+        motor.ajustar_muestreo("turbo" if _turbo(b) else
+                               str(b.get("muestreo") or leer_ajustes()["muestreo"]))
 
         hechas, prompt = [], ""
-        with _lock:
+        with _lock:                # una generacion a la vez: la VRAM no da para mas
             motor.usar_vae(b.get("vae") or leer_ajustes().get("vae", "stock"))
             motor.aplicar_lora(os.path.join(LORAS, b["lora"]) if b.get("lora") else None,
-                               float(b.get("fuerza_lora", 1.0)))       # una generacion a la vez: la VRAM no da para mas
+                               float(b.get("fuerza_lora", 1.0)),
+                               turbo=_turbo(b))
             for k in range(variantes):
                 img, prompt = motor.generar(personas=personas, pose=pose, escena=escena,
                                             estilo=estilo, estilo_modo=b.get("estilo_modo", "look"),
                                             texto=texto, res=res,
                                             ancho=ancho, alto=alto, transparencia=transp,
-                                            steps=steps, seed=base + k)
+                                            steps=steps, seed=base + k,
+                                            cfg=float(b.get("cfg", 1.0)),
+                                            negativo=str(b.get("negativo", "")))
                 receta = {"prompt": prompt, "caso": b.get("caso", "generate"),
                           "seed": base + k, "steps": steps, "vae": motor.vae_actual,
                           "tam": f"{img.width}x{img.height}", "ratio": b.get("ratio"),

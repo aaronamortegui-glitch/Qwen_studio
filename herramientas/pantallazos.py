@@ -48,6 +48,9 @@ PANTALLAS: dict[str, tuple[str, int]] = {
     "ui-brush":    ("?caso=replace&abrir=mask", ALTO),
     "ui-poses":    ("?caso=pose&abrir=poses", ALTO),
     "ui-looks":    ("?caso=look&abrir=efectos", ALTO),
+    "ui-restyle":  ("?caso=restyle", ALTO),
+    # los tres ajustes de motor viven abajo del panel: se toma entero
+    "ui-settings": ("?abrir=ajustes", ALTO),
     "ui-gallery":  ("?abrir=galeria", ALTO),
     "ui-dark":     ("?caso=portrait&tema=dark", ALTO),
     # la ficha de una receta necesita un archivo concreto, asi que su enlace se

@@ -35,6 +35,14 @@ IDS_DINAMICOS |= {f"z_{z}" for z in
                   ("person", "pose", "style", "scene", "source", "extra")}
 IDS_DINAMICOS |= {f"t_{z}" for z in
                   ("person", "pose", "style", "scene", "source", "extra")}
+# los controles del panel de ajustes los pinta pintarAjustes() desde OPCIONES,
+# asi que ninguno esta en el marcado: se leen de ahi para que la lista no haya
+# que mantenerla a mano
+IDS_DINAMICOS |= {
+    "aj_" + k for k in
+    re.findall(re.escape("['") + "([a-z_]+)','(?:check|num|sel|vae|muestreo)'",
+               open(RUTA, encoding="utf-8").read())
+}
 
 # Reglas que ponen un color oscuro sin fondo propio porque lo heredan de su
 # padre, y el padre si tiene uno claro y fijo. El control de abajo mira una
@@ -183,6 +191,56 @@ CASTELLANO = re.compile(
 PERDON = re.compile(r"^[A-Za-z0-9_./-]+$")
 
 
+def revisar_js() -> list[str]:
+    """Parse the page's JavaScript, which nothing else does.
+
+    An apostrophe inside a single-quoted string closes it, and the browser then
+    throws one SyntaxError and abandons the whole script: settings never load,
+    no handler binds, and the page looks merely stale rather than broken. That
+    shipped once, from the word "model’s" in a setting description. `node
+    --check` parses without running, so browser globals do not matter.
+
+    Silent when node is absent: a missing tool is not a finding.
+    """
+    import shutil
+    import subprocess
+    import tempfile
+
+    node = shutil.which("node")
+    if not node:
+        return []
+
+    s = open(RUTA, encoding="utf-8").read()
+    trozos = re.findall(r"<script>(.*?)</script>", s, re.S)
+    if not trozos:
+        return ["no se encontro ningun <script> en la pagina"]
+
+    fallos: list[str] = []
+    for n, js in enumerate(trozos, 1):
+        with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False,
+                                         encoding="utf-8") as f:
+            f.write(js)
+            tmp = f.name
+        try:
+            r = subprocess.run([node, "--check", tmp], capture_output=True,
+                               text=True, timeout=60)
+            if r.returncode:
+                linea = ""
+                for l in (r.stderr or "").splitlines():
+                    if "SyntaxError" in l:
+                        linea = l.strip()
+                        break
+                fallos.append(f"el <script> {n} no parsea: {linea or 'ver node --check'}")
+        except Exception as e:
+            fallos.append(f"no se pudo comprobar el <script> {n}: {type(e).__name__}")
+        finally:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+    return fallos
+
+
 def revisar_servidor() -> list[str]:
     fallos: list[str] = []
     for nombre in SERVIDOR:
@@ -207,7 +265,7 @@ def revisar_servidor() -> list[str]:
 
 
 def main() -> None:
-    fallos = revisar() + revisar_servidor()
+    fallos = revisar() + revisar_js() + revisar_servidor()
     if not fallos:
         print("  interfaz.py y el servidor: sin hallazgos")
         sys.exit(0)

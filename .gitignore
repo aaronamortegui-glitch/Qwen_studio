@@ -14,6 +14,7 @@ entradas/*
 # config.json describe el hardware de ESTA maquina, ajustes.json son
 # preferencias locales: los escribe el instalador y el uso, no el repositorio.
 config.json
+config.json.bak
 ajustes.json
 
 # el zip se construye con herramientas/empaquetar.py

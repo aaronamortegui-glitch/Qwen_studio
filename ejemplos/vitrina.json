@@ -606,5 +606,26 @@
    "vae": "hdr",
    "modelo": "Qwen-Image 2.1"
   }
+ },
+ {
+  "clave": "restyle",
+  "titulo": "Match a style",
+  "caso": "restyle",
+  "grupo": "What each path does",
+  "que": "The portrait remade in the manner of the watercolour below it — same person, same pose, same framing, a different medium. The reference is never passed to the generator as a picture: it is read first, and only the description of how it is made travels, because handing the model the painting hands it the rosemary and the fig as well.",
+  "archivo": "/vitrina/restyle.jpg",
+  "meta": {
+   "generator": "QwenStudio / Qwen-Image 2.1",
+   "prompt": "Keep what <image1> shows: the same subject, the same pose, the same composition and the same framing. Change only how the picture is made. Redraw all of it this way: This is a watercolor painting on white paper, using translucent washes and fine brushstrokes to render soft gradients and subtle color transitions, with visible paper texture beneath the pigment. The composition employs minimal color—primarily greens, purples, and pinks—with soft, diffused edges and faint, wet-into-wet shadow washes beneath the fig to suggest volume and contact with the surface. Nothing of the original photograph's surface remains.",
+   "caso": "restyle",
+   "seed": "6105",
+   "steps": "30",
+   "tam": "896x1184",
+   "vae": "hdr",
+   "modelo": "Qwen-Image 2.1",
+   "tecnica_leida": "This is a watercolor painting on white paper, using translucent washes and fine brushstrokes to render soft gradients and subtle color transitions, with visible paper texture beneath the pigment. The composition employs minimal color—primarily greens, purples, and pinks—with soft, diffused edges and faint, wet-into-wet shadow washes beneath the fig to suggest volume and contact with the surface."
+  },
+  "antes": "/vitrina/retrato.jpg",
+  "antes_de": "New portrait"
  }
 ]
