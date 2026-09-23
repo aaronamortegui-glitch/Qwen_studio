@@ -509,14 +509,18 @@ dialog:not(#lupa) h3{margin:0 0 18px;font-size:22px;font-weight:400;
 #plBody h4{font-size:11px;text-transform:uppercase;letter-spacing:.09em;
   color:var(--on-sf-var);margin:20px 0 9px;font-weight:600}
 #plBody h4:first-child{margin-top:0}
+#plBody > .hint{margin:0 0 12px}
 #plBody button{display:block;width:100%;text-align:left;border:1px solid var(--line-soft);
   background:var(--sf-1);color:var(--on-sf);border-radius:var(--r-s);padding:13px 15px;
   margin-bottom:8px;cursor:pointer;font:inherit;font-size:13px;line-height:1.5;transition:.15s}
 #plBody button:hover{border-color:var(--verde);background:var(--sf-2)}
 #plBody button[aria-pressed=true]{border-color:var(--ac-2);background:var(--sf-2)}
-#plBody button[aria-pressed=true] b::after{content:" · in the prompt";font-weight:400;
-  color:var(--on-sf-var);text-transform:none;letter-spacing:0}
-#plBody button b{display:block;font-size:12px;color:var(--link);margin-bottom:3px;font-weight:600}
+#plBody .plModo{font-weight:400;font-size:10px;color:var(--on-sf-var);
+  text-transform:uppercase;letter-spacing:.07em;white-space:nowrap}
+#plBody button[aria-pressed=true] .plModo{color:var(--link)}
+#plBody .plTexto{display:block}
+#plBody button b{display:flex;gap:10px;align-items:baseline;justify-content:space-between;
+  font-size:12px;color:var(--link);margin-bottom:3px;font-weight:600}
 .opt{display:flex;align-items:flex-start;gap:14px;padding:15px 0;
   border-bottom:1px solid var(--line-soft)}
 .opt:last-of-type{border-bottom:0}
@@ -2184,35 +2188,65 @@ async function abrirBiblioteca(){
     return;
   }
   cont.innerHTML='';
+  // The prompt does one of two jobs, and which one decides whether a pick
+  // replaces or is added. On the photo paths the app writes the instruction --
+  // the identity clause, the pose, the scene -- and your text is the
+  // complement, so everything here adds to it. On the editing paths your text
+  // IS the instruction, so the entries are whole instructions and replace it.
+  // The catalogue already knows which, so nobody has to find out by clicking.
+  const manda = cats.some(c=>c.modo==='reemplaza' && c.destino==='prompt');
+  const nota=document.createElement('p'); nota.className='hint';
+  nota.textContent = manda
+    ? 'On this path your text is the instruction, so these replace what is in '
+      + 'the box. The clauses further down are added to it instead.'
+    : 'On this path the app writes the instruction \u2014 keeping the face, the '
+      + 'pose, the scene. What you pick here is added to your own words, and a '
+      + 'second pick from the same group swaps the first out.';
+  cont.append(nota);
   cats.forEach(c=>{
     // createElement and not innerHTML+=: assigning innerHTML reparses the WHOLE
     // container and replaces the nodes already placed with fresh copies, which
     // do not carry the onclick. Only the last category's buttons worked.
     const h=document.createElement('h4'); h.textContent=c.categoria; cont.append(h);
     c.items.forEach(it=>{
+      const reemplaza = c.modo==='reemplaza';
+      const seleccion = c.destino==='seleccion';
+      const puesto = S.frag[c.categoria];
+      const enUso = !reemplaza && puesto===it.texto;
       const b=document.createElement('button'); b.type='button';
-      b.innerHTML=`<b>${it.etiqueta}</b>${it.texto}`;
-      b.setAttribute('aria-pressed', S.frag[c.categoria]===it.texto);
+      // textContent and not innerHTML: these texts carry <image1> and <image2>,
+      // which the browser would take for tags and drop on the floor
+      const et=document.createElement('b'); et.textContent=it.etiqueta;
+      const chip=document.createElement('span'); chip.className='plModo';
+      chip.textContent = seleccion ? 'sets what to select'
+                       : reemplaza ? 'use this instead'
+                       : enUso     ? 'in the prompt \u00b7 pick another to swap'
+                                   : 'add to the prompt';
+      et.append(chip);
+      const tx=document.createElement('span'); tx.className='plTexto';
+      tx.textContent=it.texto;
+      b.append(et,tx);
+      b.setAttribute('aria-pressed', enUso);
       b.onclick=()=>{
-        const t=$('#prompt');
-        S.promptPrevio=t.value;
-        if(c.categoria==='Starting points'){
-          // a starting point is the whole prompt, so it replaces everything
-          // and nothing layered on the previous one still applies
-          t.value=it.texto; S.frag={};
+        const t = seleccion ? $('#seleccion') : $('#prompt');
+        if(!t){ avisar('That box is not on this screen.'); return }
+        if(!seleccion) S.promptPrevio=t.value;
+        if(reemplaza){
+          // this entry is the whole thing, so it replaces what is there and
+          // nothing layered on the previous one still applies
+          t.value=it.texto; if(!seleccion) S.frag={};
         }else{
           // a second pick from the same category swaps the first out instead
           // of stacking both: picking golden hour after studio light means
           // golden hour, not a prompt asking for two kinds of light at once.
           // Anything typed by hand is left alone, and a fragment the user has
           // since edited is no longer found, so that one is appended.
-          const puesto=S.frag[c.categoria];
           t.value = (puesto && t.value.includes(puesto))
                   ? t.value.replace(puesto, it.texto)
                   : (t.value.trim() ? t.value.trim()+' '+it.texto : it.texto);
           S.frag[c.categoria]=it.texto;
         }
-        $('#btnDeshacer').hidden=false;
+        if(!seleccion) $('#btnDeshacer').hidden=false;
         $('#pl').close();
       };
       cont.append(b);

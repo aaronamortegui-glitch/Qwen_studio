@@ -237,10 +237,7 @@ Light by default, dark in Settings, or Auto to follow the system.
 | | Replace something | image + a selection + what goes there |
 
 Plus a **pose library** (30 skeletons across close-up, half and full body), a
-**prompt library** (one clause of a photograph each: a second pick from the
-same category swaps the first out rather than stacking both, so asking for
-golden hour after studio light means golden hour, and anything typed by hand
-is left alone), **image description and reasoning** with Qwen3-VL, **LoRA** loading,
+**prompt library**, **image description and reasoning** with Qwen3-VL, **LoRA** loading,
 the seven official aspect ratios, 2K native output, a **before/after slider**
 on every edit, and a **contact sheet** per run showing inputs + result.
 
@@ -255,6 +252,46 @@ each was measured to be a trade rather than a free win:
 
 On a machine that cannot run this usefully, the installer and the app both say
 so plainly — with a puppy — and then let you through anyway.
+
+### The prompt library, and the two jobs a prompt has
+
+The box under the picture does one of two jobs, and which one it is decides
+what the library should do when you click.
+
+On the **photo paths** — a new portrait, a character in a scene, a pose — the
+app writes the instruction itself: the identity clause that names `<image1>`,
+the pose, the scene description read by the VLM. Your text is the *complement*.
+So there the library offers clauses of a photograph, and a pick is **added** to
+whatever you wrote. "New portrait" gets seven portrait styles — studio
+headshot, editorial, corporate, environmental, candid, black and white,
+close-up — plus lighting, camera, setting, clothing and grade.
+
+On the **editing paths** your text *is* the instruction, so there the entries
+are whole instructions and a pick **replaces** the box. "Tell it what to
+change" offers six, written the way the measurements say to write them: the
+operation first, the attribute named and never the person, `put X on` rather
+than `replace X with`, and the clothing named whenever the point is to change
+who someone is.
+
+Every entry says which it does, on the button, because the only other way to
+find out is to click and lose what you had. Three more rules fell out of
+building it:
+
+- **A second pick from the same group swaps the first out** rather than
+  stacking both. Golden hour after studio light means golden hour, not a prompt
+  asking for two kinds of light at once, which the model answers by splitting
+  the difference.
+- **Anything typed by hand is left alone.** A fragment you have since edited is
+  no longer found in the box, so that one is appended instead of replaced, and
+  Undo covers the pick either way.
+- **"What to select" writes into the selection field**, not the prompt. It
+  holds phrases like *the sweater*, and putting those in the prompt — which is
+  what it used to do — described a sweater instead of selecting one.
+
+Three paths had no catalogue of their own and fell through to "show
+everything", which is how the edit screen came to offer *Lettering*. They have
+one now; `enlarge` and `restyle` take grade and camera clauses, and the free
+edit takes instructions only.
 
 ---
 

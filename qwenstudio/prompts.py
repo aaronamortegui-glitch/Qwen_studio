@@ -217,6 +217,26 @@ def catalogo() -> list[dict]:
 # use case -> its own starting points. The first thing seen when the library is
 # opened from that path, because an empty field says nothing about what goes in it.
 BASES: dict[str, list[tuple[str, str]]] = {
+    # Instructions, not descriptions: on this path the prompt tells the model
+    # what to do. They are written the way the measurements say to write them
+    # -- the operation first, the attribute named and never the person, "put X
+    # on" rather than "replace X with", and the clothing named whenever the
+    # point is to change who someone is, because while the original garment
+    # stays it holds the original person in place.
+    "editar": [
+        ("Swap the person", "Put the face, the hair and the beard from <image2> on the "
+         "person in <image1>, and change the clothing to a plain dark t-shirt."),
+        ("Change the garment", "Put a charcoal wool overcoat on the person, open, over "
+         "what they are already wearing."),
+        ("Change the background", "Put the person on a quiet city street at dusk, the "
+         "lights already on behind them."),
+        ("Change the light", "Light the scene with warm low sun coming from the left, "
+         "long shadows across the ground."),
+        ("Take something out", "Remove the object on the table in front of the person, "
+         "and close the surface over where it was."),
+        ("Change the hair", "Put dark hair cut short at the sides and longer on top on "
+         "the person, the same hairline."),
+    ],
     "blank": [
         ("Product", "A weathered brass diving helmet on an oak workbench, studio product "
          "photograph, scratched patina and green verdigris in the seams, a single softbox "
@@ -297,10 +317,35 @@ RELEVANTES: dict[str, tuple[str, ...]] = {
     "pose": ("Full body", "Lighting", "Camera", "Setting", "Clothing", "Style and grade"),
     "cutout": ("Full body", "Lighting", "Clothing"),
     "replace": ("Edits (what to put there)", "What to select", "Lighting", "Clothing"),
+    # the free edit takes whole instructions, which are its starting points,
+    # and nothing else: a clause of a photograph appended to an instruction
+    # is a second edit nobody asked for
+    "editar": (),
+    "restyle": ("Style and grade", "Lighting"),
+    "enlarge": ("Style and grade", "Camera"),
     "upscale": (),
     "look": (),
     "free": tuple(BIBLIOTECA),
 }
+
+
+def _comportamiento(categoria: str, caso: str | None) -> dict:
+    """What a click on this category does, and which box it writes into.
+
+    Some entries ARE the whole prompt and replace what is there; others are one
+    clause of a photograph and are added to it. Which one a category is depends
+    on the path: on the replacement path the prompt IS the description of what
+    goes there, so those entries replace, while anywhere else the same text is
+    one more thing to say. Saying it in the data lets the interface print it on
+    the button instead of the user finding out by clicking.
+    """
+    if categoria == "Starting points":
+        return {"modo": "reemplaza", "destino": "prompt"}
+    if categoria == "What to select":
+        return {"modo": "reemplaza", "destino": "seleccion"}
+    if categoria == "Edits (what to put there)" and caso == "replace":
+        return {"modo": "reemplaza", "destino": "prompt"}
+    return {"modo": "suma", "destino": "prompt"}
 
 
 def catalogo_de(caso: str | None = None) -> list[dict]:
@@ -312,10 +357,11 @@ def catalogo_de(caso: str | None = None) -> list[dict]:
     fuera = []
     if caso and caso in BASES:
         fuera.append({"categoria": "Starting points",
+                      **_comportamiento("Starting points", caso),
                       "items": [{"etiqueta": e, "texto": t} for e, t in BASES[caso]]})
     permitidas = RELEVANTES.get(caso or "", tuple(BIBLIOTECA)) if caso else tuple(BIBLIOTECA)
     for c, items in BIBLIOTECA.items():
         if c in permitidas:
-            fuera.append({"categoria": c,
+            fuera.append({"categoria": c, **_comportamiento(c, caso),
                           "items": [{"etiqueta": e, "texto": t} for e, t in items]})
     return fuera
