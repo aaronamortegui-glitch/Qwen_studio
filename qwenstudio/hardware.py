@@ -105,8 +105,10 @@ class Perfil:
     cuantizacion: str
     cuantizacion_te: str     # el text encoder sigue al transformer: a medias sale peor
     offload: str
+    vram_limite_gb: float  # techo duro del asignador; lo que pase muere como excepcion
     res_max: int           # sin referencia
     res_max_ref: int       # con una foto delante, que cuesta el doble largo
+    res_max_multi: int     # con varias: cada una suma activaciones
     nivel: str               # XL | L | M | S | MINIMO | INVIABLE
     torch_index: str         # indice de pip para instalar torch
     avisos: list
@@ -178,24 +180,27 @@ def detectar(destino_modelos: str | None = None) -> Perfil:
     # la mitad de memoria, unica via a 2K, y a la misma semilla la calidad no
     # se distingue. bf16 solo gana si los pesos caben enteros.
     if backend == "cuda":
+        # Tres tamanos y no uno: solo, con una referencia delante, y con
+        # varias. Medido en 24 GB -- 7.5 GB generando a 2K, 18.2 reescalando,
+        # 19.2 en un retrato, y dos referencias a 2K se llevaron el kernel.
+        # Los de una y varias van por debajo de lo que sobrevivio, no en el
+        # borde, porque el borde ya demostro lo que cuesta.
         if vram >= 40:
             # aqui si caben los 29.6 GB de pesos sin trocear
             nivel, dtype, cuant, off = "XL", "bfloat16", "none", "none"
-            res, res_ref = 2048, 2048
+            res, res_ref, res_multi = 2048, 2048, 1536
         elif vram >= 20:
-            # medido en 24 GB: 7.5 GB generando a 2K, 18.2 reescalando a 2K
             nivel, dtype, cuant, off = "L", "bfloat16", "int4", "model"
-            res, res_ref = 2048, 2048
+            res, res_ref, res_multi = 2048, 1536, 1024
         elif vram >= 12:
-            # generar a 2K cabe de sobra; editar a 2K no, y por eso son dos
             nivel, dtype, cuant, off = "M", "bfloat16", "int4", "model"
-            res, res_ref = 2048, 1024
+            res, res_ref, res_multi = 2048, 1024, 1024
         elif vram >= 8:
             nivel, dtype, cuant, off = "S", "bfloat16", "int4", "sequential"
-            res, res_ref = 1536, 1024
+            res, res_ref, res_multi = 1536, 1024, 1024
         else:
             nivel, dtype, cuant, off = "MINIMO", "bfloat16", "int4", "sequential"
-            res, res_ref = 1024, 1024
+            res, res_ref, res_multi = 1024, 1024, 1024
             avisos.append(f"Only {vram:.0f} GB of VRAM. It will run, but slowly, and a "
                           f"reference photo may not fit at all.")
         if ram < 24:
@@ -207,26 +212,26 @@ def detectar(destino_modelos: str | None = None) -> Perfil:
         # el ajuste es dtype y offload.
         if vram >= 64:
             nivel, dtype, cuant, off = "XL", "bfloat16", "none", "none"
-            res, res_ref = 2048, 2048
+            res, res_ref, res_multi = 2048, 2048, 2048
         elif vram >= 48:
             nivel, dtype, cuant, off = "L", "bfloat16", "none", "model"
-            res, res_ref = 2048, 2048
+            res, res_ref, res_multi = 2048, 2048, 2048
         elif vram >= 32:
             nivel, dtype, cuant, off = "M", "bfloat16", "none", "sequential"
-            res, res_ref = 1536, 1536
+            res, res_ref, res_multi = 1536, 1536, 1536
         elif vram >= 24:
             nivel, dtype, cuant, off = "S", "float16", "none", "sequential"
-            res, res_ref = 1024, 1024
+            res, res_ref, res_multi = 1024, 1024, 1024
             avisos.append("With 24 GB unified, layers are swapped constantly; a 1024 px "
                           "image can take several minutes.")
         else:
             nivel, dtype, cuant, off = "INVIABLE", "float16", "none", "sequential"
-            res, res_ref = 1024, 1024
+            res, res_ref, res_multi = 1024, 1024, 1024
             avisos.append(f"With {vram:.0f} GB unified the model does not fit usefully. "
                           f"A Mac needs 24 GB at minimum, 32 GB to be comfortable.")
     else:
         nivel, dtype, cuant, off = "INVIABLE", "float32", "none", "sequential"
-        res, res_ref = 1024, 1024
+        res, res_ref, res_multi = 1024, 1024, 1024
         avisos.append("No compatible GPU. On CPU a single image can take over half an "
                       "hour; not a practical way to use this.")
 
@@ -239,12 +244,34 @@ def detectar(destino_modelos: str | None = None) -> Perfil:
     # encoder sigue al transformer y no se decide por separado
     cuant_te = cuant
 
+    # El techo duro del asignador. Dos pantallazos azules el 2026-09-23, mismo
+    # bugcheck y mismos parametros, los dos empujando la VRAM contra el muro de
+    # una tarjeta de 24 GB: el driver se rompe bajo una reserva imposible y,
+    # con el hipervisor de por medio, se lleva el kernel en vez de reiniciarse
+    # solo. Reservar por debajo del total no es prudencia, es la diferencia
+    # entre una excepcion de Python y un reinicio.
+    #
+    # La reserva es proporcional y no fija: 4 GB sobre 24 es el margen justo,
+    # 4 GB sobre 8 seria media tarjeta. Un 15%, con techo de 4 para que una
+    # tarjeta grande no regale de mas y suelo de 1.5 para que una pequena
+    # conserve algo. El escritorio, el navegador y lo que el propio driver
+    # reserva viven en ese hueco.
+    #
+    # Solo CUDA: set_per_process_memory_fraction no existe en MPS, asi que en
+    # Mac no hay techo que poner y el campo va a cero.
+    if backend == "cuda":
+        limite = round(vram - min(4.0, max(1.5, vram * 0.15)), 1)
+    else:
+        limite = 0.0
+
     viable = nivel != "INVIABLE" and disco >= DESCARGA_GB
 
     return Perfil(so=so, maquina=maquina, acelerador=acelerador, backend=backend,
                   vram_gb=round(vram, 1), ram_gb=round(ram, 1), disco_libre_gb=round(disco, 1),
                   dtype=dtype, cuantizacion=cuant, cuantizacion_te=cuant_te,
-                  offload=off, res_max=res, res_max_ref=res_ref, nivel=nivel,
+                  vram_limite_gb=limite,
+                  offload=off, res_max=res, res_max_ref=res_ref,
+                  res_max_multi=res_multi, nivel=nivel,
                   torch_index=torch_index, avisos=avisos, viable=viable)
 
 
@@ -263,6 +290,8 @@ def resumen(p: Perfil) -> str:
         f"  dtype          {p.dtype}",
         f"  Quantisation   {p.cuantizacion}",
         f"  Offload        {p.offload}",
+        (f"  VRAM ceiling   {p.vram_limite_gb:.1f} GB of {p.vram_gb:.1f}"
+         if p.vram_limite_gb else ""),
         f"  Max resolution {p.res_max}"
         + (f" ({p.res_max_ref} with a reference photo)"
            if p.res_max_ref != p.res_max else ""),

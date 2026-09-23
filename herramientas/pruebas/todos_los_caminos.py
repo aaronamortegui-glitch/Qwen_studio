@@ -374,7 +374,12 @@ def caso_transferir_estilo():
 
 
 def caso_reescalar():
-    """Rescale to 2K: bigger, and bigger by redrawing rather than stretching."""
+    """Enlarge: bigger, and bigger by redrawing rather than stretching.
+
+    Not "to 2K": the ceiling with a reference in front of the model is what the
+    profile allows, 1536 on this card and 1024 on a smaller one, so the number
+    belongs to the machine and not to the name.
+    """
     from PIL import Image
 
     src = Image.open(ESCENA)
@@ -438,7 +443,7 @@ CASOS = [
     ("look, whole frame", caso_look_entero),
     ("look, painted region", caso_look_region),
     ("match a style", caso_transferir_estilo),
-    ("rescale to 2K", caso_reescalar),
+    ("enlarge", caso_reescalar),
     ("detail pass (CFG)", caso_cfg),
     ("describe (Qwen3-VL)", caso_describir), ("batch", caso_lote),
     ("settings", caso_ajustes),

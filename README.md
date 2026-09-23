@@ -441,11 +441,33 @@ the average.
 | a look or an edit, 1 MP | 832 × 1088 | **26 s** | 9.2 GB |
 | rescale to 2K | 1792 × 2048 | **156 s** | 18.2 GB |
 
-**Two ceilings, not one.** Generating at 2K costs 7.5 GB; rescaling to 2K,
-where the picture is its own reference, costs 18.2. This README used to quote
-one number and promise 2048 to cards that paged the moment a photo went in
-front of them. The profile now carries both, and the app applies whichever the
-operation calls for.
+**Three ceilings, and a hard floor under all of them.** Generating at 2K costs
+7.5 GB; one reference at 2K costs 18.2 to 19.2; two references at 2K took this
+machine down. So the profile carries a size without a reference, a size with
+one, and a size with several — and, underneath, a limit on what the process may
+allocate at all.
+
+That last one is the important one. On 2026-09-23 this machine blue-screened
+twice, same bugcheck and the same four parameters, both times while a test
+pushed a 24 GB card against its wall. There was a guard: a thread watching
+`nvidia-smi` that cancelled the run past a threshold. It never fired in time,
+because cancellation lands between denoising steps and the allocation spike
+happens inside one.
+
+The allocator can do what the watcher could not.
+`torch.cuda.set_per_process_memory_fraction` makes PyTorch raise
+`OutOfMemoryError` at the moment of the allocation, which is an exception the
+app catches and turns into a sentence. The reserve is proportional — 15% of the
+card, capped at 4 GB, floored at 1.5 — so a 24 GB card stops at 20.3 and an 8 GB
+card at 6.5. Verified at 4 GB and again at 12 with a job that wanted 19: it
+stopped at 11.0 GB and said *"that was too large for this card"*.
+
+Between images the cache goes back to the driver, so the card sits at 1.0 GB
+used with the model still mounted, and the machine stays usable while the app
+is open.
+
+On Apple Silicon this field is zero: `set_per_process_memory_fraction` has no
+MPS equivalent, and there is no honest way to pretend otherwise.
 
 **nf4 is not the poor mode, it is the good one.** Against bf16 on this card it
 is faster (56 s against 73 s at the old 25-step default), uses half the memory,
@@ -779,17 +801,17 @@ Hardware is detected before anything is installed and decides dtype,
 quantisation, offload and maximum resolution. The download is the same in every
 profile; the profile changes how it is loaded.
 
-| VRAM (CUDA) | dtype | quant | offload | max | max with a reference |
-|---|---|---|---|---|---|
-| ≥ 40 GB | bf16 | — | — | 2048 | 2048 |
-| 20–40 | bf16 | nf4 | model | 2048 | 2048 |
-| 12–20 | bf16 | nf4 | model | 2048 | 1024 |
-| 8–12 | bf16 | nf4 | sequential | 1536 | 1024 |
-| < 8 | bf16 | nf4 | sequential | 1024 | 1024, and the puppy |
+| VRAM (CUDA) | quant | offload | alone | one reference | several | allocator ceiling |
+|---|---|---|---|---|---|---|
+| ≥ 40 GB | — | — | 2048 | 2048 | 1536 | card − 4 GB |
+| 20–40 | nf4 | model | 2048 | 1536 | 1024 | card − 4 GB |
+| 12–20 | nf4 | model | 2048 | 1024 | 1024 | card − 15% |
+| 8–12 | nf4 | sequential | 1536 | 1024 | 1024 | card − 15% |
+| < 8 | nf4 | sequential | 1024 | 1024 | 1024, and the puppy | card − 1.5 GB |
 
-The two ceilings are the point. Generating at 2K peaks at 7.5 GB; rescaling to
-2K, where the picture is its own reference, peaks at 18.2. A single number
-promised the first and delivered the second.
+The sizes are advisory and the last column is not. A size can be wrong by a
+gigabyte and the worst that happens is a sentence on screen; before the
+allocator ceiling existed, being wrong by a gigabyte took the machine down.
 
 On Apple Silicon there is no quantisation (bitsandbytes has no MPS backend);
 the profile adjusts dtype and offload instead, and refuses under 24 GB of

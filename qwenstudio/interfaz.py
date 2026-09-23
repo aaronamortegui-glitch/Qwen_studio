@@ -903,7 +903,7 @@ const CASOS={
     hint:'Your photo, painted the way another picture is.',
     mode:'estilo', zonas:['source','style'], opt:[], ratio:'auto',
     prompt:''},
-  enlarge:{cat:'edit', icon:'enlarge', name:'Rescale to 2K',
+  enlarge:{cat:'edit', icon:'enlarge', name:'Enlarge',
     hint:'The picture redrawn larger, not stretched. Detail comes back.',
     mode:'reescalar', zonas:['source'], opt:[], ratio:'auto', prompt:''},
   replace:{cat:'edit', icon:'replace', name:'Replace something', hint:'Name it or paint it, then say what goes there.',
@@ -952,6 +952,8 @@ const caso=()=>CASOS[S.caso];
 function zonaNegativo(){
   const z=$('#zonaNeg'); if(!z) return;
   z.hidden = !(+(AJ.cfg||1) > 1);
+  const c=$('#negativo');
+  if(c && !c.value && AJ.negativo) c.value = AJ.negativo;
 }
 function construirZonas(){
   const c=caso(), cont=$('#zonas'); cont.innerHTML='';
@@ -984,7 +986,9 @@ function engancharZona(d,z,multi){
     else S.img[z]=[await leer(fs[0])];
     // una mascara pintada solo vale para la foto sobre la que se pinto
     if(z==='source'){S.mascara=null; pintarEstadoMask()}
-    tocado(); repintar();
+    // el tamano depende de cuantas referencias hay, asi que anadir una lo
+    // cambia: se recalcula aqui o el numero de arriba miente hasta el siguiente clic
+    tocado(); repintar(); medida();
   };
   d.onclick=e=>{if(!['BUTTON','A','INPUT','LABEL'].includes(e.target.tagName))inp.click()};
   inp.onchange=()=>{recibir([...inp.files]);inp.value=''};
@@ -1009,7 +1013,7 @@ function repintar(){
     (S.img[z]||[]).forEach((src,i)=>{
       const f=document.createElement('figure'),im=document.createElement('img'),b=document.createElement('button');
       im.src=src; b.textContent='×'; b.type='button';
-      b.onclick=e=>{e.stopPropagation();S.img[z].splice(i,1);if(z==='pose')S.poseLib=null;tocado();repintar()};
+      b.onclick=e=>{e.stopPropagation();S.img[z].splice(i,1);if(z==='pose')S.poseLib=null;tocado();repintar();medida()};
       f.append(im,b); c.append(f);
     });
   });
@@ -1117,12 +1121,44 @@ const cr=$('#ratios');
   b.textContent=r; b.onclick=()=>{S.ratio=r;marcarRatio();medida()}; cr.append(b);
 });
 const marcarRatio=()=>[...cr.children].forEach(x=>x.setAttribute('aria-pressed',x.dataset.r===S.ratio));
+// Cuantas imagenes se le ponen delante al modelo. Cada una cuesta
+// activaciones, y el techo del perfil depende de cuantas hay: el servidor
+// aplica la misma cuenta en _tope(), y aqui se repite para poder DECIRLO
+// antes de pulsar en vez de recortar en silencio.
+function cuantasReferencias(){
+  let n=0;
+  for(const z of caso().zonas){
+    if(z==='source') continue;            // lo que se edita no es una referencia
+    // la pose de la libreria y la subida son la misma ranura: la peticion manda
+    // una sola, asi que contar las dos sobrestimaria y recortaria de mas
+    if(z==='pose' && S.poseLib){ n++; continue }
+    n += (S.img[z]||[]).length;
+  }
+  return n;
+}
+function topePerfil(refs){
+  const base = +(PERFIL.res_max||1024);
+  if(refs<=0) return base;
+  const t = +(PERFIL.res_max_ref||base);
+  return refs>1 ? Math.min(t,1024) : t;
+}
 function medida(){
   const mp=+$('#mp').value;
   setTimeout(estimar, 0);
-  if(S.ratio==='auto'){$('#medida').textContent=`~${mp} MP · from the reference`;return}
-  const [a,b]=S.ratio.split(':').map(Number),r=a/b,area=mp*1024*1024;
-  $('#medida').textContent=`${Math.round(Math.sqrt(area*r)/32)*32} × ${Math.round(Math.sqrt(area/r)/32)*32}`;
+  const refs = cuantasReferencias();
+  const tope = topePerfil(refs);
+  const topeMp = (tope*tope)/(1024*1024);
+  const real = Math.min(mp, topeMp);
+  // por que se recorto, dicho donde se ve el tamano. Medido: dos referencias
+  // a 2K tumbaron esta maquina entera, asi que el limite no es prudencia
+  const nota = real<mp
+    ? (refs>1 ? ` · capped at ${tope} px: ${refs} references`
+              : ` · capped at ${tope} px by your card`)
+    : '';
+  if(S.ratio==='auto'){$('#medida').textContent=`~${real} MP · from the reference${nota}`;return}
+  const [a,b]=S.ratio.split(':').map(Number),r=a/b,area=real*1024*1024;
+  $('#medida').textContent=
+    `${Math.round(Math.sqrt(area*r)/32)*32} × ${Math.round(Math.sqrt(area/r)/32)*32}${nota}`;
 }
 $('#mp').onchange=()=>{medida();estimar()};
 $('#variants').oninput=estimar;
@@ -1176,6 +1212,9 @@ fetch('/api/loras').then(r=>r.json()).then(ls=>{
 
 /* ---------- status ---------- */
 let pesosListos=false;
+// el techo del perfil, para poder decir el recorte antes de generar en vez de
+// aplicarlo en silencio. Hasta el primer tick vale 1024, que es el suelo.
+let PERFIL={res_max:1024, res_max_ref:1024};
 async function tick(){
   let e;
   try{ e=await (await fetch('/api/estado')).json() }
@@ -1188,6 +1227,8 @@ async function tick(){
     $('#panel').hidden=true; return;
   }
   const p=e.perfil, m=e.motor;
+  if(p.res_max && p.res_max!==PERFIL.res_max){ PERFIL=p; medida() }
+  else PERFIL=p;
   $('#chipProfile').textContent=`${p.acelerador} · ${p.vram_gb} GB · ${p.dtype}`;
 
   if(m.error)            ponerEstado('err','model failed');
@@ -1899,6 +1940,14 @@ const comunes=()=>({prompt:$('#prompt').value, steps:+$('#steps').value, seed:+$
   variantes:+$('#variants').value, megapixeles:+$('#mp').value,
   lora:$('#lora').value||null, fuerza_lora:+$('#loraw').value,
   cfg:+(AJ.cfg||1), negativo:(+(AJ.cfg||1)>1 ? $('#negativo').value : '')});
+
+// lo que se deja fuera casi nunca cambia entre imagenes, asi que se recuerda
+document.addEventListener('change', e=>{
+  if(e.target && e.target.id==='negativo'){
+    AJ.negativo = e.target.value;
+    fetch('/api/ajustes',{method:'POST',body:JSON.stringify({negativo:e.target.value})});
+  }
+});
 
 $('#verMask').onclick=async()=>{
   const src=(S.img.source||[])[0];

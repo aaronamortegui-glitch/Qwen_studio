@@ -118,17 +118,26 @@ def expectativas(p) -> str:
         "-" * 66,
         f"  one image at 1 MP          {uno}",
         f"  one image at 2K            {dos_k}",
-        f"  largest size               {p.res_max} px"
-        + (f", {p.res_max_ref} px with a photo in front of it"
-           if p.res_max_ref != p.res_max else ""),
+        f"  largest size               {p.res_max} px",
+        f"  with one reference photo   {p.res_max_ref} px",
+        f"  with several               {p.res_max_multi} px",
     ]
-    if p.res_max_ref != p.res_max:
+    if p.vram_limite_gb:
+        lineas.append(f"  VRAM this app may use      {p.vram_limite_gb} GB "
+                      f"of {p.vram_gb} GB")
         lineas.append("")
-        lineas.append("  Those are two numbers because they were measured as two:")
-        lineas.append("  generating at 2K peaks at 7.5 GB, and rescaling to 2K, where")
-        lineas.append("  the picture is its own reference, peaks at 18.2 GB. Quoting")
-        lineas.append("  only the first is how people end up watching a progress bar")
-        lineas.append("  that is really a page fault.")
+        lineas.append("  Three sizes, because they were measured as three: every")
+        lineas.append("  reference photo costs memory on top of the output. And a")
+        lineas.append("  hard ceiling under all of them, because on the machine this")
+        lineas.append("  was measured on, reaching for the last few gigabytes blue-")
+        lineas.append("  screened Windows twice. Past that ceiling the app gets an")
+        lineas.append("  error it can report; without it, the driver gets a request")
+        lineas.append("  it cannot serve and takes the kernel with it.")
+    elif p.backend == "mps":
+        lineas.append("")
+        lineas.append("  No VRAM ceiling on Apple Silicon: the mechanism that enforces")
+        lineas.append("  one is CUDA-only, and claiming otherwise would be a comfort")
+        lineas.append("  rather than a guard.")
     if p.cuantizacion == "int4":
         lineas.append("")
         lineas.append("  Weights load in nf4. On this architecture that is not the")

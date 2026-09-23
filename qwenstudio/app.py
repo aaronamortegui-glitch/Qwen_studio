@@ -9,6 +9,7 @@ from __future__ import annotations
 import base64
 import io
 import json
+import math
 import mimetypes
 import os
 import re
@@ -70,12 +71,19 @@ AJUSTES_DEF = {
     # the better picture, so speed is something you reach for while iterating
     # rather than what you get without asking.
     "turbo": False,
-    # Detail pass. Above 1 the pipeline runs a second forward pass against the
-    # negative prompt, which costs ~80% more time. Measured at 16 steps: a
-    # watch movement went from a gold blur to resolved jewels and screws, but a
-    # portrait grew a second person the prompt never asked for and a letterpress
-    # poster came out flatter. A lever, not a better default.
-    "cfg": 1,
+    # Detail pass, on. Above 1 the pipeline runs a second forward pass against
+    # the negative prompt, which costs ~80% more time and buys detail that is
+    # not there otherwise: a watch movement went from a gold blur to resolved
+    # jewels and screws. It is not free -- at 16 steps a portrait grew a second
+    # person the prompt never asked for, though at 20 it did not -- so the
+    # figure is reachable in one click.
+    #
+    # 3 without the line below would be theatre: with nothing to push against
+    # the second pass never runs, and the result is byte-identical in identical
+    # time. The default negative is the one measured with, and it is editable
+    # in the box under the prompt.
+    "cfg": 3,
+    "negativo": "blurry, deformed hands, extra fingers, watermark, text artefacts",
     "vlm_bits": 4,                # 4 u 8; 8 describe algo mejor y ocupa ~13 GB
     "mantener_montado": False,    # no desmontar entre bloques (para lotes)
     # hdr por defecto: medido el 2026-09-22 con la misma semilla, +19% de
@@ -92,17 +100,29 @@ AJUSTES_DEF = {
 }
 
 
-def _tope(con_referencia: bool) -> int:
-    """The profile's resolution ceiling, which is two numbers and not one.
+def _tope(refs: int) -> int:
+    """The profile's resolution ceiling. It depends on how many references.
 
-    Measured on 2026-09-23: generating at 2K peaks at 7.5 GB and rescaling to
-    2K with the image as its own reference peaks at 18.2. Promising the first
-    number to a card that will meet the second is how this project used to
-    hand people a 2048 that paged the moment a photo went in front of it.
+    Measured on 2026-09-23 on a 24 GB card. No reference, 2K: 7.5 GB. One
+    reference, 2K: 18.2 GB rescaling and 19.2 generating a portrait -- already
+    at the wall. Two references, 2K: the machine blue-screened, HYPERVISOR_ERROR
+    forty seconds in, with no thermal or WHEA event anywhere near it.
+
+    So two or more references drop to 1024, which is the last size actually
+    measured with a reference in front of the model (9.2 GB). A formula was
+    tried here first -- area divided by the count, side falling as its square
+    root -- and thrown out: it produced 1440 for two references, a number
+    nobody has ever run. Guessing between a size that works and a size that
+    takes the kernel down is not a guess worth making. Raise this when there is
+    a measurement, not before.
     """
-    if con_referencia:
-        return int(cfg.get("res_max_ref", cfg.get("res_max", 1024)))
-    return int(cfg.get("res_max", 1024))
+    base = int(cfg.get("res_max", 1024))
+    if refs <= 0:
+        return base
+    tope = int(cfg.get("res_max_ref", base))
+    if refs > 1:
+        return min(tope, int(cfg.get("res_max_multi", 1024)))
+    return tope
 
 
 def leer_ajustes() -> dict:
@@ -156,6 +176,26 @@ def usar(quien: str) -> list[str]:
 
 
 # ------------------------------------------------------------------ util
+
+def _mensaje(e: Exception) -> str:
+    """What to tell someone when it failed, in their terms rather than torch's.
+
+    Running out of VRAM is the one failure with an obvious next move, and the
+    raw exception buries it under a page of allocator arithmetic. The ceiling
+    that produced it is deliberate: the card has more memory than this, and the
+    last few gigabytes are left alone because reaching for them took this
+    machine down twice.
+    """
+    nombre = type(e).__name__
+    if "OutOfMemory" in nombre or "out of memory" in str(e).lower():
+        techo = cfg.get("vram_limite_gb")
+        return ("That was too large for this card. Ask for a smaller size, or "
+                "remove one of the reference images: each one costs memory on "
+                "top of the output."
+                + (f" The ceiling is {techo} GB of {cfg.get('vram_gb')}, left "
+                   f"deliberately below the total." if techo else ""))
+    return f"{nombre}: {e}"
+
 
 def _turbo(b: dict) -> bool:
     """Whether the engine adapter runs for this request.
@@ -297,6 +337,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, {
                 "perfil": {k: cfg[k] for k in ("acelerador", "backend", "nivel", "dtype",
                                                "cuantizacion", "offload", "res_max", "res_max_ref",
+                                               "res_max_multi", "vram_limite_gb",
                                                "vram_gb", "ram_gb")},
                 "avisos_perfil": cfg.get("avisos", []),
                 "pesos_listos": M.pesos_completos(cfg["ruta_modelos"]),
@@ -477,7 +518,7 @@ class Handler(BaseHTTPRequestHandler):
             except M.Cancelado:
                 return self._send(200, {"cancelado": True})
             except Exception as e:
-                return self._send(200, {"error": f"{type(e).__name__}: {e}"})
+                return self._send(200, {"error": _mensaje(e)})
 
         if p == "/api/describir":
             try:
@@ -495,7 +536,7 @@ class Handler(BaseHTTPRequestHandler):
             except M.Cancelado:
                 return self._send(200, {"cancelado": True})
             except Exception as e:
-                return self._send(200, {"error": f"{type(e).__name__}: {e}"})
+                return self._send(200, {"error": _mensaje(e)})
 
         if p == "/api/liberar_vision":
             VIS.descargar_de_memoria()
@@ -507,7 +548,7 @@ class Handler(BaseHTTPRequestHandler):
             except M.Cancelado:
                 return self._send(200, {"cancelado": True})
             except Exception as e:
-                return self._send(200, {"error": f"{type(e).__name__}: {e}"})
+                return self._send(200, {"error": _mensaje(e)})
 
         if p == "/api/estilo":
             try:
@@ -515,7 +556,7 @@ class Handler(BaseHTTPRequestHandler):
             except M.Cancelado:
                 return self._send(200, {"cancelado": True})
             except Exception as e:
-                return self._send(200, {"error": f"{type(e).__name__}: {e}"})
+                return self._send(200, {"error": _mensaje(e)})
 
         if p == "/api/efecto":
             try:
@@ -523,7 +564,7 @@ class Handler(BaseHTTPRequestHandler):
             except M.Cancelado:
                 return self._send(200, {"cancelado": True})
             except Exception as e:
-                return self._send(200, {"error": f"{type(e).__name__}: {e}"})
+                return self._send(200, {"error": _mensaje(e)})
 
         if p == "/api/reescalar":
             try:
@@ -531,7 +572,7 @@ class Handler(BaseHTTPRequestHandler):
             except M.Cancelado:
                 return self._send(200, {"cancelado": True})
             except Exception as e:
-                return self._send(200, {"error": f"{type(e).__name__}: {e}"})
+                return self._send(200, {"error": _mensaje(e)})
 
         if p == "/api/abrir_carpeta":
             return self._send(200, self._abrir_carpeta())
@@ -542,7 +583,7 @@ class Handler(BaseHTTPRequestHandler):
             except M.Cancelado:
                 return self._send(200, {"cancelado": True})
             except Exception as e:
-                return self._send(200, {"error": f"{type(e).__name__}: {e}"})
+                return self._send(200, {"error": _mensaje(e)})
 
         if p == "/api/inpaint":
             try:
@@ -550,7 +591,7 @@ class Handler(BaseHTTPRequestHandler):
             except M.Cancelado:
                 return self._send(200, {"cancelado": True})
             except Exception as e:
-                return self._send(200, {"error": f"{type(e).__name__}: {e}"})
+                return self._send(200, {"error": _mensaje(e)})
 
         if p == "/api/generar":
             try:
@@ -558,7 +599,7 @@ class Handler(BaseHTTPRequestHandler):
             except M.Cancelado:
                 return self._send(200, {"cancelado": True})
             except Exception as e:
-                return self._send(200, {"error": f"{type(e).__name__}: {e}"})
+                return self._send(200, {"error": _mensaje(e)})
 
         return self._send(404, {"error": "ruta desconocida"})
 
@@ -591,7 +632,7 @@ class Handler(BaseHTTPRequestHandler):
             r = P.ruta(b["pose_lib"])
             pose = Image.open(r).convert("RGB") if r else None
 
-        mp = min(float(b.get("megapixeles", 1)), (_tope(True) ** 2) / (1024 * 1024))
+        mp = min(float(b.get("megapixeles", 1)), (_tope(1) ** 2) / (1024 * 1024))
         res = int((mp * 1024 * 1024) ** 0.5)
         ratio = b.get("ratio", "auto")
         ancho, alto = (None, None) if ratio == "auto" else M.dimensiones(ratio, mp)
@@ -724,7 +765,7 @@ class Handler(BaseHTTPRequestHandler):
         try:
             os.replace(origen, destino)
         except OSError as e:
-            return {"error": f"{type(e).__name__}: {e}"}
+            return {"error": _mensaje(e)}
         return {"movido": nombre, "a": destino}
 
     @staticmethod
@@ -740,7 +781,7 @@ class Handler(BaseHTTPRequestHandler):
                 subprocess.Popen(["xdg-open", SALIDAS])
             return {"ok": True, "carpeta": SALIDAS}
         except Exception as e:
-            return {"error": f"{type(e).__name__}: {e}", "carpeta": SALIDAS}
+            return {"error": _mensaje(e), "carpeta": SALIDAS}
 
     def _editar_entero(self, img, texto, b, lora=None, fuerza=1.0, escala=1.0,
                        referencias=None, modo="material"):
@@ -758,7 +799,7 @@ class Handler(BaseHTTPRequestHandler):
         motor.ajustar_muestreo("turbo" if _turbo(b) else
                                str(b.get("muestreo") or leer_ajustes()["muestreo"]))
 
-        tope = _tope(True)
+        tope = _tope(1 + len(referencias or []))
         aw = max(256, min(tope, round(img.width * escala / 32) * 32))
         ah = max(256, min(tope, round(img.height * escala / 32) * 32))
 
@@ -803,7 +844,7 @@ class Handler(BaseHTTPRequestHandler):
         if err:
             return None, err
 
-        mp = min(float(b.get("megapixeles", 1)), (_tope(True) ** 2) / (1024 * 1024))
+        mp = min(float(b.get("megapixeles", 1)), (_tope(1) ** 2) / (1024 * 1024))
         res = int((mp * 1024 * 1024) ** 0.5)
         caja, crop, mcrop = IN.recorte(img, m, padding=float(b.get("padding", 0.35)))
         ratio = (caja[2] - caja[0]) / max(1, (caja[3] - caja[1]))
@@ -1024,9 +1065,9 @@ class Handler(BaseHTTPRequestHandler):
         # el perfil limita el area, no el lado: un 16:9 a 4 MP es mas ancho que
         # res_max pero cuesta lo mismo que un cuadrado de res_max
         mp = float(b.get("megapixeles", 1))
-        con_ref = bool(personas or escena is not None or estilo is not None
-                       or pose is not None)
-        tope_mp = (_tope(con_ref) ** 2) / (1024 * 1024)
+        n_refs = (len(personas) + (escena is not None) + (estilo is not None)
+                  + (pose is not None))
+        tope_mp = (_tope(n_refs) ** 2) / (1024 * 1024)
         mp = min(mp, tope_mp)
         ratio = b.get("ratio", "1:1")
         if ratio == "auto":

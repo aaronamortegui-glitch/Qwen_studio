@@ -287,7 +287,7 @@ def construir() -> str:
               ["", "Free", "everything, nothing assumed"],
               ["Edit a photo", "Apply a look", "image + a treatment picked from a grid"],
               ["", "Match a style", "image + a picture whose manner you want"],
-              ["", "Rescale to 2K", "image, redrawn larger rather than stretched"],
+              ["", "Enlarge", "image, redrawn larger rather than stretched"],
               ["", "Replace something", "image + a selection + what goes there"],
           ], [an * .22, an * .3, an * .48]),
           Spacer(1, 4 * mm),

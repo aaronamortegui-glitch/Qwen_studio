@@ -179,6 +179,17 @@ def _vigilante(total: int):
 
 def _fin():
     PROGRESO.update(activo=False, paso=0, total=0, primer_paso=0.0)
+    # El asignador de PyTorch se queda con lo que libera, asi que entre una
+    # imagen y la siguiente la tarjeta sigue ocupada aunque aqui no pase nada y
+    # el escritorio no recupera nada. Devolverlo cuesta unos milisegundos --
+    # la siguiente generacion vuelve a reservar -- y es lo que hace que la
+    # maquina se pueda usar mientras esta app esta abierta.
+    try:
+        import torch
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    except Exception:
+        pass
 
 
 def avisos_de_uso(n_persona: int, con_escena: bool,
@@ -429,6 +440,40 @@ class Motor:
     TURBO_PASOS = 8
     TURBO_ARCHIVO = "turbo.safetensors"
 
+    def _poner_techo_vram(self) -> None:
+        """Cap what this process may allocate, below the card's real total.
+
+        Two blue screens on 2026-09-23, same bugcheck and the same four
+        parameters, both while pushing a 24 GB card against its wall. The
+        driver breaks under an allocation it cannot serve and, with the
+        hypervisor in the path, takes the kernel down instead of resetting
+        itself. A watcher thread cannot prevent that: cancellation lands
+        between denoising steps and the spike happens inside one.
+
+        The allocator can. Past this fraction PyTorch raises
+        `torch.cuda.OutOfMemoryError` at the moment of the allocation, which is
+        an exception the app catches and reports, and the machine stays up.
+
+        It does not cover what the driver reserves outside this process, which
+        is why the profile leaves 4 GB rather than shaving the last hundred
+        megabytes.
+        """
+        limite = float(self.cfg.get("vram_limite_gb") or 0)
+        if limite <= 0:
+            return
+        try:
+            import torch
+            if not torch.cuda.is_available():
+                return
+            total = torch.cuda.get_device_properties(0).total_memory / 2**30
+            frac = min(0.98, max(0.1, limite / total))
+            torch.cuda.set_per_process_memory_fraction(frac, 0)
+            self.techo_vram = round(total * frac, 1)
+        except Exception as e:
+            # sin techo se puede trabajar; callarselo no
+            print(f"  [vram] no se pudo poner el techo: {type(e).__name__}: {e}",
+                  flush=True)
+
     def turbo_disponible(self) -> bool:
         """True when the turbo adapter is sitting in modelos/.
 
@@ -504,6 +549,8 @@ class Motor:
                       "generation crawl without any error message.")
             import torch
             from diffusers import QwenImage21Pipeline
+
+            self._poner_techo_vram()
 
             dtype = {"bfloat16": torch.bfloat16,
                      "float16": torch.float16,
