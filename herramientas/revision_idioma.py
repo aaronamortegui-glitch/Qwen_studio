@@ -36,7 +36,9 @@ siempre nunca peor pequeno nueva vieja rapido lento carpeta pantalla memoria
 techo altura columna usuario cambio cambios valor numero primero segundo
 tercera queda pasa vale cuesta sigue ademas mientras hallazgos ninguno ninguna
 falta faltan guardar guardado abrir cerrar listo generando siguiente anterior
-sobre bien mejor grande nuevo linea ancho prueba pruebas
+sobre bien mejor grande nuevo linea ancho prueba pruebas hay responde limpio
+sucio cambios commitear respaldo fecha ahora aun todavia ninguno cuantos
+tamano copiados
 """.split())
 
 # ...and the ones that are identifiers here, so a line naming a function or a
@@ -46,7 +48,7 @@ motor imagen imagenes entrada entradas salida salidas texto archivo archivos
 nombre tarjeta caja lista carga error pose poses efecto efectos estilo escena
 persona personas prompt resumen receta mascara frase padding variantes semilla
 todos solo quien cual antes vitrina marca segmenta vision interfaz recursos
-inpaint muestreo turbo ajustes config perfil nivel
+inpaint muestreo turbo ajustes config perfil nivel destino origen raiz sello
 """.split())
 
 PALABRAS = CASTELLANO - NOMBRES

@@ -8,7 +8,7 @@ describing this particular machine. If a file is not in the backup it is
 because it is not in the repository either, and the fix is the same in both
 places.
 
-Writes <destino>/QwenStudio_<fecha>/ plus a zip of the same content beside it,
+Writes <destino>/QwenStudio_<date>/ plus a zip of the same content beside it,
 and a MANIFIESTO.txt listing every file with its size and the commit it came
 from, so a backup can be told apart from the others months later.
 """
@@ -39,7 +39,7 @@ def _seguidos() -> list[str]:
     """Every file git tracks, staged changes included."""
     salida = _git("ls-files")
     if not salida:
-        raise SystemExit("  no hay repositorio git aqui, o git no responde")
+        raise SystemExit("  no git repository here, or git is not answering")
     return [l.strip() for l in salida.splitlines() if l.strip()]
 
 
@@ -50,7 +50,7 @@ def main() -> None:
     os.makedirs(carpeta, exist_ok=True)
 
     archivos = _seguidos()
-    commit = _git("rev-parse", "--short", "HEAD") or "sin commit"
+    commit = _git("rev-parse", "--short", "HEAD") or "no commit"
     asunto = _git("log", "-1", "--pretty=%s") or ""
     sucio = _git("status", "--porcelain")
 
@@ -69,11 +69,11 @@ def main() -> None:
 
     manifiesto = os.path.join(carpeta, "MANIFIESTO.txt")
     with open(manifiesto, "w", encoding="utf-8") as f:
-        f.write(f"QwenStudio - respaldo {sello}\n")
+        f.write(f"QwenStudio - backup {sello}\n")
         f.write(f"commit    {commit}  {asunto}\n")
-        f.write(f"estado    {'con cambios sin commitear' if sucio else 'limpio'}\n")
-        f.write(f"archivos  {len(copiados)}\n")
-        f.write(f"tamano    {total/2**20:.1f} MB\n")
+        f.write(f"state     {'uncommitted changes' if sucio else 'clean'}\n")
+        f.write(f"files     {len(copiados)}\n")
+        f.write(f"size      {total/2**20:.1f} MB\n")
         f.write("\n" + "-" * 66 + "\n")
         for rel, n in sorted(copiados):
             f.write(f"{n:>10}  {rel}\n")
@@ -84,9 +84,9 @@ def main() -> None:
             z.write(os.path.join(APP, rel), f"QwenStudio/{rel}")
         z.write(manifiesto, "QwenStudio/MANIFIESTO.txt")
 
-    print(f"  {len(copiados)} archivos, {total/2**20:.1f} MB")
-    print(f"  commit {commit}" + ("  (con cambios sin commitear)" if sucio else ""))
-    print(f"  carpeta  {carpeta}")
+    print(f"  {len(copiados)} files, {total/2**20:.1f} MB")
+    print(f"  commit {commit}" + ("  (uncommitted changes)" if sucio else ""))
+    print(f"  folder   {carpeta}")
     print(f"  zip      {zip_}  ({os.path.getsize(zip_)/2**20:.1f} MB)")
 
 
