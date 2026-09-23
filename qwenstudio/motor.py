@@ -89,6 +89,10 @@ def construir_prompt(n_persona: int, con_pose: bool, con_escena: bool, texto: st
     cost of making the scene slot redundant.
     """
     partes = []
+    # Lo que se dice DESPUES del encargo del usuario. Va aparte porque el sitio
+    # es el argumento: en este modelo lo ultimo pesa mas, y una identidad
+    # enterrada al principio la pisa cualquier cosa que venga detras.
+    cola = ""
     idxs = ", ".join(f"<image{k+1}>" for k in range(n_persona)) if n_persona else ""
     i = n_persona
     if n_persona:
@@ -102,6 +106,15 @@ def construir_prompt(n_persona: int, con_pose: bool, con_escena: bool, texto: st
         if n_persona:
             partes.append(f"The subject's body proportions, build and height stay those of {idxs}; "
                           f"the skeleton gives only the pose.")
+            # Mismo arreglo que la escena, que aqui faltaba. El orden era
+            # identidad, pose, proporciones y luego el texto del usuario, asi
+            # que lo ULTIMO que lee el modelo es el encargo y no de quien es la
+            # cara. Medido el 2026-09-23 sobre tres encuadres: sin esta linea
+            # la cara se despega y la complexion adelgaza. Va en positivo y al
+            # final, porque lo ultimo es lo que manda.
+            cola = (f"The one person in the result is the subject from {idxs}: the "
+                    f"same face, the same beard and hair, the same build and the same "
+                    f"weight, only placed in that posture.")
     if con_estilo:
         i += 1
         if estilo_modo == "look":
@@ -125,10 +138,14 @@ def construir_prompt(n_persona: int, con_pose: bool, con_escena: bool, texto: st
             # principio del prompt y la escena, mas cerca del final, le gana. Se
             # repite la identidad despues de la escena, en positivo, porque lo
             # ultimo que se lee es lo que manda.
-            partes.append(f"The one person in the result is the subject from {idxs}, with that "
-                          f"subject's face, hair and build, standing in that setting and wearing "
-                          f"that wardrobe.")
-    return (" ".join(partes) + " " + texto.strip()).strip()
+            # Esta linea existe desde el 2026-09-21 por recencia, pero estaba
+            # en `partes`, o sea ANTES del encargo del usuario: el arreglo
+            # quedo a medias y lo ultimo seguia siendo el texto. Ahora va
+            # donde dice su propio comentario que tiene que ir.
+            cola = (f"The one person in the result is the subject from {idxs}, with "
+                    f"that subject's face, hair and build, standing in that setting "
+                    f"and wearing that wardrobe.")
+    return (" ".join(partes) + " " + texto.strip() + " " + cola).strip()
 
 
 class Cancelado(Exception):
@@ -753,9 +770,16 @@ class Motor:
             # frente al 65.7% de la version propia que habia aqui. La
             # diferencia es pequena, pero es la del autor del modelo y no sale
             # peor, asi que no hay razon para inventarse otra.
+            # ...y despues, el sujeto opaco, porque lo ultimo manda. Medido el
+            # 2026-09-23: sin esta ultima frase, una foto de referencia con el
+            # fondo abarrotado sale al 0.7% de opacidad -- es decir, entera
+            # transparente, sujeto incluido. Es el mismo fallo que el noir, que
+            # devolvia una foto negra al pedir "la mayor parte en sombra": hay
+            # que nombrar lo que SI se ve, no solo lo que no.
             prompt = ("This is an RGBA image with transparency. " + prompt.strip()
                       + " The image has an alpha channel and the background is "
-                        "transparent.")
+                        "transparent. The person is fully opaque, solid and "
+                        "completely visible, filling the frame.")
 
         gen = torch.Generator(device="cpu").manual_seed(int(seed))
         kw = dict(prompt=prompt, num_inference_steps=int(steps),
@@ -821,6 +845,33 @@ class Motor:
                       + (f"{prompt} " if prompt else "")
                       + f"The result shows what <image1> shows, made the way {extras} was "
                       f"made.")
+        elif len(refs) > 1 and modo == "libre":
+            # Edicion por instruccion, que es lo que este modelo sabe hacer y
+            # esta app no usaba: los demas caminos recortan una region y la
+            # pegan de vuelta. Aqui va la foto entera y el modelo decide donde
+            # tocar.
+            #
+            # La forma la fija el prompt de sistema que el propio Space de
+            # Viggle usa para reescribir instrucciones de edicion, cuyas reglas
+            # son tres y las tres importan:
+            #
+            #   - la operacion primero, lo que se conserva despues;
+            #   - la conservacion en generico, nunca enumerada;
+            #   - y la razon: "say what stays, without repainting it" --
+            #     describir en concreto lo que no cambia hace que el modelo lo
+            #     REGENERE.
+            #
+            # Aqui estaba al reves y enumerado -- "the same place, the same
+            # light, the same framing" -- y el resultado era exactamente el
+            # fallo que ese documento llama over-describing: devolvia el sitio,
+            # la luz y el encuadre de la referencia en vez de editar el
+            # destino.
+            extras = ", ".join(f"<image{i+2}>" for i in range(len(refs) - 1))
+            una = len(refs) == 2
+            prompt = (f"Edit <image1>. {prompt} "
+                      f"{extras} {'is reference material' if una else 'are reference material'}, "
+                      f"not the picture being edited. "
+                      f"Everything else in <image1> is unchanged.")
         elif modo == "estilo" and prompt:
             # una sola imagen y la tecnica en palabras. Lo que se conserva va
             # delante y la manera de pintarlo al final, porque en este modelo

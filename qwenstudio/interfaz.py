@@ -838,6 +838,7 @@ const IC={
  portrait:'<circle cx="12" cy="8.5" r="3.6"/><path d="M4.8 20c.6-3.8 3.6-5.8 7.2-5.8s6.6 2 7.2 5.8"/>',
  scene:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 15.5l4.5-4a2 2 0 0 1 2.7 0L16 17"/><circle cx="15.5" cy="9.5" r="1.6"/>',
  pose:'<circle cx="12" cy="4.4" r="2"/><path d="M12 6.6v7M12 8.6L7.5 11M12 8.6l4.5 2.4M12 13.6L8.6 20M12 13.6L15.4 20"/>',
+ wand:'<path d="M4 20L16 8M15 4l1 2 2 1-2 1-1 2-1-2-2-1 2-1zM19 10l.7 1.4 1.4.7-1.4.7-.7 1.4-.7-1.4-1.4-.7 1.4-.7z"/>',
  enlarge:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 8l-3 3 3 3M16 8l3 3-3 3M11 8l-3 3M13 16l3-3"/>',
  replace:'<path d="M4 7h9a4 4 0 0 1 0 8H8"/><path d="M10.5 12.5L8 15l2.5 2.5"/><rect x="15" y="4" width="5" height="5" rx="1"/>',
  cutout:'<path d="M12 4v8"/><circle cx="7" cy="16" r="2.6"/><circle cx="17" cy="16" r="2.6"/><path d="M9 14.4L17 5M15 14.4L7 5"/>',
@@ -918,6 +919,11 @@ const CASOS={
     hint:'Your photo, painted the way another picture is.',
     mode:'estilo', zonas:['source','style'], opt:[], ratio:'auto',
     prompt:''},
+  editar:{cat:'edit', icon:'wand', name:'Tell it what to change',
+    hint:'The whole picture and an instruction. No mask, no seam.',
+    mode:'editar', zonas:['source','extra'], opt:[], ratio:'auto',
+    prompt:'Replace the face, the hair and the beard with those from <image2>, '
+          +'and change the clothing to a dark t-shirt.'},
   enlarge:{cat:'edit', icon:'enlarge', name:'Enlarge',
     hint:'The picture redrawn larger, not stretched. Detail comes back.',
     mode:'reescalar', zonas:['source'], opt:[], ratio:'auto', prompt:''},
@@ -1064,6 +1070,7 @@ function construirCampos(){
   const etiqueta = c.mode==='inpaint' ? 'What should go there instead'
     : c.mode==='efecto' ? 'The look'
     : c.mode==='estilo' ? 'Anything to add (optional)'
+    : c.mode==='editar' ? 'What to change — name the thing, not the person'
     : c.mode==='reescalar' ? 'Nothing to write: the picture is its own instruction'
     : 'Instruction';
   // los dos caminos de edicion ya han gastado el 3 en la region
@@ -2048,6 +2055,10 @@ $('#go').onclick=async()=>{
         imagen:antes, estilo:(S.img.style||[])[0]||null,
         prompt:$('#prompt').value, steps:+$('#steps').value,
         seed:+$('#seed').value, megapixeles:+$('#mp').value})})).json();
+    }else if(c.mode==='editar'){
+      antes=(S.img.source||[])[0];
+      r=await (await fetch('/api/editar',{method:'POST',body:JSON.stringify({...comunes(),
+        imagen:antes, referencias:S.img.extra||[]})})).json();
     }else if(c.mode==='reescalar'){
       antes=(S.img.source||[])[0];
       r=await (await fetch('/api/reescalar',{method:'POST',body:JSON.stringify({
@@ -2112,7 +2123,10 @@ $('#btnMejorar').onclick=async()=>{
   b.textContent='Rewriting...';
   try{
     const r=await (await fetch('/api/mejorar_prompt',{method:'POST',
-      body:JSON.stringify({prompt:t})})).json();
+      // editar y generar no se piden igual, asi que el reescritor usa unas
+      // reglas u otras segun el caso en el que estes
+      body:JSON.stringify({prompt:t, edicion:['editar','inpaint','efecto',
+        'estilo'].includes(caso().mode)})})).json();
     if(r.error){avisar(r.error, true);return}
     S.promptPrevio=r.antes;              // un solo paso atras, que es lo que hace falta
     $('#prompt').value=r.texto;

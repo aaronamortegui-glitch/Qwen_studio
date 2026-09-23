@@ -626,6 +626,14 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as e:
                 return self._send(200, {"error": _mensaje(e)})
 
+        if p == "/api/editar":
+            try:
+                return self._send(200, self._editar(b))
+            except M.Cancelado:
+                return self._send(200, {"cancelado": True})
+            except Exception as e:
+                return self._send(200, {"error": _mensaje(e)})
+
         if p == "/api/estilo":
             try:
                 return self._send(200, self._estilo(b))
@@ -899,7 +907,8 @@ class Handler(BaseHTTPRequestHandler):
         if not VIS.disponible():
             return {"error": VIS.error() or "could not load the vision model"}
         t0 = time.time()
-        salida = VIS.redactar(texto)
+        # el caso decide las reglas: editar y generar no se piden igual
+        salida = VIS.redactar(texto, edicion=bool(b.get("edicion")))
         if not salida:
             return {"error": "the rewrite came back empty"}
         return {"antes": texto, "texto": salida, "segundos": round(time.time() - t0, 1)}
@@ -999,6 +1008,38 @@ class Handler(BaseHTTPRequestHandler):
                               "tam": f"{gen.width}x{gen.height}"}],
                 "prompt": prompt, "efecto": e["nombre"],
                 "segundos": round(time.time() - t0, 1)}
+
+    def _editar(self, b):
+        """The model's own editing, with the whole picture and an instruction.
+
+        Every other edit path here selects a region, regenerates it and stitches
+        it back. That is the right tool when the change is bounded -- a sweater,
+        a sky -- and the wrong one when it is not: swapping the person in a
+        photograph is not a patch, and a patch is what it looks like.
+
+        This hands over the photograph, up to three references and the sentence,
+        and lets the model decide where to touch. No mask, no crop, no seam.
+        """
+        img = _img_de_data_url(b["imagen"])
+        refs = [_referencia(d) for d in b.get("referencias", [])]
+        texto = (b.get("prompt") or "").strip()
+        if not texto:
+            return {"error": "say what to change"}
+        if not refs:
+            return {"error": "add at least one reference picture"}
+        t0 = time.time()
+        res, err = self._editar_entero(img, texto, b, referencias=refs, modo="libre")
+        if err:
+            return {"error": err}
+        gen, prompt = res
+        return {"imagenes": [{"archivo": "/salidas/" + _guardar(gen, "editar", {
+                                  "prompt": prompt, "caso": "edit",
+                                  "seed": b.get("seed"), "steps": _pasos(b),
+                                  "vae": motor.vae_actual,
+                                  "tam": f"{gen.width}x{gen.height}",
+                                  "modelo": "Qwen-Image 2.1"}),
+                              "tam": f"{gen.width}x{gen.height}"}],
+                "prompt": prompt, "segundos": round(time.time() - t0, 1)}
 
     def _estilo(self, b):
         """Redraw a photograph in the visual language of a reference picture.

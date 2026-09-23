@@ -502,6 +502,23 @@ def construir() -> str:
          "The hypothesis was that it would save memory. Measured: 2.8 s/step and 24.1 GB "
          "peak, against 1.26 s/step and 21.2 GB unquantised — bitsandbytes int8 casts "
          "bf16 to fp16 and back on every matmul. It is not in the profile ladder at all."),
+        ("An edit names the attribute, never the person.",
+         "“Replace the woman with the man from &lt;image2&gt;” changes nothing, twice "
+         "over. “Replace the face, the hair and the beard” works. It is the rule "
+         "in QwenLM’s own system_prompt_edit.txt, and the failure it prevents is the "
+         "one they name: under-editing, an output so close to the input that it looks "
+         "like nothing ran. Two more of theirs, learned here the expensive way: the "
+         "change goes before the preservation, and the preservation stays generic — "
+         "listing the place, the light and the framing made the model repaint them, and "
+         "what it repainted was the reference’s."),
+        ("The verb decides more than the documentation admits.",
+         "Same picture, same reference, same seed, the same attributes named, only the "
+         "verb changed. “Put X from &lt;image2&gt; on …” did the most and "
+         "“swap X for …” came close; “replace” and "
+         "“change” grafted the new feature onto the old face instead of "
+         "exchanging it; “give” and “edit to match” did almost "
+         "nothing. Replace is the verb every example uses, this one included, and it "
+         "sits in the middle."),
         ("Close anything else using the GPU first.",
          "Starting with VRAM half full makes generation crawl with no error: utilisation "
          "reads 100%, power draw stays low, nothing finishes. Half an hour went to a "

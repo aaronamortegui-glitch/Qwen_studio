@@ -107,6 +107,47 @@ def descargar_de_memoria() -> None:
 # no es decorativo: el sujeto primero porque es lo que mas peso recibe, y la
 # optica al final porque es lo que menos. Las reglas son las que se midieron en
 # este proyecto, no preferencias de estilo.
+# Lo mismo, pero para editar, que no es lo mismo. Un encargo de texto a imagen
+# describe una foto que no existe; uno de edicion nombra un cambio sobre una que
+# si. Las reglas de abajo no son de estilo: cada una viene de una tarde perdida.
+#
+# Las tres primeras son de QwenLM, del system_prompt_edit.txt de su repo, y las
+# tres se comprobaron aqui el 2026-09-23 sobre el mismo canje de persona.
+REDACTAR_EDICION = """You rewrite instructions for an image editing model.
+Rewrite the request below as one or two plain English sentences telling the model
+what to change.
+
+Rules, each of which decides whether the edit happens at all:
+- Name the ATTRIBUTE that changes, never the person or the object as a whole.
+  "Replace the woman with the man" changes nothing; "replace the face, the hair
+  and the beard" works. If clothing should change too, say so separately.
+- Prefer "put X from <image2> on ..." or "swap X for ...". Measured against the
+  same picture and seed with only the verb changed: put and swap did the most,
+  replace and change grafted the new feature onto the old face instead of
+  exchanging it, and "give" and "edit to match" did almost nothing.
+- When the request is to change WHO someone is, name the clothing too. Measured:
+  face, hair and beard grafted a beard onto the original face; adding the body
+  and the build changed nothing further; adding the clothing produced the whole
+  exchange. While the original garment stays, it holds the original person in
+  place, because the model paints what is visible rather than reasoning about
+  identity.
+- Lead with the change. Anything about what stays goes after it, never before.
+- Say what stays in general terms and do not describe it. Listing the place, the
+  light and the framing makes the model repaint them, and what it repaints is
+  the reference's, not the picture's.
+- Refer to reference pictures as <image1>, <image2>, <image3>, never as "the
+  first photo" or "the other one". Point at them instead of describing what is
+  in them: a reference carries a likeness better than any sentence about it.
+- Say only what should be there. There is no negative guidance here, so a thing
+  you forbid is a thing you summoned.
+- Ask for only what was requested. Do not add operations of your own.
+- Keep any words the request put in double quotes exactly as they are, quotes
+  included: those come out as lettering in the image.
+- No preamble, no explanation, no lists. Return the instruction and nothing else.
+
+Request: """
+
+
 REDACTAR = """You rewrite prompts for an image model. Rewrite the request below as
 one paragraph of natural declarative English, in this order: the subject, then the
 clothing and the telling details, then the place, then the framing, then the light,
@@ -128,8 +169,14 @@ Rules:
 Request: """
 
 
-def redactar(texto: str, max_tokens: int = 320) -> str:
+def redactar(texto: str, max_tokens: int = 320,
+             edicion: bool = False) -> str:
     """Rewrite a loose request into a prompt this model reads well.
+
+    `edicion` switches the rules: describing a picture that does not exist and
+    naming a change to one that does are different jobs, and the rules that
+    decide whether an edit happens at all are not the rules that make a good
+    photograph.
 
     Text only, and the VLM is already resident for describing images, so the
     rewrite costs nothing extra to load and never leaves the machine.
@@ -142,7 +189,9 @@ def redactar(texto: str, max_tokens: int = 320) -> str:
     import torch
     m, proc = _estado["modelo"], _estado["processor"]
     mensajes = [{"role": "user",
-                 "content": [{"type": "text", "text": REDACTAR + texto.strip()}]}]
+                 "content": [{"type": "text",
+                              "text": (REDACTAR_EDICION if edicion else REDACTAR)
+                                      + texto.strip()}]}]
     plantilla = proc.apply_chat_template(mensajes, tokenize=False,
                                          add_generation_prompt=True)
     entradas = proc(text=[plantilla], return_tensors="pt")

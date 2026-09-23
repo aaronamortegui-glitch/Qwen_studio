@@ -333,6 +333,85 @@ whether it failed at reading or at painting — two different repairs.
 
 ---
 
+## Tell it what to change
+
+Every other edit in this app selects a region, regenerates it and stitches it
+back. That is right when the change is bounded — a sweater, a sky — and wrong
+when it is not: swapping the person in a photograph is not a patch, and a patch
+is what it looks like. This path hands the model the whole picture, up to three
+references and a sentence, and lets it decide where to touch.
+
+The sentence decides whether anything happens at all, and the rule is not
+obvious. Measured on 2026-09-23 with the same picture, the same reference and
+the same seed:
+
+| instruction | result |
+|---|---|
+| *Replace the woman with the man from `<image2>`.* | nothing changed |
+| *Replace the woman's face and hair with those from `<image2>`.* | nothing changed |
+| *Replace the face, the hair and the beard with those from `<image2>`, and change the clothing to a dark t-shirt.* | **the swap happened** |
+
+**Name the attribute, not the person.** It is the rule in QwenLM's own
+`prompt_rewrite/prompts/system_prompt_edit.txt`, and the failure it prevents is
+the one they call *under-editing*: an output so close to the input that it
+looks like nothing ran.
+
+**And the verb matters more than the documentation suggests.** Same picture,
+same reference, same seed, the same attributes named, only the verb changed:
+
+| construction | what it did |
+|---|---|
+| *put X from `<image2>` on …* | the strongest exchange |
+| *swap X for …* | close behind |
+| *replace X with …* | grafted the new feature onto the old face |
+| *change X to …* | the same |
+| *give … the X from …* | almost nothing |
+| *edit X to match …* | nothing |
+
+`replace` is the verb every example uses, this README's included, and it sits in
+the middle.
+
+**And to change who someone is, name the clothing.** Same picture, same
+reference, same seed, only the list of attributes growing:
+
+| named | result |
+|---|---|
+| face, hair, beard | a beard grafted onto the original face |
+| + body and build | no further change at all |
+| **+ clothing** | **the whole exchange** |
+| *the person* | nothing, as always |
+
+Body and build did nothing; the garment did everything. While the original
+jacket stays, the jacket holds the original person in place — the model is
+painting what can be seen, not reasoning about who someone is. This one would
+not have been guessed. A difference metric could not rank these — all six scored between
+11.7 and 13.3 against the source, because global difference is dominated by
+light rather than by a face. The eye separates them easily, which is worth
+remembering before trusting a number that happens to be easy to compute.
+
+Two more of their rules are built into the clause this app wraps around your
+sentence, because both were learned here the expensive way:
+
+- **The operation comes first, the preservation after.** This was the other way
+  round at first, and the result was an output that ignored the instruction.
+- **Preservation stays generic.** The clause says "everything else is
+  unchanged" and does not list what that is. Naming the place, the light and
+  the framing made the model reproduce a place, a light and a framing — the
+  reference's, not the target's. Their phrasing for this is worth keeping:
+  say what stays, without repainting it.
+
+Three things were tried and did not help, which is worth writing down so they
+are not tried again: the size of the reference image (0.26, 0.92 and 2.0 MP
+gave identical output), naming who stays rather than who arrives, and adding an
+identity tail after the instruction — that last one made it worse, because with
+`<image2>` in the final sentence the model returns `<image2>` whole.
+
+Person swapping remains the hard case and is not reliable in both directions;
+the model's own card lists face swaps among its known weak points. Ordinary
+edits — a garment, an object, a background — work with an ordinary sentence.
+
+---
+
 ## Things worth knowing
 
 Everything here was measured in one long session on the hardware listed further

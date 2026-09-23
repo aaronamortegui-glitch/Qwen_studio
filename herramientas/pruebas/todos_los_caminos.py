@@ -433,6 +433,41 @@ def caso_cfg():
     return f"no-op without a negative prompt, {d:.0f} levels of difference with one"
 
 
+def caso_editar():
+    """Instruction editing: the whole picture, a reference, and a sentence.
+
+    Every other edit here selects a region and stitches it back. This hands the
+    model the photograph and lets it decide where to touch, which is what the
+    model was built for and what this app was not using.
+
+    The instruction names the attribute rather than the person, because that is
+    what decides whether anything happens at all. Measured on 2026-09-23 with
+    the same picture, reference and seed: naming the person -- "replace the
+    woman with the man from <image2>" -- changed nothing twice over, and naming
+    the face, the hair, the beard and the clothing worked. It is the rule in
+    QwenLM's own system_prompt_edit.txt, and it is the one that was missing.
+    """
+    import numpy as np
+    from PIL import Image
+
+    antes = Image.open(ESCENA).convert("RGB")
+    r = pedir("/api/editar", {
+        "imagen": data_url(ESCENA), "referencias": [data_url(PERSONA)],
+        "prompt": "Replace the face and the hair with those from <image2>.",
+        "megapixeles": 1, "steps": 16, "seed": 41})
+    assert not r.get("error"), r.get("error")
+    f = os.path.join(SALIDAS, os.path.basename(r["imagenes"][0]["archivo"]))
+    out = Image.open(f).convert("RGB")
+    assert out.size == antes.size, f"{out.size} against the source {antes.size}"
+    # under-editing es el modo de fallo que documentan los autores: la salida
+    # se parece tanto a la entrada que parece que no paso nada. Se mide.
+    a = np.asarray(antes.resize((256, 256)), np.float32)
+    b = np.asarray(out.resize((256, 256)), np.float32)
+    d = float(np.abs(a - b).mean())
+    assert d > 4, f"nothing moved: {d:.1f} levels from the source"
+    return f"{r['imagenes'][0]['tam']}, {d:.0f} levels from the source"
+
+
 CASOS = [
     ("status", caso_estado), ("catalogues", caso_catalogos),
     ("new portrait", caso_retrato), ("aspect ratio 16:9", caso_ratio),
@@ -443,6 +478,7 @@ CASOS = [
     ("look, whole frame", caso_look_entero),
     ("look, painted region", caso_look_region),
     ("match a style", caso_transferir_estilo),
+    ("instruction edit", caso_editar),
     ("enlarge", caso_reescalar),
     ("detail pass (CFG)", caso_cfg),
     ("describe (Qwen3-VL)", caso_describir), ("batch", caso_lote),
