@@ -146,6 +146,21 @@ def construir_prompt(n_persona: int, con_pose: bool, con_escena: bool, texto: st
             cola = (f"The one person in the result is the subject from {idxs}, with "
                     f"that subject's face, hair and build, standing in that setting "
                     f"and wearing that wardrobe.")
+    if n_persona and not cola:
+        # And on every other path that has a person. Pose and scene each grew
+        # this line for their own reason, and the plain portrait never did --
+        # which left the longest prompts as the ones least protected. Asking
+        # for "a professional studio headshot against a seamless light grey
+        # backdrop, framed from the chest up, a large softbox just off the lens
+        # axis" puts sixty words of generic photograph between the identity
+        # clause and the end, and what is read last is what rules: the face
+        # came back as someone else's, plausibly lit and completely wrong.
+        #
+        # The identity is not the user's to phrase. What goes in the box is the
+        # picture they want; whose face it is was decided when they dropped the
+        # reference in, so that sentence is fixed, positive, and last.
+        cola = (f"The one person in the result is the subject from {idxs}: the "
+                f"same face, the same hair and beard, the same build.")
     return (" ".join(partes) + " " + texto.strip() + " " + cola).strip()
 
 

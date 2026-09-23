@@ -263,6 +263,11 @@ def _cfg(b: dict) -> tuple[float, str]:
     return cfg_v, neg
 
 
+# What a reference face costs, measured on 2026-09-23 at one seed: at 16 the
+# person comes back slimmer and younger, at 24 close, at 28 themselves.
+PASOS_PERSONA = 28
+
+
 def _pasos(b: dict) -> int:
     """The step count this request actually runs at.
 
@@ -271,7 +276,18 @@ def _pasos(b: dict) -> int:
     """
     if _turbo(b):
         return int(leer_ajustes().get("turbo_pasos", motor.TURBO_PASOS))
-    return int(b.get("steps", leer_ajustes()["steps"]))
+    if "steps" in b:
+        return int(b["steps"])
+    # Nothing was asked for, so the default applies -- and the default depends
+    # on what the request has to hold on to. The sweep that settled on 16 was
+    # run on a watch movement and a hand: texture, resolved by then. A face is
+    # not. With a person reference at 16 the result is a thinner, younger,
+    # blander version of them; at 28 it is them, which is what every example in
+    # the showcase that keeps a face was made at. The interface sets the same
+    # number per path; this is here so an agent calling the API gets it too.
+    if b.get("personas"):
+        return max(int(leer_ajustes()["steps"]), PASOS_PERSONA)
+    return int(leer_ajustes()["steps"])
 
 
 def _img_de_data_url(data_url: str):

@@ -292,6 +292,36 @@ them to the prompt, which describes a sweater instead of selecting one; and
 three paths had no catalogue of their own and fell through to "show
 everything", which is how the edit screen came to be offering *Lettering*.
 
+### Keeping the face: what it actually costs
+
+A portrait stopped looking like the person, and the first three guesses were
+all wrong. It was not nf4, it was not the VAE and it was not the scaffolding.
+Reproducing a shipped example exactly — same reference, same words, same seed,
+same step count — gave the same man back on today's quantised build, which ruled
+out the model. Two things had drifted, and a third was never right:
+
+**Steps.** The sweep that set the default at 16 was run on a watch movement, a
+knurled ring and a hand: texture, which is resolved by 16. A face is not. Same
+prompt, same seed, same reference: at 16 the result is a thinner, younger,
+more conventional version of the person; at 24 it is close; at 28 it is them.
+Every example in this repository that keeps a face was made at 28 or 30, which
+nobody had written down. The paths that carry a person now ask for **28**, the
+rest keep 16, and the server applies the same floor so an agent gets it too.
+
+**Prompt length.** The example that works is thirty-five words — *a colour
+editorial magazine portrait, a black blazer over a white shirt, a sunlit
+concrete gallery, hard side light, medium format*. Sixty words describing "a
+professional studio headshot... a large softbox just off the lens axis with a
+reflector filling the shadow side" is a generic photograph of a generic
+person, and the model has a strong opinion about what that person looks like.
+Say the wardrobe, the place and the light; let the reference say the face.
+
+**And the identity clause has to be last.** Pose and scene each grew that line
+for their own reason and the plain portrait never did, which left the longest
+prompts as the ones least protected. It is fixed now on every path that has a
+person: whose face it is was decided when the reference was dropped in, so
+that sentence is the app's, not something the prompt can outrank.
+
 ---
 
 ## How this differs from a closed model

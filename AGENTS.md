@@ -187,7 +187,15 @@ same reference and the same seed; the README has the tables.
    why pose, scene and transparency clauses are appended after the user's text.
 6. **CFG without a negative prompt is a no-op** — byte-identical output, same
    time. `true_cfg_scale` only does something with a negative.
-7. **The rewriter looks before it writes.** Asked to swap a person, text alone
+7. **A reference face costs steps.** 16 is the default because that is where
+   texture resolves; identity does not. Measured at one seed: 16 gives a
+   thinner, younger version of the person, 24 is close, 28 is them. Any request
+   with `personas` runs at 28 unless `steps` is passed explicitly.
+8. **Keep the prompt short when a face has to survive.** Thirty-five words
+   naming the wardrobe, the place and the light works. Sixty words describing a
+   generic photograph of a generic person does not — the model has an opinion
+   about that person and it is not yours.
+9. **The rewriter looks before it writes.** Asked to swap a person, text alone
    guessed "the jacket and pants" about a photo of a man in a t-shirt. Reading
    the reference with Qwen3-VL first gets "a maroon short-sleeved t-shirt".
 

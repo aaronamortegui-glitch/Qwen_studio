@@ -1112,6 +1112,20 @@ function construirCampos(){
 }
 // the complement is per picture, not per session: switching path, clearing
 // the box or pasting a whole prompt all mean the old one no longer applies
+// Identity costs steps. The sweep that set the default at 16 was run on a
+// watch movement, a knurled ring and a hand -- texture, which is resolved by
+// then. A face is not: at 16 the reference comes back as a thinner, younger,
+// more conventional version of the person, at 24 it is close and at 28 it is
+// them. Every example in the showcase that keeps a face was made at 28 or 30,
+// which is the measurement nobody wrote down. So the paths that carry a person
+// ask for 28 and the rest keep 16, and the settings panel still overrides both.
+const PASOS_CASO = {portrait:28, scene:28, pose:28, cutout:28, free:28};
+function pasosDe(k){ return PASOS_CASO[k] || (AJ && AJ.steps) || 16; }
+function ponerPasos(k){
+  const s=$('#steps'); if(!s) return;
+  s.value = pasosDe(k);
+  const v=$('#vSteps'); if(v) v.textContent = s.value;
+}
 function limpiarComplemento(){
   const c=$('#complemento'); if(c) c.value='';
   S.frag={};
@@ -1125,6 +1139,7 @@ function aplicarCaso(k){
   }
   [...$('#casos').children].forEach(b=>b.setAttribute('aria-pressed',b.dataset.k===k));
   $('#prompt').value=c.prompt; $('#transp').checked=!!c.transp; limpiarComplemento();
+  ponerPasos(k);
   S.ratio=c.ratio; marcarRatio();
   const sinEntradas=!c.zonas.length;
   $('#secEntradas').hidden=sinEntradas;
@@ -2418,7 +2433,7 @@ async function cargarEjemplo(k){
 
 fetch('/api/ajustes').then(r=>r.json()).then(a=>{
   AJ=a; pintarAjustes(); zonaNegativo(); pintarTurbo();
-  $('#steps').value=a.steps; $('#vSteps').textContent=a.steps;
+  ponerPasos(S.caso);
   $('#mp').value=a.megapixeles; medida();
 });
 let temaGuardado='light';
