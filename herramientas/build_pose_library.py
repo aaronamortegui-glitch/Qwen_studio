@@ -63,8 +63,8 @@ def main() -> None:
     index, fallos, ignorados = [], [], []
     for pose_id, src in fuentes.items():
         # the catalogue is defined by the metadata, not by what is in the
-        # conviven salidas de pruebas y de tandas anteriores, y colarlas produce
-        # duplicados con encuadre equivocado.
+        # folder: test outputs and earlier runs live side by side in there,
+        # and letting them in produces duplicates with the wrong framing.
         if meta and pose_id not in meta:
             ignorados.append(pose_id)
             continue

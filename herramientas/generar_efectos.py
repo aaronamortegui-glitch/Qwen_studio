@@ -26,7 +26,7 @@ import urllib.request
 APP = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DESTINO = os.path.join(APP, "ejemplos", "efectos")
 BASE_POR_DEFECTO = os.path.join(DESTINO, "_base.jpg")
-LADO = 480          # la rejilla nunca las muestra mas grandes
+LADO = 480          # the grid never shows them any larger
 # Anything that ships as an example is generated well above the app's own
 # default. At 12 steps the fine detail is still soft, and a thumbnail that
 # undersells the effect is worse than no thumbnail. Do not lower this.
@@ -93,8 +93,8 @@ def main() -> None:
 
     base = args[0] if args else BASE_POR_DEFECTO
     if not os.path.exists(base):
-        raise SystemExit(f"  falta la imagen base: {base}\n"
-                         f"  pasala como argumento o dejala en {BASE_POR_DEFECTO}")
+        raise SystemExit(f"  the base image is missing: {base}\n"
+                         f"  pass one as an argument or leave it at {BASE_POR_DEFECTO}")
     if os.path.abspath(base) != os.path.abspath(BASE_POR_DEFECTO):
         im = Image.open(base).convert("RGB")
         im.thumbnail((1024, 1024), Image.LANCZOS)

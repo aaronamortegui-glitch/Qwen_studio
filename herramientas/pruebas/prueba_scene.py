@@ -1,8 +1,8 @@
 import base64, json, time, urllib.request
-def b64(p,m="image/png"): return f"data:{m};base64,"+base64.b64encode(open(p,"rb").read()).decode()
-I=r"D:\ComfyUI_QI21\ComfyUI_windows_portable\ComfyUI\input"
-persona=b64(r"D:\AIToolkit\AI-Toolkit\datasets\eliana_qwen21\Eliohwx_03.jpg","image/jpeg")
-escena =b64(rf"{I}\escena_cocina.png")
+import _fuentes as F
+b64 = F.data_url
+persona=b64(F.persona())
+escena =b64(F.escena("escena_cocina.png"))
 casos=[("prompt_neutro","A photograph of her."),
        ("prompt_describe","A photograph of her in that kitchen, wearing the mustard yellow sweater, soft window light.")]
 for nombre,txt in casos:

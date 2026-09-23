@@ -105,6 +105,32 @@ things survive. Ordered by what it costs against what it gives.
   person in place. The rewriter reads the reference with the VLM first so it
   names the garment that is there instead of guessing one.
 
+- **The English rule was broken twice and neither time was noticed.** The first
+  check only looked at whole-line comments, so every trailing one after code
+  went through; the second missed console strings entirely. Around seventy
+  fragments - trailing comments, docstrings and console output - were still
+  Spanish after the commit that claimed the repository was English. `herramientas/revision_idioma.py`
+  now reads every tracked Python file for Spanish in a comment, a docstring or a
+  string the user sees, knows the identifiers are Spanish and skips them, and is
+  verified against the exact two failures that got past: a trailing comment and
+  a `print`.
+- **No personal path is written down any more.** Thirteen probe scripts carried
+  the absolute path of a private dataset, name included, into a public
+  repository. They now resolve their inputs at run time through
+  `herramientas/pruebas/_fuentes.py` — `QWENSTUDIO_REF` for the person,
+  `QWENSTUDIO_ESCENAS` for the scenes — and stop with the name of the variable
+  to set rather than half-running against the wrong picture. `DWPOSE_PY` became
+  `QWENSTUDIO_DWPOSE_PY` for the same reason; set it if skeleton extraction from
+  a photo is wanted, since nothing else uses it.
+- **`AGENTS.md`, with `CLAUDE.md` pointing at it.** The app has shipped an MCP
+  server and an agent section in the README for a while, and no file telling an
+  agent how to work *on* it: the ceilings it must not raise, the measured
+  prompting rules, what is deliberately unreliable.
+- **The PDF now covers installing and using it.** It had neither, and three of
+  its counts had gone stale (eight use cases, ten tools, nine paths — twelve of
+  each), along with a paragraph still saying enlarging was not offered, which it
+  has been since nf4 took it from 754 seconds to 156.
+
 ## Worth an experiment, not a promise
 
 - **An fp8 text encoder would cut the download, nothing else.** The encoder is

@@ -52,8 +52,8 @@ EJEMPLOS = os.path.join(APP, "ejemplos")
 # Settings the user can change while the app runs, kept apart from config.json
 # (written by the installer, describing the hardware rather than preferences).
 AJUSTES_DEF = {
-    "describir_escena": True,     # describir la escena con el VLM antes de generar
-    "resumen": True,              # generar la hoja de contacto en cada corrida
+    "describir_escena": True,     # let the VLM describe the scene before generating
+    "resumen": True,              # write the contact sheet on every run
     # 16 steps. Swept by eye at 1 MP on one fixed seed, on a subject built to
     # break first -- a watch movement, knurling, a hand: 8 steps is mush, 12
     # still has a soft movement, 16 resolves its screws and jewels, and 20 and
@@ -98,8 +98,8 @@ AJUSTES_DEF = {
     # in the box under the prompt.
     "cfg": 3,
     "negativo": "blurry, deformed hands, extra fingers, watermark, text artefacts",
-    "vlm_bits": 4,                # 4 u 8; 8 describe algo mejor y ocupa ~13 GB
-    "mantener_montado": False,    # no desmontar entre bloques (para lotes)
+    "vlm_bits": 4,                # 4 or 8; 8 describes a little better, costs ~13 GB
+    "mantener_montado": False,    # do not unmount between blocks (for batches)
     # hdr by default: measured on 2026-09-22 at the same seed, +19% saturation
     # and +27% edge energy with contrast and mean exposure untouched. If the
     # file is not there, usar_vae falls back to the stock one without fuss.
@@ -160,7 +160,10 @@ def guardar_ajustes(nuevos: dict) -> dict:
         json.dump(a, f, indent=2)
     return a
 ENTRADAS = os.path.join(APP, "entradas")
-DWPOSE_PY = r"D:\AIToolkit\AI-Toolkit\venv\Scripts\python.exe"   # opcional
+# Optional. Skeleton extraction runs in a separate interpreter that already
+# has DWPose installed; point QWENSTUDIO_DWPOSE_PY at that python and the
+# app will use it. Without it poses come from the library, the normal path.
+DWPOSE_PY = os.environ.get("QWENSTUDIO_DWPOSE_PY", "")
 
 cfg = json.load(open(CONFIG, encoding="utf-8-sig"))
 estado_descarga = M.Descarga()
@@ -892,7 +895,7 @@ class Handler(BaseHTTPRequestHandler):
                                        seed=int(b.get("seed", 0)) or int(time.time()) % 100000,
                                        res=int(math.sqrt(aw * ah)), ancho=aw, alto=ah,
                                        referencias=referencias or [], modo=modo)
-            if lora:                       # un efecto no deja el LoRA puesto
+            if lora:                       # a look does not leave its LoRA mounted
                 motor.aplicar_lora(None, 1.0, turbo=_turbo(b))
         return (gen, prompt), None
 
@@ -1236,7 +1239,7 @@ class Handler(BaseHTTPRequestHandler):
                                str(b.get("muestreo") or leer_ajustes()["muestreo"]))
 
         hechas, prompt = [], ""
-        with _lock:                # una generacion a la vez: la VRAM no da para mas
+        with _lock:                # one generation at a time: the VRAM allows no more
             motor.usar_offload(leer_ajustes().get("offload") or cfg["offload"])
             motor.usar_vae(b.get("vae") or leer_ajustes().get("vae", "stock"))
             motor.aplicar_lora(os.path.join(LORAS, b["lora"]) if b.get("lora") else None,
@@ -1294,11 +1297,11 @@ def main():
     url = f"http://127.0.0.1:{PORT}"
     print("=" * 60)
     print(f"  QwenStudio  ->  {url}")
-    print(f"  Perfil {cfg['nivel']} · {cfg['acelerador']} · {cfg['dtype']}"
-          f" · cuant {cfg['cuantizacion']} · offload {cfg['offload']}")
+    print(f"  Profile {cfg['nivel']} · {cfg['acelerador']} · {cfg['dtype']}"
+          f" · quant {cfg['cuantizacion']} · offload {cfg['offload']}")
     print("=" * 60)
     if not M.pesos_completos(cfg["ruta_modelos"]):
-        print("\n  Los pesos todavia no estan. Al abrir la pagina te deja bajarlos.\n")
+        print("\n  The weights are not here yet. Opening the page lets you fetch them.\n")
     try:
         webbrowser.open(url)
     except Exception:

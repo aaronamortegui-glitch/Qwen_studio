@@ -1,5 +1,6 @@
 import base64, json, time, urllib.request
-src = r"D:\ComfyUI_QI21\ComfyUI_windows_portable\ComfyUI\input\escena_cocina.png"
+from _fuentes import escena
+src = escena("escena_cocina.png")
 b64 = "data:image/png;base64," + base64.b64encode(open(src,"rb").read()).decode()
 
 def post(ruta, payload, t=3600):

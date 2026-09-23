@@ -1,5 +1,5 @@
-# Todo lo que el instalador recrea o el primer arranque descarga.
-# El repositorio son ~3 MB de codigo y ejemplos; el resto pesa 36 GB.
+# Everything the installer recreates or the first run downloads.
+# The repository is ~3 MB of code and examples; the rest weighs 36 GB.
 
 .venv/
 .uv/
@@ -11,13 +11,13 @@ salidas/*
 entradas/*
 !entradas/.keep
 
-# config.json describe el hardware de ESTA maquina, ajustes.json son
-# preferencias locales: los escribe el instalador y el uso, no el repositorio.
+# config.json describes THIS machine's hardware and ajustes.json holds local
+# preferences: the installer and everyday use write them, not the repository.
 config.json
 config.json.bak
 ajustes.json
 
-# el zip se construye con herramientas/empaquetar.py
+# the zip is built by herramientas/empaquetar.py
 QwenStudio.zip
 
 __pycache__/
@@ -30,5 +30,5 @@ _meta_gen.json
 .DS_Store
 Thumbs.db
 
-# cache del generador del PDF (lo vuelve a bajar si falta)
+# cache for the PDF generator's fonts (it downloads them again if missing)
 herramientas/.fuentes/

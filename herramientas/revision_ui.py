@@ -23,12 +23,12 @@ RUTA = os.path.join(APP, "qwenstudio", "interfaz.py")
 
 # ids the JS builds, or that come from the browser rather than the markup
 IDS_DINAMICOS = {
-    "lupaImg",          # vive dentro del dialogo de la lupa
-    "notaEjemplo",      # el aviso del ejemplo, creado al cargarlo
-    "figEjemplo",       # la hoja del ejemplo, creada en la galeria
-    "quitaEjemplo",     # su boton
-    "igualmente",       # el boton del perrito
-    "seleccion",        # el campo de inpaint, creado por construirCampos
+    "lupaImg",          # lives inside the magnifier dialog
+    "notaEjemplo",      # the example notice, built when the example loads
+    "figEjemplo",       # the example sheet, built in the gallery
+    "quitaEjemplo",     # its button
+    "igualmente",       # the button on the dog warning
+    "seleccion",        # the inpaint field, built by construirCampos
     "btnPintar", "btnQuitarMask", "notaMask",
 }
 IDS_DINAMICOS |= {f"z_{z}" for z in
@@ -49,7 +49,7 @@ IDS_DINAMICOS |= {
 # The check below looks at one rule at a time and cannot know that, so they are
 # listed here with the reason.
 FONDO_HEREDADO = {
-    ".caso[aria-pressed=true] small",   # el fondo lima lo pone .caso[aria-pressed=true]
+    ".caso[aria-pressed=true] small",   # .caso[aria-pressed=true] paints the lime ground
 }
 
 
@@ -63,12 +63,12 @@ def revisar() -> list[str]:
     css, cuerpo = _partes(s)
     fallos: list[str] = []
 
-    # --- 1. tokens usados que nadie define --------------------------------
+    # --- 1. tokens that are used and never defined ------------------------
     definidos = set(re.findall(r"(--[a-z0-9-]+)\s*:", css))
     usados = set(re.findall(r"var\((--[a-z0-9-]+)", s))
     huerfanos = sorted(usados - definidos)
     for t in huerfanos:
-        fallos.append(f"token sin definir: var({t})")
+        fallos.append(f"undefined token: var({t})")
 
     # --- 2. tokens defined only inside a theme block ----------------------
     # the bare :root block has to carry them all, or the default theme is left
@@ -77,19 +77,19 @@ def revisar() -> list[str]:
     en_raiz = set(re.findall(r"(--[a-z0-9-]+)\s*:", raiz.group(1))) if raiz else set()
     for t in sorted(usados & definidos):
         if t not in en_raiz:
-            fallos.append(f"token definido solo en un bloque de tema: {t}")
+            fallos.append(f"token defined only inside a theme block: {t}")
 
     # --- 3. $('#id') against the ids in the markup ------------------------
     ids_html = set(re.findall(r'\bid="([A-Za-z][\w-]*)"', cuerpo))
     pedidos = set(re.findall(r"\$\('#([\w-]+)'\)", cuerpo))
     pedidos |= set(re.findall(r"getElementById\('([\w-]+)'\)", cuerpo))
     for i in sorted(pedidos - ids_html - IDS_DINAMICOS):
-        fallos.append(f"el JS pide #{i} y no existe en el marcado")
+        fallos.append(f"the JS asks for #{i} and the markup has no such id")
 
-    # --- 4. id duplicados --------------------------------------------------
+    # --- 4. duplicate ids --------------------------------------------------
     todos = re.findall(r'\bid="([A-Za-z][\w-]*)"', cuerpo)
     for i in sorted({x for x in todos if todos.count(x) > 1}):
-        fallos.append(f"id duplicado en el marcado: #{i}")
+        fallos.append(f"duplicate id in the markup: #{i}")
 
     # --- 5. every dialog, with a panel and a way out -----------------------
     dialogos = set(re.findall(r'<dialog id="([\w-]+)"', cuerpo))
@@ -97,18 +97,18 @@ def revisar() -> list[str]:
     regla_general = False
     for sel in re.findall(r"^([^{]*)\{[^}]*background:var\(--sf\)[^}]*\}", css, re.M):
         if "dialog:not(#lupa)" in sel:
-            regla_general = True          # cubre a todos menos la lupa, a proposito
+            regla_general = True          # covers all but the magnifier, on purpose
         con_panel |= set(re.findall(r"#([\w-]+)", sel))
     if regla_general:
         con_panel |= dialogos
     for d in sorted(dialogos - con_panel - {"lupa"}):
-        fallos.append(f"el dialogo #{d} no tiene fondo: se vera transparente")
+        fallos.append(f"dialog #{d} has no background: it will render see-through")
     for d in sorted(dialogos):
         cierra = (f"$('#{d}').close()" in cuerpo
                   or f"e.target.id==='{d}'" in cuerpo
                   or f'<dialog id="{d}"' in cuerpo and f"#{d}').close" in cuerpo)
         if not cierra:
-            fallos.append(f"el dialogo #{d} no tiene forma de cerrarse")
+            fallos.append(f"dialog #{d} has no way of being closed")
 
     # --- 6. hidden against an explicit display -----------------------------
     # the browser sheet gives [hidden]{display:none}, which loses against any
@@ -118,7 +118,7 @@ def revisar() -> list[str]:
         ocultados = set(re.findall(r"\$\('#([\w-]+)'\)\.hidden\s*=", cuerpo))
         ocultados |= set(re.findall(r"getElementById\('([\w-]+)'\)\.hidden\s*=", cuerpo))
         if ocultados:
-            fallos.append("falta [hidden]{display:none!important} y el JS oculta "
+            fallos.append("[hidden]{display:none!important} is missing and the JS hides "
                           + ", ".join(f"#{x}" for x in sorted(ocultados)[:6]))
 
     # --- 7. a dark colour as text, with no dark-theme version --------------
@@ -133,7 +133,7 @@ def revisar() -> list[str]:
     bloques_oscuros += "".join(re.findall(r"prefers-color-scheme:\s*dark\)\{(.*?)\n\}\}", css, re.S))
     for t, v in oscuros.items():
         if re.search(re.escape(t) + r"\s*:", bloques_oscuros):
-            continue                       # sí tiene version oscura
+            continue                       # it does have a dark version
         for m in re.finditer(r"([^{};]*)\{([^{}]*?(?<![-\w])color:\s*var\("
                              + re.escape(t) + r"\)[^{}]*)\}", css):
             sel, bloque = m.group(1).strip().splitlines()[-1].strip(), m.group(2)
@@ -145,8 +145,8 @@ def revisar() -> list[str]:
             fondo = re.search(r"background(?:-color)?:\s*var\((--[a-z0-9-]+)\)", bloque)
             if fondo and not re.search(re.escape(fondo.group(1)) + r"\s*:", bloques_oscuros):
                 continue
-            fallos.append(f"color:var({t}) ({v}, oscuro) en `{sel[:40]}`: "
-                          "sin version para el tema oscuro")
+            fallos.append(f"color:var({t}) ({v}, dark) in `{sel[:40]}`: "
+                          "no version for the dark theme")
 
     # --- 8. innerHTML+= on a container that is also appended to ------------
     # assigning innerHTML reparses the whole container and replaces the nodes
@@ -158,9 +158,9 @@ def revisar() -> list[str]:
         ventana = cuerpo[max(0, m.start() - 1500):m.start() + 1500]
         if re.search(re.escape(cont) + r"\.append\(", ventana) and ".onclick" in ventana:
             linea = cuerpo[:m.start()].count(chr(10)) + 1
-            fallos.append(f"{cont}.innerHTML+= junto a {cont}.append() con "
-                          f"onclick cerca (linea ~{linea} del cuerpo): "
-                          "los manejadores ya puestos se pierden")
+            fallos.append(f"{cont}.innerHTML+= beside {cont}.append() with an "
+                          f"onclick nearby (line ~{linea} of the body): "
+                          "the handlers already attached are lost")
 
     # --- 9. what the user reads, in English --------------------------------
     # the whole repository is English now, comments included; this rule guards
@@ -168,7 +168,7 @@ def revisar() -> list[str]:
     for m in re.finditer(r"<(?:b|small|label|h2|h3|p)>([^<>{}$`]{8,})<", cuerpo):
         t = m.group(1)
         if re.search(r"\b(el|la|los|las|una|para|con|que|por|desde|cuando)\b", t):
-            fallos.append(f"texto visible en castellano: {t.strip()[:56]}")
+            fallos.append(f"visible text in Spanish: {t.strip()[:56]}")
 
     return fallos
 
@@ -232,9 +232,9 @@ def revisar_js() -> list[str]:
                     if "SyntaxError" in l:
                         linea = l.strip()
                         break
-                fallos.append(f"el <script> {n} no parsea: {linea or 'ver node --check'}")
+                fallos.append(f"<script> {n} does not parse: {linea or 'see node --check'}")
         except Exception as e:
-            fallos.append(f"no se pudo comprobar el <script> {n}: {type(e).__name__}")
+            fallos.append(f"could not check <script> {n}: {type(e).__name__}")
         finally:
             try:
                 os.unlink(tmp)
@@ -254,24 +254,24 @@ def revisar_servidor() -> list[str]:
         for patron in SALIDA_AL_USUARIO:
             for m in patron.finditer(codigo):
                 # what sits inside {} is code, not text: a variable called
-                # `para` is not the Spanish preposition
+                # `para` here is the CSS shorthand, not the Spanish preposition
                 t = re.sub(r"\{[^{}]*\}", " ", m.group(1)).strip()
                 if not t or PERDON.match(t) or t in vistos:
                     continue
                 if CASTELLANO.search(t.lower()):
                     vistos.add(t)
                     linea = codigo[:m.start()].count(chr(10)) + 1
-                    fallos.append(f"{nombre}:{linea} mensaje al usuario en "
-                                  f"castellano: {t[:52]}")
+                    fallos.append(f"{nombre}:{linea} message to the user in "
+                                  f"Spanish: {t[:52]}")
     return fallos
 
 
 def main() -> None:
     fallos = revisar() + revisar_js() + revisar_servidor()
     if not fallos:
-        print("  interfaz.py y el servidor: sin hallazgos")
+        print("  interfaz.py and the server: nothing found")
         sys.exit(0)
-    print(f"  {len(fallos)} hallazgo(s):")
+    print(f"  {len(fallos)} finding(s):")
     for f in fallos:
         print(f"    - {f}")
     sys.exit(1)

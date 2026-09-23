@@ -3,7 +3,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from PIL import Image
 from qwenstudio import segmentacion as SEG, inpaint as IN
 
-src = r"D:\ComfyUI_QI21\ComfyUI_windows_portable\ComfyUI\input\escena_cocina.png"
+from _fuentes import escena
+src = escena("escena_cocina.png")
 img = Image.open(src).convert("RGB")
 t0=time.time(); SEG.cargar("cuda"); print(f"carga Florence: {time.time()-t0:.0f}s | err: {SEG._estado['error'] or 'ninguno'}")
 if not SEG.disponible(): sys.exit(1)

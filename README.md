@@ -53,7 +53,7 @@ with two front doors.
 ## Install
 
 ```bash
-git clone https://github.com/aaronamortegui-glitch/superside_qwen_beta.git QwenStudio
+git clone https://github.com/aaronamortegui-glitch/Qwen_studio.git QwenStudio
 cd QwenStudio
 ```
 
@@ -698,6 +698,11 @@ more than being self-contained, use ComfyUI.
 
 ## Control it from an agent
 
+[AGENTS.md](AGENTS.md) is the operating manual for an agent working on this
+repository: the ceilings it must not exceed, the prompting rules that were
+measured, and what is deliberately not reliable. `CLAUDE.md` points at the
+same file, so Claude Code and Codex read one thing.
+
 ```json
 {"mcpServers": {"qwenstudio": {
   "command": "D:\\QwenStudio\\.venv\\Scripts\\python.exe",
@@ -907,7 +912,7 @@ swapping entirely.
 .venv\Scripts\python.exe herramientas\pruebas\todos_los_caminos.py
 ```
 
-Nineteen cases, run against the live app. They check the **shape** of what came
+Twenty-one cases, run against the live app. They check the **shape** of what came
 back, not just the absence of an exception — a 1024 square returned when 16:9
 was asked for is broken even though nothing raised.
 
@@ -927,6 +932,18 @@ transparent), a `$('#id')` whose element was deleted (the handler silently
 never binds), a dialog with no way out, a duplicate id, Spanish text that
 escaped into the English interface. Two of those had already shipped in this
 file before the script existed, which is why it exists.
+
+```bash
+.venv\Scripts\python.exe herramientas\revision_idioma.py
+```
+
+The same idea applied to the language rule. Everything committed here is
+English, and this reads every tracked Python file looking for Spanish in a
+comment, a docstring or a string the user reads -- while knowing that the
+identifiers are Spanish and skipping them. It exists because the rule was
+broken twice and neither time was noticed: one check only looked at
+whole-line comments and missed every trailing one after code, the next
+missed console output altogether.
 
 ---
 

@@ -180,7 +180,7 @@ def progreso() -> dict:
 
 
 def _vigilante(total: int):
-    """El callback que diffusers llama al final de cada paso."""
+    """The callback diffusers calls at the end of every step."""
     PARAR.clear()
     PROGRESO.update(activo=True, paso=0, total=int(total), empezo=time.time(),
                     primer_paso=0.0)
@@ -212,7 +212,7 @@ def _fin():
 
 def avisos_de_uso(n_persona: int, con_escena: bool,
                   espera_persona: bool = True) -> list[str]:
-    """Lo que conviene decir antes de generar. En ingles: lo lee el usuario."""
+    """What is worth saying before generating. The user reads this."""
     a = []
     if con_escena and n_persona > 1:
         a.append("With a scene, use ONE photo of the person. Several are read as several "
@@ -312,7 +312,7 @@ def pesos_completos(ruta: str) -> bool:
     need = [os.path.join(ruta, d) for d in ("transformer", "text_encoder", "vae", "processor")]
     if not all(os.path.isdir(d) for d in need):
         return False
-    # heuristica: el text encoder son ~17 GB repartidos en shards
+    # heuristic: the text encoder alone is ~17 GB spread across shards
     return tamano_local(ruta) > 25 * 1024 ** 3
 
 
@@ -368,8 +368,8 @@ def estado_vram() -> dict:
             except Exception:
                 return None
 
-        # nvidia-smi responde "Active" o "Not Active", y "Not Active" contiene
-        # "active": buscar la subcadena marcaba estrangulamiento siempre
+        # nvidia-smi answers "Active" or "Not Active", and "Not Active" contains
+        # "active": looking for the substring reported throttling every time
         recorta = any(x.strip().lower() == "active" for x in (sw_term, hw_term))
         fuera.update(hay=True, usada_gb=round(int(usada) / 1024, 1),
                      total_gb=round(int(total) / 1024, 1), utilizacion=int(util),
@@ -392,7 +392,7 @@ def estado_vram() -> dict:
 
 
 def vaciar_cache() -> dict:
-    """Devolver a la tarjeta lo que torch tiene reservado y no usa."""
+    """Hand back to the card whatever torch has reserved and is not using."""
     antes = estado_vram().get("usada_gb")
     try:
         import gc
@@ -440,9 +440,9 @@ class Motor:
         self.vae_actual = "stock"
         self.cargando = False
         self.error = ""
-        self._lora = None          # (ruta, fuerza) actualmente aplicada
+        self._lora = None          # (path, strength) currently applied
         self.atencion = "sdpa"
-        self._cb = None            # si la pipeline admite callback_on_step_end
+        self._cb = None            # whether the pipeline takes callback_on_step_end
         self._sched_base = None    # the scheduler config the weights shipped with
         self._muestreo = "base"    # which MUESTREO entry is installed right now
 

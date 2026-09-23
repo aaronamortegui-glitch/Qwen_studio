@@ -21,6 +21,7 @@ APP = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 INCLUIR_ARCHIVOS = [
     "INSTALL.bat", "install.command", "RUN.bat", "run.command",
     "SHORTCUT.bat", "QwenStudio.ico", "bootstrap.py", "README.md", ".gitignore",
+    "AGENTS.md", "CLAUDE.md", "PENDIENTE.md",
 ]
 # docs/ travels because the README references it and because the explanatory
 # PDF is there: whoever receives the zip without going through GitHub has to be
@@ -30,15 +31,15 @@ INCLUIR_CARPETAS = ["qwenstudio", "herramientas", "poses", "ejemplos", "docs",
 
 # what does not travel, and why
 EXCLUIR_DIRS = {
-    ".venv",        # lo crea el instalador, 4.6 GB
-    ".uv",          # lo descarga el instalador
-    "modelos",      # 31 GB, se bajan en el primer arranque
-    "salidas", "entradas",   # generados al usar la app
-    "loras",        # los LoRAs son del usuario, no mios
+    ".venv",        # the installer builds it, 4.6 GB
+    ".uv",          # the installer downloads it
+    "modelos",      # 31 GB, fetched on the first run
+    "salidas", "entradas",   # produced by using the app
+    "loras",        # the LoRAs belong to the user, not to me
     "__pycache__", ".git",
 }
 EXCLUIR_SUFIJOS = (".pyc", ".pyo", ".log", ".db", ".db-wal", ".db-shm")
-# config.json describe ESTE hardware; ajustes.json son preferencias locales
+# config.json describes THIS hardware; ajustes.json holds local preferences
 EXCLUIR_ARCHIVOS = {"config.json", "ajustes.json", "_meta_gen.json"}
 
 
@@ -75,16 +76,16 @@ def main() -> None:
                         z.write(abs_, f"QwenStudio/{rel.replace(os.sep, '/')}")
                         n += 1
                         total += os.path.getsize(abs_)
-        # carpetas que deben existir vacias al descomprimir
+        # folders that have to exist, empty, once it is unzipped
         for vacia in ("loras", "salidas", "entradas", "modelos"):
             z.writestr(f"QwenStudio/{vacia}/.keep", "")
 
-    # comprobacion: nada pesado ni especifico de esta maquina se cuela
+    # check: nothing heavy and nothing specific to this machine slipped in
     import zipfile as _z
     dentro = _z.ZipFile(destino).namelist()
     def sospechoso(x):
         if x.endswith("/.keep"):
-            return False                      # crean las carpetas vacias, van a proposito
+            return False                      # they make the empty folders, on purpose
         return any(m in x for m in (".venv/", "/modelos/", "config.json",
                                     "ajustes.json", ".pyc"))
     malos = [x for x in dentro if sospechoso(x)]

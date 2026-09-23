@@ -100,7 +100,7 @@ def _envolver(texto: str, fuente, ancho: int) -> list[str]:
             if actual:
                 lineas.append(actual)
             actual = w
-        if len(lineas) >= 4:          # el prompt completo vive en la UI, aqui solo un resumen
+        if len(lineas) >= 4:          # the full prompt lives in the UI, this is only a digest
             break
     if actual and len(lineas) < 4:
         lineas.append(actual)

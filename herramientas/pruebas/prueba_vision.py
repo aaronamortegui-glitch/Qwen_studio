@@ -4,7 +4,8 @@ from PIL import Image
 from qwenstudio import vision as V
 
 cfg = json.load(open("config.json", encoding="utf-8"))
-img = Image.open(r"D:\ComfyUI_QI21\ComfyUI_windows_portable\ComfyUI\input\escena_cocina.png").convert("RGB")
+from _fuentes import escena
+img = Image.open(escena("escena_cocina.png")).convert("RGB")
 
 t0=time.time(); V.cargar(cfg["ruta_modelos"], "cuda", bits=4)
 print(f"carga: {time.time()-t0:.0f}s | error: {V.error() or 'ninguno'}")

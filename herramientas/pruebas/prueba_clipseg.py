@@ -2,7 +2,8 @@ import sys, time, torch
 from PIL import Image
 from transformers import CLIPSegProcessor, CLIPSegForImageSegmentation
 
-src = r"D:\ComfyUI_QI21\ComfyUI_windows_portable\ComfyUI\input\escena_cocina.png"
+from _fuentes import escena
+src = escena("escena_cocina.png")
 img = Image.open(src).convert("RGB")
 t0=time.time()
 proc = CLIPSegProcessor.from_pretrained("CIDAS/clipseg-rd64-refined")

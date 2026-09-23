@@ -22,7 +22,8 @@ t0=time.time(); m.cargar()
 print(f"carga: {time.time()-t0:.0f}s | error: {m.error or 'ninguno'} | VRAM {pico[0]} MiB")
 if not m.listo: sys.exit(1)
 
-ref = Image.open(r"D:\AIToolkit\AI-Toolkit\datasets\eliana_qwen21\Eliohwx_03.jpg").convert("RGB")
+from _fuentes import persona
+ref = Image.open(persona()).convert("RGB")
 pico[0]=0; t0=time.time()
 img, prompt = m.generar(personas=[ref], pose=None, escena=None,
     texto="A professional studio headshot, plain light gray background, soft even lighting.",

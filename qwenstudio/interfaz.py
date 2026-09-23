@@ -1212,7 +1212,7 @@ $('#turbo').onclick=()=>{
   AJ.turbo = !AJ.turbo;
   fetch('/api/ajustes',{method:'POST',body:JSON.stringify({turbo:AJ.turbo})});
   pintarTurbo();
-  const c=$('#aj_turbo'); if(c) c.checked = AJ.turbo;   // el panel, si esta abierto
+  const c=$('#aj_turbo'); if(c) c.checked = AJ.turbo;   // the panel, if it is open
 };
 $('#variants').oninput=estimar;
 $('#steps').addEventListener('input', estimar);

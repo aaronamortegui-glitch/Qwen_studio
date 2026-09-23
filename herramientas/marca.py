@@ -32,7 +32,7 @@ def dibujar(lado: int) -> Image.Image:
     n = lado * e
     im = Image.new("RGBA", (n, n), (0, 0, 0, 0))
     d = ImageDraw.Draw(im)
-    u = n / 48.0                                   # el svg esta pensado en 48
+    u = n / 48.0                                   # the svg is drawn on 48 units
 
     import math
     cx, cy, r_ext, grosor, largo, ancho = 22.8, 21.8, 13.2, 4.6, 9.0, 4.6

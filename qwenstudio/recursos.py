@@ -20,10 +20,10 @@ import threading
 
 _lock = threading.RLock()
 
-# quien necesita la tarjeta -> quienes deben soltarla antes
+# who needs the card -> who has to let go of it first
 CONFLICTOS = {
-    "imagen": ("vision", "segmenta"),   # generar sube a ~21 GB: no cabe nada mas
-    "vision": ("segmenta",),            # 7 GB conviven con el DiT en reposo
+    "imagen": ("vision", "segmenta"),   # generating climbs to ~21 GB: nothing else fits
+    "vision": ("segmenta",),            # 7 GB sit beside the idle DiT
     "segmenta": ("vision",),
 }
 

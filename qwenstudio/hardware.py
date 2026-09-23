@@ -65,7 +65,7 @@ def _ram_bytes() -> int:
 
 
 def _nvidia() -> tuple[str, int]:
-    """(nombre, VRAM en bytes) de la primera GPU NVIDIA, o ('', 0)."""
+    """(name, VRAM in bytes) of the first NVIDIA GPU, or ('', 0)."""
     out = _run(["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader,nounits"])
     if not out:
         return "", 0
@@ -97,21 +97,21 @@ def _disco_libre(path: str) -> int:
 class Perfil:
     so: str
     maquina: str
-    acelerador: str          # descripcion legible
+    acelerador: str          # human-readable description
     backend: str             # cuda | mps | cpu
-    vram_gb: float           # VRAM dedicada, o memoria unificada en Mac
+    vram_gb: float           # dedicated VRAM, or unified memory on a Mac
     ram_gb: float
     disco_libre_gb: float
     dtype: str
     cuantizacion: str
-    cuantizacion_te: str     # el text encoder sigue al transformer: a medias sale peor
+    cuantizacion_te: str     # the text encoder follows the transformer: half and half is worse
     offload: str
-    vram_limite_gb: float  # techo duro del asignador; lo que pase muere como excepcion
-    res_max: int           # sin referencia
-    res_max_ref: int       # con una foto delante, que cuesta el doble largo
-    res_max_multi: int     # con varias: cada una suma activaciones
+    vram_limite_gb: float  # hard allocator ceiling; past it the run dies as an exception
+    res_max: int           # with no reference
+    res_max_ref: int       # with one photo in front, which costs twice the sequence
+    res_max_multi: int     # with several: each one adds activations
     nivel: str               # XL | L | M | S | MINIMO | INVIABLE
-    torch_index: str         # indice de pip para instalar torch
+    torch_index: str         # the pip index torch is installed from
     avisos: list
     viable: bool
 

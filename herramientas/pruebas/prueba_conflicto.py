@@ -1,9 +1,9 @@
 import base64, json, time, urllib.request
-def b64(p,m="image/png"): return f"data:{m};base64,"+base64.b64encode(open(p,"rb").read()).decode()
-I=r"D:\ComfyUI_QI21\ComfyUI_windows_portable\ComfyUI\input"
-persona=b64(r"D:\AIToolkit\AI-Toolkit\datasets\eliana_qwen21\Eliohwx_03.jpg","image/jpeg")
-estilo =b64(rf"{I}\escena_playa.png")     # calido, atardecer, contrastado
-escena =b64(rf"{I}\escena_cocina.png")    # frio, blanco, plano
+import _fuentes as F
+b64 = F.data_url
+persona=b64(F.persona())
+estilo =b64(F.escena("escena_playa.png"))     # warm, sunset, contrasty
+escena =b64(F.escena("escena_cocina.png"))    # cool, white, flat
 
 casos=[("solo_escena", {"escena":escena}),
        ("estilo_y_escena", {"escena":escena,"estilo":estilo,"estilo_modo":"look"})]

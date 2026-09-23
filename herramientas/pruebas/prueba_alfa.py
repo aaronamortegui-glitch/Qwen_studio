@@ -1,5 +1,6 @@
 import base64, json, time, urllib.request
-ref = r"D:\AIToolkit\AI-Toolkit\datasets\eliana_qwen21\Eliohwx_03.jpg"
+from _fuentes import persona
+ref = persona()
 b64 = base64.b64encode(open(ref,"rb").read()).decode()
 payload = {
   "personas": ["data:image/jpeg;base64,"+b64],

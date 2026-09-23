@@ -1,10 +1,11 @@
-"""Compara configuraciones de carga midiendo carga, VRAM y tiempo por imagen."""
+"""Compare loading configurations, measuring load time, VRAM and time per image."""
 import json, os, subprocess, sys, threading, time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from PIL import Image
 from qwenstudio.motor import Motor
 
-REF = Image.open(r"D:\AIToolkit\AI-Toolkit\datasets\eliana_qwen21\Eliohwx_03.jpg").convert("RGB")
+from _fuentes import persona
+REF = Image.open(persona()).convert("RGB")
 TXT = "A professional studio headshot, plain light gray background, soft even lighting."
 
 base = json.load(open("config.json", encoding="utf-8"))

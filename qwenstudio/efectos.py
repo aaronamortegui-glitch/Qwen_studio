@@ -24,7 +24,7 @@ import os
 DIR = os.path.dirname(os.path.abspath(__file__))
 MINIATURAS = os.path.join(DIR, "..", "ejemplos", "efectos")
 
-# id -> (nombre, grupo, prompt, lora o None)
+# id -> (name, group, prompt, lora or None)
 EFECTOS: dict[str, dict] = {
     "bw": {
         "nombre": "Black and white",

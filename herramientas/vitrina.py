@@ -71,7 +71,7 @@ IDENTIDAD = " The face of the subject must match the reference exactly."
 #   caso    the interface path it belongs to
 #   que     the sentence explaining what was done, on the card and under the
 #           thumbnail
-#   grupo   en cual de las dos rejillas aparece
+#   grupo   which of the two grids it lands in
 CAMINOS = "What each path does"
 ESTILOS = "How far the style stretches"
 
@@ -162,7 +162,7 @@ PIEZAS: list[dict] = [
      "que": "A look over the whole frame: teal into the shadows, the skin kept clean, "
             "the highlights rolling off. Picked from the grid, not typed."},
 
-    # --- los puntos de partida de texto a imagen, tal cual vienen ----------
+    # --- the text to image starting points, exactly as they ship -----------
     {"clave": "producto", "titulo": "Product", "caso": "blank", "ratio": "3:2", "seed": 3101,
      "prompt": base("blank", "Product"),
      "que": "The Product starting point, unedited. A single softbox falling off into near "
@@ -204,10 +204,10 @@ PIEZAS: list[dict] = [
             "everything this model does is photographic."},
 
     # --- the same text to image, but changing visual language rather than ---
-    # the task. The prompts follow the structure published by
-    # la guia de Qwen-Image (sujeto primero, luego estilo, detalle, encuadre y
-    # luz) y, en pixel art, las convenciones de Civitai: nombrar la escala,
-    # naming the palette and naming the view.
+    # the task. The prompts follow the structure published in the Qwen-Image
+    # guide (subject first, then style, detail, framing and light) and, for
+    # pixel art, the Civitai conventions: naming the scale, naming the
+    # palette and naming the view.
     {"clave": "pixel", "titulo": "Pixel art", "caso": "blank", "grupo": ESTILOS,
      "ratio": "3:2", "seed": 7101,
      "prompt": "Pixel art of a hooded traveller standing at the mouth of a moss-covered "
@@ -363,7 +363,7 @@ def generar(solo: set[str] | None = None) -> dict:
             continue
         t0 = time.time()
         fuente = p.get("fuente")
-        if fuente:                                   # una edicion
+        if fuente:                                   # an edit
             carga = {"imagen": _data_url(hechas[fuente]),
                      "steps": PASOS, "seed": p["seed"], "variantes": 1,
                      "megapixeles": 1,
@@ -379,7 +379,7 @@ def generar(solo: set[str] | None = None) -> dict:
             if p.get("ref_estilo"):
                 carga["estilo"] = _data_url(hechas[p["ref_estilo"]])
             r = _pedir(p["endpoint"], carga)
-        else:                                        # una generacion
+        else:                                        # a generation
             carga = {"prompt": p["prompt"], "steps": PASOS, "seed": p["seed"],
                      "variantes": 1, "megapixeles": 1, "lora": None, "fuerza_lora": 1.0,
                      "personas": [_data_url(hechas[p["persona"]])] if p.get("persona") else [],

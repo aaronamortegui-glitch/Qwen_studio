@@ -260,14 +260,35 @@ def construir() -> str:
                     "whether to quantise, how much to offload, what resolution to cap at — "
                     "so a 10 GB card and a 48 GB card both get something that runs.", CUERPO),
           Spacer(1, 5 * mm),
+          Paragraph("Installing it", H3),
+          _tabla([
+              ["Step", "Windows", "macOS"],
+              ["1. Get the folder", "clone it, or unzip QwenStudio.zip", "the same"],
+              ["2. Install", "double-click INSTALL.bat", "run ./install.command"],
+              ["3. Start it", "double-click RUN.bat", "run ./run.command"],
+          ], [an * .26, an * .37, an * .37]),
+          Spacer(1, 3 * mm),
+          Paragraph("The installer builds a private .venv with uv, probes the machine "
+                    "and writes config.json from what it finds. The first start "
+                    "downloads about 31 GB of weights into modelos/ and is the only "
+                    "slow one; everything after that is local. The page opens by "
+                    "itself at 127.0.0.1:7860, results land in salidas/, and "
+                    "python bootstrap.py prints what this particular machine will get "
+                    "— profile, resolution ceilings, expected times — before anything "
+                    "is installed at all.", CUERPO),
+          Paragraph("Needed: an NVIDIA card with 8 GB or more, or an Apple Silicon Mac "
+                    "with 24 GB of unified memory; 40 GB of free disk; 32 GB of system "
+                    "RAM is comfortable. Below that it still installs, and says what it "
+                    "will cost.", TENUE_P),
+          Spacer(1, 5 * mm),
           Paragraph("Two ways to use it", H3),
-          Paragraph("<b>By hand.</b> A page opens at 127.0.0.1:7860. Eight use cases, each "
+          Paragraph("<b>By hand.</b> A page opens at 127.0.0.1:7860. Twelve use cases, each "
                     "showing only the inputs it needs, each opening with a worked example "
                     "already in its boxes and the result of that exact example beside it. "
                     "The first screen shows this + this = this instead of an empty form.",
                     CUERPO),
           Paragraph("<b>By agent.</b> Point Claude Code, Codex or any MCP client at the "
-                    "folder. Ten tools — generate, edit, describe, batch, pose library, "
+                    "folder. Twelve tools — generate, edit, describe, batch, pose library, "
                     "prompt library — drive the same engine the interface drives. The "
                     "model loads once and both share it, so the page can stay open while an "
                     "agent works through a list of prompts.", CUERPO),
@@ -286,6 +307,7 @@ def construir() -> str:
               ["", "Transparent cutout", "person → PNG with a real alpha channel"],
               ["", "Free", "everything, nothing assumed"],
               ["Edit a photo", "Apply a look", "image + a treatment picked from a grid"],
+              ["", "Tell it what to change", "image + a sentence + up to three references"],
               ["", "Match a style", "image + a picture whose manner you want"],
               ["", "Enlarge", "image, redrawn larger rather than stretched"],
               ["", "Replace something", "image + a selection + what goes there"],
@@ -296,7 +318,7 @@ def construir() -> str:
                     "byte — the test suite checks that rather than assuming it.", TENUE_P),
           Spacer(1, 9 * mm)]
 
-    # --- 2. frente a los cerrados -----------------------------------------
+    # --- 2. against the closed ones ---------------------------------------
     f += [CondPageBreak(45 * mm),
           Paragraph("How this differs from a closed model", H2),
           Paragraph("Not “better”. Different in ways that decide whether it fits "
@@ -334,7 +356,7 @@ def construir() -> str:
                     "result and the reason.", CUERPO),
           Spacer(1, 9 * mm)]
 
-    # --- 3. como funciona --------------------------------------------------
+    # --- 3. how it works ---------------------------------------------------
     f += [CondPageBreak(45 * mm),
           Paragraph("How it works", H2),
           Paragraph("Four reference slots, one job each", H3),
@@ -375,7 +397,7 @@ def construir() -> str:
                     "folder rather than a database, so the disk is the single source of "
                     "truth: delete a file there and it disappears from the gallery.", CUERPO),
           Paragraph("The results column is not empty the first time it is opened. It "
-                    "carries thirty images this install produced, in two groups, each one clickable for "
+                    "carries thirty-one images this install produced, in two groups, each one clickable for "
                     "the prompt, the seed and the settings behind it, and for a button that "
                     "opens the use case it came from with that prompt already written. Five "
                     "of them build on each other — a character invented from a "
@@ -383,7 +405,7 @@ def construir() -> str:
                     "those images then edited — because one tool doing a day’s work "
                     "argues better than eight unrelated demonstrations. It steps aside as "
                     "soon as there is work of the user’s own to show.", CUERPO),
-          Paragraph("Nine paths and a handful of tools do not fit on one screen, so the "
+          Paragraph("Twelve paths and a handful of tools do not fit on one screen, so the "
                     "footer carries an index of all of them, and each entry is named the "
                     "way someone would ask for it rather than the way the panel is "
                     "labelled. Nobody looking to remove a background guesses that it lives "
@@ -404,10 +426,13 @@ def construir() -> str:
           Paragraph("A treatment is picked from a grid rather than typed, and every "
                     "thumbnail in it is that effect applied to this install's own reference "
                     "photo, generated on this machine. A look can be confined to a painted "
-                    "region instead of covering the frame. Upscaling to 2K is implemented and "
-                    "deliberately not offered: it works, and it took 754 seconds here for "
-                    "one image. Twelve minutes is not a feature. The endpoint and the "
-                    "reasoning are written down instead.", CUERPO),
+                    "region instead of covering the frame. Enlarging is its own path: "
+                    "the image goes back in as its own reference and is redrawn larger, "
+                    "which recovers detail instead of interpolating pixels. It was left "
+                    "out of the interface for a while because under bf16 it took 754 "
+                    "seconds for one image, and twelve minutes is not a feature. With "
+                    "nf4 and a tiled VAE the same job takes 156 seconds, and the button "
+                    "came back when the number did.", CUERPO),
           Spacer(1, 3 * mm),
           Paragraph("LoRAs, and a trap worth knowing", H3),
           Paragraph("Drop .safetensors into the loras folder and a selector appears with a "
@@ -446,7 +471,47 @@ def construir() -> str:
                     "bin stays the user’s decision.", CUERPO),
           Spacer(1, 9 * mm)]
 
-    # --- 4. lo medido ------------------------------------------------------
+    # --- 4. how to use it well ---------------------------------------------
+    f += [CondPageBreak(45 * mm),
+          Paragraph("Using it well", H2),
+          Paragraph("An open model takes instruction differently from a hosted one, "
+                    "and the differences are not guessable. Each line below was "
+                    "measured on the same picture with the same seed, changing one "
+                    "thing at a time.", OJO),
+          _tabla([
+              ["Do this", "Because"],
+              ["One photo of the person when a scene is loaded too",
+               "several are read as several different people, and several people "
+               "is what comes back"],
+              ["Name the attribute, never the person",
+               "“replace the woman with the man” changes nothing; “replace the face, "
+               "the hair and the beard” works"],
+              ["Prefer “put X from &lt;image2&gt; on…”",
+               "that construction gave the strongest exchange; “replace” and "
+               "“change” graft, “edit to match” does nothing"],
+              ["Name the clothing when changing who someone is",
+               "the original garment anchors the original person; body and build "
+               "changed nothing on their own"],
+              ["Put what matters last",
+               "the end of the prompt carries the most weight, which is why the "
+               "app appends pose and scene after your words"],
+              ["Write a negative prompt before raising CFG",
+               "without one, CFG is a no-op: byte-identical output, same time"],
+              ["Leave reference images alone",
+               "they are encoded near 1 MP regardless; 0.26, 0.92 and 2.0 MP gave "
+               "identical results"],
+          ], [an * .34, an * .66]),
+          Spacer(1, 4 * mm),
+          Paragraph("Sixteen steps is the default, swept by eye at 1 MP on subjects "
+                    "built to break first. The examples that ship were rendered "
+                    "higher, because a thumbnail that undersells the result is worse "
+                    "than no thumbnail. Resolution is capped by how many references "
+                    "are in play, not by the card alone — the app shows the ceiling "
+                    "before it runs, and refuses rather than reaching for it.",
+                    TENUE_P),
+          Spacer(1, 9 * mm)]
+
+    # --- 5. what was measured ----------------------------------------------
     f += [CondPageBreak(45 * mm),
           Paragraph("What we measured", H2),
           Paragraph("All of it in one long session on an RTX 5090 Laptop with 24 GB. Where a "
@@ -536,7 +601,7 @@ def construir() -> str:
                                Spacer(1, 2.5 * mm)]))
 
     # the heading and its table do not separate: a lone "Numbers" at the foot
-    # no dice nada
+    # of a page says nothing
     f += [Spacer(1, 3 * mm),
           KeepTogether([Paragraph("Numbers", H3),
           _tabla([

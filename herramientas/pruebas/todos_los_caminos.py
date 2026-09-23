@@ -91,8 +91,8 @@ def alfa_real(url_rel: str) -> float:
     im = Image.open(os.path.join(SALIDAS, os.path.basename(url_rel)))
     if im.mode != "RGBA":
         return 0.0
-    # histograma en vez de recorrer pixeles: getdata() esta deprecado y esto
-    # and it does not build a list of a million integers
+    # a histogram instead of walking the pixels: getdata() is deprecated, and
+    # this way nothing builds a list of a million integers
     h = im.getchannel("A").histogram()
     return sum(h[:16]) / (im.width * im.height)
 
@@ -214,8 +214,8 @@ def caso_inpaint():
     # And measured, not merely read. Looking for the word "yellow" in the
     # description was too fragile: the refined mask leaves the hair out, and a
     # few strands of the old colour show between them, enough for the VLM to
-    # nombre aunque la prenda entera haya cambiado. Se cuenta cuanto amarillo
-    # fuerte queda frente al que habia.
+    # name it even when the whole garment has changed. What is counted is how
+    # much strong yellow is left against how much there was.
     import numpy as np
     from PIL import Image
     antes = np.asarray(Image.open(ESCENA).convert("RGB")).astype(np.int16)
@@ -256,7 +256,7 @@ def caso_pincel():
                      os.path.basename(r["imagenes"][0]["archivo"]))).convert("RGB")
     assert out.size == src.size, f"the size changed: {out.size} vs {src.size}"
 
-    # dentro tiene que haber cambiado
+    # inside has to have changed
     dentro = ImageChops.difference(src.crop(caja), out.crop(caja))
     assert max(dentro.convert("L").getextrema()) > 40, "the painted region came back unchanged"
 
@@ -428,7 +428,7 @@ def caso_cfg():
         return np.asarray(Image.open(f).convert("RGB"), dtype=np.float32)
 
     uno = correr()
-    mudo = correr(cfg=3.0)                      # sin negativo: no debe cambiar nada
+    mudo = correr(cfg=3.0)                      # no negative: nothing should move
     tres = correr(cfg=3.0, negativo="blurry, deformed, watermark")
     assert np.array_equal(uno, mudo), "CFG without a negative prompt changed the image"
     d = float(np.abs(uno - tres).mean())

@@ -34,7 +34,7 @@ def recorte(
     ratio: float | None = None,
     minimo: int = 256,
 ) -> tuple[tuple[int, int, int, int], Image.Image, Image.Image]:
-    """Return (caja, imagen_recortada, mascara_recortada).
+    """Return (box, cropped image, cropped mask).
 
     `padding` grows the box by a fraction of its longest side, so the model gets
     context around the edit instead of a tight crop that it has to guess into.

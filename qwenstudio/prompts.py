@@ -24,7 +24,7 @@ and a snippet that disagrees with the reference photo fights it.
 
 from __future__ import annotations
 
-# categoria -> lista de (etiqueta corta, texto)
+# category -> list of (short label, text)
 BIBLIOTECA: dict[str, list[tuple[str, str]]] = {
 
     "Portrait": [
@@ -287,7 +287,7 @@ BASES: dict[str, list[tuple[str, str]]] = {
     ],
 }
 
-# caso de uso -> que categorias tienen sentido en ese camino
+# use case -> which categories make sense on that path
 RELEVANTES: dict[str, tuple[str, ...]] = {
     "blank": ("Portrait", "Full body", "Lighting", "Camera", "Setting", "Style and grade",
               "Lettering"),

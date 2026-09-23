@@ -181,7 +181,7 @@ def main() -> None:
         if input("\n  Continue anyway? [Y/n] ").strip().lower() in ("n", "no"):
             raise SystemExit("\n  Cancelled.")
 
-    # ---- torch segun backend ------------------------------------------
+    # ---- torch, by backend ---------------------------------------------
     print("\n" + "-" * 66)
     print("  Installing PyTorch")
     print("-" * 66)

@@ -33,10 +33,10 @@ CHROME = [
     "google-chrome", "chromium",
 ]
 
-ANCHO = 1343          # el ancho con el que se tomaron los primeros
+ANCHO = 1343          # the width the first ones were taken at
 ALTO = 931
 
-# nombre -> (enlace directo, alto)
+# name -> (deep link, height)
 PANTALLAS: dict[str, tuple[str, int]] = {
     "ui-portrait": ("?caso=portrait", ALTO),
     "ui-text":     ("?caso=sign", ALTO),
@@ -117,7 +117,8 @@ def _alto_de_pagina(enlace: str, chrome: str) -> int:
 
 
 def _recortar_al_pie(ruta: str) -> int:
-    """Deja solo el pie: la pagina entera mide tres mil pixeles y no se lee."""
+    """Keep the footer alone: the whole page is three thousand pixels tall
+    and nothing in it can be read at that size."""
     from PIL import Image
     import numpy as np
     with Image.open(ruta) as im:
