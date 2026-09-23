@@ -131,6 +131,59 @@ things survive. Ordered by what it costs against what it gives.
   each), along with a paragraph still saying enlarging was not offered, which it
   has been since nf4 took it from 754 seconds to 156.
 
+## The staged engine, and how far it got
+
+Every workflow the community shares loads `qwen_image_2.1_int8_convrot` and
+`qwen3vl_8b_int8_convrot`. Not one quantises the transformer to four bits, and
+the author of the most-shared one runs it on a **3080ti with 16 GB** -- less
+than this machine. So "int8 does not fit on 24 GB" was never a property of the
+card. It is a property of how this app loads.
+
+ComfyUI's graph gives the text encoder and the transformer **separate
+lifetimes**: a Load CLIP node encodes, hands over the conditioning and is
+freed; only then does the sampler touch the UNET. One diffusers pipeline holds
+both for the whole run, which is why int8 on both dies at the ceiling here.
+
+Four things were established, in order, each by a run rather than by reading:
+
+1. **Freeing late does not work.** Calling `encode_prompt` and then moving the
+   text encoder to the CPU throws inside bitsandbytes: by then
+   `from_pretrained` has put both models on the card, 20.25 GB allocated, and
+   there is no headroom left to move anything anywhere.
+2. **The split has to be at load time**, which diffusers allows:
+   `from_pretrained(..., transformer=None, vae=None)` gives a text-encoder-only
+   pipeline, and `text_encoder=None, tokenizer=None` gives the other half.
+   Verified: 368 `Linear8bitLt` modules, 9.3 GB, nothing else resident.
+3. **`__call__` will not take precomputed embeddings when there are reference
+   images.** It forwards `prompt_embeds` but never `image_pad_mask`, so it
+   raises "Pass `image_pad_mask` alongside `prompt_embeds`". The way round is
+   to hand the already-computed triple back through `encode_prompt` itself,
+   restored in a `finally`. That part works.
+4. **Both stages have to share one resize.** `__call__` resizes every condition
+   image with `calculate_dimensions(resolution^2, aspect)` rounded to multiples
+   of 32, and that same picture feeds the encoder and the VAE. Giving stage 1
+   the original and stage 2 the resized one made them disagree about how many
+   vision slots the encoder had reserved -- 5168 tokens against 8240 -- and the
+   transformer refused the mismatch. The graph does the same thing:
+   `LoadAndResizeImage` sits *before* the encode node, not inside it.
+
+**Where it stops today.** The int8 text encoder is 9.3 GB of weights, and
+encoding one 1024x1024 reference takes it to 20.14 GB before the transformer is
+even loaded: about 11 GB of attention over roughly eight thousand image tokens.
+That is the remaining blocker, and it is a narrow one -- the attention
+implementation, not the architecture. ComfyUI fits the same encoder and the
+same reference into 16 GB, so there is a memory-efficient path here that this
+app is not taking. Worth trying, in this order: an explicit
+`attn_implementation` on the text encoder, encoding the reference at a smaller
+budget than the output, and chunking the encode.
+
+**And what to keep even if the staging never lands:** the community numbers
+were right about steps and this repository's were not. The ComfyUI template's
+own note says "Qwen Image 2.1 official pipeline uses about 40-50 with euler",
+the model card's editing example passes `num_inference_steps=40`, and the
+shared workflow ships 25-27. The sweep here settled on 16 because it was run on
+a watch movement and a hand.
+
 ## Worth an experiment, not a promise
 
 - **An fp8 text encoder would cut the download, nothing else.** The encoder is
