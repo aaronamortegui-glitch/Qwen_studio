@@ -527,6 +527,43 @@ The line that matters is 12 GB. Above it the nf4 transformer stays resident and
 the card is doing arithmetic; below it, sequential offload moves layers across
 PCIe on every step of every image and the card is mostly waiting on the bus.
 
+**Why a hosted turbo demo is faster, counted rather than guessed.** The Viggle
+Space runs the same adapter this app carries, and it is not one thing:
+
+| | there | here | ours to take? |
+|---|---|---|---|
+| steps | 4 | 16 | only by giving up detail |
+| CFG | off | on, ×2 | the same trade |
+| offload | none | model | 27%, measured |
+| references | capped at 1 MP | were uncapped | **taken** |
+| GPU | large, resident | 24 GB laptop | no |
+
+Sixteen steps with the detail pass is thirty-two transformer passes against
+their four, before hardware enters into it. Two of those five rows are choices
+about quality, one is not available, and two were worth taking.
+
+The reference cap is taken and free: their code encodes every conditioning
+image at 1024-area, "as in distillation", and this app was passing whatever
+arrived. A 12 MP phone photo went into the attention sequence at twelve times
+the area the model was trained to see, and the cost was paid in memory rather
+than in quality. Capped, that same photo now peaks at 11.1 GB, the same as a
+1 MP one.
+
+The offload is a trade rather than a win: warm at 1 MP it is 26 s with the
+model offload and 19 s without, but the 1.6 GB of resident weights mean 2.25 MP
+with a reference no longer fits under the ceiling. It ships as a setting with
+both numbers on it, defaulting to the one that keeps the sizes.
+
+> **Sequential offload does not work with nf4 weights.** Reproduced at 0.5 MP
+> and 8 steps: `NotImplementedError: Cannot copy out of meta tensor`. accelerate
+> cannot move layer by layer what bitsandbytes has already quantised. The
+> profiles for cards under 12 GB had it, which means this app could not produce
+> a single image on them — and nobody saw it, because the only card here has 24
+> GB. They now use the model offload, and a stale `config.json` is corrected at
+> load with a line in the log rather than that message about meta tensors.
+> Whether the model offload is enough on an 8 GB card is untested: there is no
+> such card here to test it with.
+
 **ComfyUI is still faster for the same image**, and it is worth being precise
 about why, because the obvious answer turned out to be wrong. The PR that added
 Qwen-Image 2.1 to ComfyUI,

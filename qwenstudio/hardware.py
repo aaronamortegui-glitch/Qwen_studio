@@ -196,13 +196,25 @@ def detectar(destino_modelos: str | None = None) -> Perfil:
             nivel, dtype, cuant, off = "M", "bfloat16", "int4", "model"
             res, res_ref, res_multi = 2048, 1024, 1024
         elif vram >= 8:
-            nivel, dtype, cuant, off = "S", "bfloat16", "int4", "sequential"
+            # "model" y no "sequential": ver la nota de abajo
+            nivel, dtype, cuant, off = "S", "bfloat16", "int4", "model"
             res, res_ref, res_multi = 1536, 1024, 1024
         else:
-            nivel, dtype, cuant, off = "MINIMO", "bfloat16", "int4", "sequential"
+            nivel, dtype, cuant, off = "MINIMO", "bfloat16", "int4", "model"
             res, res_ref, res_multi = 1024, 1024, 1024
             avisos.append(f"Only {vram:.0f} GB of VRAM. It will run, but slowly, and a "
                           f"reference photo may not fit at all.")
+        # El offload secuencial NO funciona con pesos nf4. Reproducido el
+        # 2026-09-23 a 0.5 MP y 8 pasos: "NotImplementedError: Cannot copy out
+        # of meta tensor; no data!" -- accelerate no puede mover por capas unos
+        # modulos que bitsandbytes ya dejo cuantizados. Estos dos perfiles lo
+        # llevaban puesto, asi que las tarjetas de menos de 12 GB no generaban
+        # ni una imagen, y nadie lo vio porque aqui solo hay una de 24.
+        #
+        # "model" mueve componentes enteros en vez de capas y con nf4 si anda.
+        # En una tarjeta pequena sera justo -- el text encoder en nf4 son ~4.7
+        # GB -- pero justo y funcionando le gana a espacioso y roto. Sin medir:
+        # aqui no hay con que.
         if ram < 24:
             avisos.append(f"With {ram:.0f} GB of RAM, offloading to system memory is "
                           f"tight; 32 GB or more is comfortable.")

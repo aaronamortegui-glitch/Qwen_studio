@@ -513,6 +513,26 @@ class Motor:
                 f"the HDR decoder could not be loaded ({type(e).__name__}), using the stock one"
             return "stock"
 
+    def usar_offload(self, cual: str) -> str:
+        """Where the weights live between calls. Swapping costs a reload.
+
+        Measured warm at 1 MP: "model" 26 s, "none" 19 s. The 27% is paid for
+        in 1.6 GB of resident weights, which is why it is not simply the
+        default: without the offload, 2.25 MP with a reference no longer fits
+        under the allocator ceiling and comes back as an error instead of an
+        image.
+        """
+        cual = cual if cual in ("model", "none", "sequential") else "model"
+        if cual == "sequential" and self.cfg.get("cuantizacion") in ("int4", "int8"):
+            cual = "model"
+        if self.cfg.get("offload") == cual:
+            return cual
+        self.cfg["offload"] = cual
+        if self.pipe is not None:
+            self.liberar()
+            self.cargar()
+        return cual
+
     def usar_vae(self, cual: str) -> str:
         """Pick the decoder. Returns the one actually in use.
 
@@ -551,6 +571,16 @@ class Motor:
             from diffusers import QwenImage21Pipeline
 
             self._poner_techo_vram()
+
+            # Un config.json de antes puede traer todavia "sequential", y con
+            # nf4 eso no arranca: accelerate no mueve por capas lo que
+            # bitsandbytes ya cuantizo. Se corrige aqui en vez de fallar con
+            # un mensaje sobre tensores meta que no le dice nada a nadie.
+            if (self.cfg.get("offload") == "sequential"
+                    and self.cfg.get("cuantizacion") in ("int4", "int8")):
+                print("  [offload] sequential no funciona con pesos cuantizados; "
+                      "se usa 'model'", flush=True)
+                self.cfg["offload"] = "model"
 
             dtype = {"bfloat16": torch.bfloat16,
                      "float16": torch.float16,

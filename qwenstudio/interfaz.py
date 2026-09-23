@@ -127,6 +127,17 @@ input,textarea,select{width:100%;padding:12px 14px;border:1px solid var(--line);
   border-radius:var(--r-s);background:var(--sf);color:var(--on-sf);font:inherit;
   transition:border-color .15s,box-shadow .15s}
 textarea{min-height:92px;resize:vertical;line-height:1.55}
+/* El turbo vive al lado de Generate y no dentro de los ajustes: se enciende
+   para una prueba y se apaga para el resultado, asi que se decide aqui. */
+.turbo{display:flex;align-items:center;gap:10px;width:100%;margin-bottom:10px;
+  padding:10px 12px;border:1px solid var(--line);border-radius:12px;
+  background:var(--sf);color:var(--on-sf);text-align:left;cursor:pointer}
+.turbo:hover{border-color:var(--ac)}
+.turbo[aria-pressed=true]{border-color:var(--ac);background:var(--ac);color:var(--on-ac)}
+.turbo .rayo{font-size:17px;line-height:1;filter:grayscale(1);opacity:.55}
+.turbo[aria-pressed=true] .rayo{filter:none;opacity:1}
+.turbo b{display:block;font-size:13px}
+.turbo small{display:block;font-size:11.5px;opacity:.75}
 #zonaNeg{margin-top:10px}
 #zonaNeg .lblNeg{display:block;margin-bottom:6px;font-size:12px;font-weight:600;
   letter-spacing:.04em;text-transform:uppercase;color:var(--on-sf-var)}
@@ -623,6 +634,10 @@ if(t!=='auto')document.documentElement.setAttribute('data-theme',t);})();</scrip
     </details>
 
     <div class="accion">
+      <button type="button" class="turbo" id="turbo" aria-pressed="false" hidden>
+        <span class="rayo" aria-hidden="true">&#9889;</span>
+        <span><b>Turbo</b><small id="turboNota">4 steps, no detail pass</small></span>
+      </button>
       <div class="accionInfo">
         <span id="accTam"></span>
         <span class="sep" id="accSep" hidden>&middot;</span>
@@ -1161,6 +1176,30 @@ function medida(){
     `${Math.round(Math.sqrt(area*r)/32)*32} × ${Math.round(Math.sqrt(area/r)/32)*32}${nota}`;
 }
 $('#mp').onchange=()=>{medida();estimar()};
+
+/* ---------- el interruptor de turbo ----------
+   Un clic cambia tres cosas a la vez -- el adaptador, los pasos y el detail
+   pass -- porque son una sola decision: el modelo destilado no admite CFG, y
+   correr los dos paga dos veces por un segundo paso que nunca aprendio a usar.
+   Solo aparece si el archivo esta: un boton que no hace nada es peor que
+   ninguno. */
+function pintarTurbo(){
+  const b=$('#turbo'); if(!b) return;
+  const hay = !!TURBO_HAY;
+  b.hidden = !hay;
+  if(!hay) return;
+  b.setAttribute('aria-pressed', AJ.turbo ? 'true' : 'false');
+  $('#turboNota').textContent = AJ.turbo
+    ? `on · ${AJ.turbo_pasos||4} steps, detail pass off`
+    : `${AJ.turbo_pasos||4} steps, no detail pass`;
+  estimar();
+}
+$('#turbo').onclick=()=>{
+  AJ.turbo = !AJ.turbo;
+  fetch('/api/ajustes',{method:'POST',body:JSON.stringify({turbo:AJ.turbo})});
+  pintarTurbo();
+  const c=$('#aj_turbo'); if(c) c.checked = AJ.turbo;   // el panel, si esta abierto
+};
 $('#variants').oninput=estimar;
 $('#steps').addEventListener('input', estimar);
 $('#steps').oninput=()=>$('#vSteps').textContent=$('#steps').value;
@@ -1215,6 +1254,7 @@ let pesosListos=false;
 // el techo del perfil, para poder decir el recorte antes de generar en vez de
 // aplicarlo en silencio. Hasta el primer tick vale 1024, que es el suelo.
 let PERFIL={res_max:1024, res_max_ref:1024};
+let TURBO_HAY=false;
 async function tick(){
   let e;
   try{ e=await (await fetch('/api/estado')).json() }
@@ -1227,8 +1267,11 @@ async function tick(){
     $('#panel').hidden=true; return;
   }
   const p=e.perfil, m=e.motor;
+  const habiaTurbo=TURBO_HAY;
   if(p.res_max && p.res_max!==PERFIL.res_max){ PERFIL=p; medida() }
   else PERFIL=p;
+  TURBO_HAY = !!e.turbo_disponible;
+  if(TURBO_HAY!==habiaTurbo) pintarTurbo();
   $('#chipProfile').textContent=`${p.acelerador} · ${p.vram_gb} GB · ${p.dtype}`;
 
   if(m.error)            ponerEstado('err','model failed');
@@ -1897,9 +1940,13 @@ function enPalabras(sg){
 }
 function estimar(){
   if(!$('#accTam')) return;
-  const mp=+$('#mp').value, pasos=+$('#steps').value;
+  const v=loQueVaACorrer();
+  const mp=+$('#mp').value;
   const n=Math.max(1,+$('#variants').value||1);
-  const sg=baseSegundos(mp, pasos)*factorMaquina()*n;
+  // el detail pass corre el paso positivo y el negativo en el mismo lote:
+  // medido 29 s contra 52 s a 16 pasos, de ahi el 1.8
+  const cfgX = (v.cfg>1 && v.negativo) ? 1.8 : 1;
+  const sg=baseSegundos(mp, v.pasos)*factorMaquina()*n*cfgX;
   const tam=$('#medida').textContent.trim();
   $('#accTam').innerHTML = tam ? `<b>${tam}</b>` : '';
   $('#accTiempo').textContent = pesosListos
@@ -1936,10 +1983,23 @@ $('#parar').onclick=async()=>{
   try{ await fetch('/api/cancelar',{method:'POST'}); }catch(_){}
 };
 
-const comunes=()=>({prompt:$('#prompt').value, steps:+$('#steps').value, seed:+$('#seed').value,
-  variantes:+$('#variants').value, megapixeles:+$('#mp').value,
-  lora:$('#lora').value||null, fuerza_lora:+$('#loraw').value,
-  cfg:+(AJ.cfg||1), negativo:(+(AJ.cfg||1)>1 ? $('#negativo').value : '')});
+// El turbo manda sobre los pasos y sobre el detail pass, asi que hay un solo
+// sitio que decide los tres y lo usan tanto la peticion como la estimacion.
+// Mandar cfg 3 y que el servidor lo baje a 1 funcionaria, pero el numero de
+// arriba mentiria, que es lo que esta app lleva toda la sesion evitando.
+function loQueVaACorrer(){
+  if(AJ.turbo && TURBO_HAY) return {pasos:+(AJ.turbo_pasos||4), cfg:1, negativo:''};
+  const c = +(AJ.cfg||1);
+  return {pasos:+$('#steps').value, cfg:c,
+          negativo:(c>1 ? ($('#negativo')||{}).value||'' : '')};
+}
+const comunes=()=>{
+  const v = loQueVaACorrer();
+  return {prompt:$('#prompt').value, steps:v.pasos, seed:+$('#seed').value,
+    variantes:+$('#variants').value, megapixeles:+$('#mp').value,
+    lora:$('#lora').value||null, fuerza_lora:+$('#loraw').value,
+    cfg:v.cfg, negativo:v.negativo};
+};
 
 // lo que se deja fuera casi nunca cambia entre imagenes, asi que se recuerda
 document.addEventListener('change', e=>{
@@ -2130,6 +2190,8 @@ const OPCIONES=[
   'Before each image of a batch, wait until the card drops below this. 0 turns it off. Not protection from damage \u2014 the firmware already enforces its own limit \u2014 but a long unattended run finishes sooner if it is not being throttled the whole way.'],
  ['cfg','num','Detail pass (CFG)',
   'Above 1 the model runs a second pass against what you say to keep out, which costs about 80% more time. Measured at 16 steps: on a watch movement it went from a gold blur to resolved jewels and screws, but on a portrait it invented a second person the prompt never asked for, and a letterpress poster came out flatter. Reach for it when there is fine detail to resolve and you can name what you do not want. 3 is the useful value; at 1 there is no second pass and the box below the prompt is hidden.'],
+ ['offload','offload','Where the weights live',
+  'Measured warm at 1 MP: with the model offload 26s, with none 19s — 27% faster, because nothing crosses PCIe between calls. It costs 1.6 GB of resident weights, and that is not free: with none, 2.25 MP with a reference photo no longer fits under the VRAM ceiling and comes back as an error instead of an image. Speed against size. Switching costs a reload, about thirty seconds.'],
  ['vae','vae','Decoder',
   'Measured on the same seed: the HDR decoder gives +19% saturation and +27% edge energy with contrast and exposure unchanged. It interprets rather than reproduces — SSIM drops from 0.958 to 0.944 — so switch to stock for a faithful reproduction. Needs modelos/vae_hdr.safetensors.'],
  ['turbo','check','Turbo adapter (draft speed)',
@@ -2156,6 +2218,10 @@ function pintarAjustes(){
     else if(tipo==='vae'){ ctrl=`<select id="aj_${k}">
       <option value="hdr"${AJ[k]==='hdr'?' selected':''}>HDR</option>
       <option value="stock"${AJ[k]==='stock'?' selected':''}>Stock</option></select>` }
+    else if(tipo==='offload'){ ctrl=`<select id="aj_${k}">
+      <option value=""${!AJ[k]?' selected':''}>Profile default</option>
+      <option value="model"${AJ[k]==='model'?' selected':''}>Model offload · bigger</option>
+      <option value="none"${AJ[k]==='none'?' selected':''}>Resident · faster</option></select>` }
     else if(tipo==='muestreo'){ ctrl=`<select id="aj_${k}">
       <option value="base"${AJ[k]==='base'?' selected':''}>Base</option>
       <option value="ancestral"${AJ[k]==='ancestral'?' selected':''}>Ancestral</option></select>` }
@@ -2167,12 +2233,13 @@ function pintarAjustes(){
     const el=row.querySelector('#aj_'+k);
     el.onchange=()=>{
       const v = tipo==='check' ? el.checked
-              : (tipo==='vae'||tipo==='muestreo') ? el.value : +el.value;
+              : (tipo==='vae'||tipo==='muestreo'||tipo==='offload') ? el.value : +el.value;
       AJ[k]=v;
       fetch('/api/ajustes',{method:'POST',body:JSON.stringify({[k]:v})});
       if(k==='steps') $('#steps').value=v, $('#vSteps').textContent=v;
       if(k==='megapixeles') $('#mp').value=v, medida();
       if(k==='cfg') zonaNegativo();
+      if(k==='turbo') pintarTurbo();
     };
   });
 }
@@ -2230,7 +2297,7 @@ async function cargarEjemplo(k){
 }
 
 fetch('/api/ajustes').then(r=>r.json()).then(a=>{
-  AJ=a; pintarAjustes(); zonaNegativo();
+  AJ=a; pintarAjustes(); zonaNegativo(); pintarTurbo();
   $('#steps').value=a.steps; $('#vSteps').textContent=a.steps;
   $('#mp').value=a.megapixeles; medida();
 });

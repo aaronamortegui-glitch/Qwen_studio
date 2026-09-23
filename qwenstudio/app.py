@@ -70,7 +70,21 @@ AJUSTES_DEF = {
     # it keeps a face, but with the two sheets side by side the base model was
     # the better picture, so speed is something you reach for while iterating
     # rather than what you get without asking.
+    # Donde viven los pesos entre llamadas. "" deja mandar al perfil.
+    # Medido el 2026-09-23 a 1 MP en caliente: con offload de modelo 26 s, sin
+    # offload 19 s -- un 27% -- por 1.6 GB mas residentes. No sale gratis: sin
+    # offload, 2.25 MP con una referencia ya no cabe bajo el techo y devuelve
+    # un error. Velocidad contra tamano, y el que conserva el tamano manda.
+    "offload": "",
     "turbo": False,
+    # Pasos cuando el turbo esta puesto. Su autor recomienda 4 y su demo acepta
+    # de 3 a 8. Medido aqui el 2026-09-22: a 4 devuelve manos fantasma, con
+    # nuestro shift_terminal y con el suyo, y a 8 sale limpio y sigue siendo un
+    # tercio mas rapido. Su propia ficha lo admite -- "multi-reference
+    # composition, face swaps and identity-document edits can produce
+    # duplicated or ghosted figures". Se deja en 4 porque es lo que el modelo
+    # pide y el interruptor existe para ir rapido; 8 esta a un numero.
+    "turbo_pasos": 4,
     # Detail pass, on. Above 1 the pipeline runs a second forward pass against
     # the negative prompt, which costs ~80% more time and buys detail that is
     # not there otherwise: a watch movement went from a gold blur to resolved
@@ -197,6 +211,26 @@ def _mensaje(e: Exception) -> str:
     return f"{nombre}: {e}"
 
 
+def _cargar_motor() -> str:
+    """Make sure the model is up. Returns "" or what went wrong.
+
+    `motor.cargar()` returns at once when another thread is already loading, so
+    a second request arriving during the first load used to be told "could not
+    load the model" -- which was false, and which anyone gets by pressing
+    Generate twice while the weights come up. Waiting is the honest answer.
+    """
+    usar("imagen")
+    if motor.listo:
+        return ""
+    motor.cargar()
+    limite = time.time() + 300
+    while motor.cargando and time.time() < limite:
+        time.sleep(0.4)
+    if motor.listo:
+        return ""
+    return motor.error or "could not load the model"
+
+
 def _turbo(b: dict) -> bool:
     """Whether the engine adapter runs for this request.
 
@@ -210,6 +244,22 @@ def _turbo(b: dict) -> bool:
     return bool(quiere) and motor.turbo_disponible()
 
 
+def _cfg(b: dict) -> tuple[float, str]:
+    """The detail pass, and whether turbo is allowed to leave it on.
+
+    It is not: the turbo adapter is distilled without classifier-free guidance
+    and its own card says to keep it off. Running both would pay twice for a
+    second pass the student was never taught to use, which is the worst of the
+    two worlds -- slower than turbo and worse than the base model.
+    """
+    if _turbo(b):
+        return 1.0, ""
+    a = leer_ajustes()
+    cfg_v = float(b.get("cfg", a.get("cfg", 1)))
+    neg = str(b.get("negativo", a.get("negativo", "")))
+    return cfg_v, neg
+
+
 def _pasos(b: dict) -> int:
     """The step count this request actually runs at.
 
@@ -217,7 +267,7 @@ def _pasos(b: dict) -> int:
     4 it advertises, so when it is on it brings its own number.
     """
     if _turbo(b):
-        return motor.TURBO_PASOS
+        return int(leer_ajustes().get("turbo_pasos", motor.TURBO_PASOS))
     return int(b.get("steps", leer_ajustes()["steps"]))
 
 
@@ -227,6 +277,29 @@ def _img_de_data_url(data_url: str):
     if not m:
         raise ValueError("that image could not be read")
     return Image.open(io.BytesIO(base64.b64decode(m.group(1)))).convert("RGB")
+
+
+# Lo que el modelo fue destilado para ver. El Space de Viggle lo dice sin
+# rodeos -- "condition images are encoded at 1024-area, as in distillation" --
+# y es la razon de que a ellos les quepan tres referencias.
+#
+# Aqui no se encogia ninguna: una foto de movil de 12 MP entraba entera en la
+# secuencia de atencion, doce veces lo que el modelo espera, y el coste no lo
+# pagaba la calidad sino la memoria. Lo que se recorta es la REFERENCIA, nunca
+# la imagen que se edita: esa define el tamano de salida.
+REF_MP = 1.0
+
+
+def _referencia(data_url: str, tope_mp: float = REF_MP):
+    """A conditioning image, capped at the area the model was trained on."""
+    from PIL import Image
+    img = _img_de_data_url(data_url)
+    area = img.width * img.height / 1e6
+    if tope_mp and area > tope_mp:
+        e = (tope_mp / area) ** 0.5
+        img = img.resize((max(32, round(img.width * e / 32) * 32),
+                          max(32, round(img.height * e / 32) * 32)), Image.LANCZOS)
+    return img
 
 
 # lo que se guarda dentro del archivo, y el orden en que se lee
@@ -339,6 +412,9 @@ class Handler(BaseHTTPRequestHandler):
                                                "cuantizacion", "offload", "res_max", "res_max_ref",
                                                "res_max_multi", "vram_limite_gb",
                                                "vram_gb", "ram_gb")},
+                # el boton de turbo solo aparece si el archivo esta: uno que
+                # no hace nada es peor que ninguno
+                "turbo_disponible": motor.turbo_disponible(),
                 "avisos_perfil": cfg.get("avisos", []),
                 "pesos_listos": M.pesos_completos(cfg["ruta_modelos"]),
                 "descarga": {"activa": d.activa, "gb": round(d.bytes / 2**30, 2),
@@ -625,8 +701,8 @@ class Handler(BaseHTTPRequestHandler):
             return {"error": "give me a list of prompts"}
         prompts = prompts[:64]
 
-        personas = [_img_de_data_url(d) for d in b.get("personas", [])]
-        escena = _img_de_data_url(b["escena"]) if b.get("escena") else None
+        personas = [_referencia(d) for d in b.get("personas", [])]
+        escena = _referencia(b["escena"]) if b.get("escena") else None
         pose = None
         if b.get("pose_lib"):
             r = P.ruta(b["pose_lib"])
@@ -640,11 +716,9 @@ class Handler(BaseHTTPRequestHandler):
         base = int(b.get("seed", 0)) or int(time.time()) % 100000
         transp = bool(b.get("transparencia"))
 
-        usar("imagen")
-        if not motor.listo:
-            motor.cargar()
-            if not motor.listo:
-                return {"error": motor.error or "could not load the model"}
+        fallo = _cargar_motor()
+        if fallo:
+            return {"error": fallo}
         motor.ajustar_muestreo("turbo" if _turbo(b) else
                                str(b.get("muestreo") or leer_ajustes()["muestreo"]))
 
@@ -664,8 +738,7 @@ class Handler(BaseHTTPRequestHandler):
                 img, armado = motor.generar(personas=personas, pose=pose, escena=escena,
                                             texto=str(texto), res=res, ancho=ancho,
                                             alto=alto, transparencia=transp, steps=steps,
-                                            cfg=float(b.get("cfg", 1.0)),
-                                            negativo=str(b.get("negativo", "")),
+                                            cfg=_cfg(b)[0], negativo=_cfg(b)[1],
                                             seed=base + i)
                 hechas.append({"archivo": "/salidas/" + _guardar(img, "lote", {
                                    "prompt": armado, "caso": "batch", "seed": base + i,
@@ -791,11 +864,9 @@ class Handler(BaseHTTPRequestHandler):
         comes from the input, so nothing is stretched on the way out.
         """
         import math
-        usar("imagen")
-        if not motor.listo:
-            motor.cargar()
-            if not motor.listo:
-                return None, (motor.error or "could not load the model")
+        fallo = _cargar_motor()
+        if fallo:
+            return None, fallo
         motor.ajustar_muestreo("turbo" if _turbo(b) else
                                str(b.get("muestreo") or leer_ajustes()["muestreo"]))
 
@@ -804,6 +875,7 @@ class Handler(BaseHTTPRequestHandler):
         ah = max(256, min(tope, round(img.height * escala / 32) * 32))
 
         with _lock:
+            motor.usar_offload(leer_ajustes().get("offload") or cfg["offload"])
             motor.usar_vae(b.get("vae") or leer_ajustes().get("vae", "hdr"))
             motor.aplicar_lora(os.path.join(LORAS, lora) if lora else None,
                                float(fuerza), turbo=_turbo(b))
@@ -852,18 +924,17 @@ class Handler(BaseHTTPRequestHandler):
         aw = max(256, round(math.sqrt(area * ratio) / 32) * 32)
         ah = max(256, round(math.sqrt(area / ratio) / 32) * 32)
 
-        usar("imagen")
-        if not motor.listo:
-            motor.cargar()
-            if not motor.listo:
-                return None, (motor.error or "could not load the model")
+        fallo = _cargar_motor()
+        if fallo:
+            return None, fallo
         motor.ajustar_muestreo("turbo" if _turbo(b) else
                                str(b.get("muestreo") or leer_ajustes()["muestreo"]))
 
-        refs = [_img_de_data_url(d) for d in b.get("referencias", [])]
+        refs = [_referencia(d) for d in b.get("referencias", [])]
         base = int(b.get("seed", 0)) or int(time.time()) % 100000
         salidas, prompt = [], texto
         with _lock:
+            motor.usar_offload(leer_ajustes().get("offload") or cfg["offload"])
             motor.usar_vae(b.get("vae") or leer_ajustes().get("vae", "hdr"))
             motor.aplicar_lora(os.path.join(LORAS, lora) if lora else None,
                                float(fuerza), turbo=_turbo(b))
@@ -940,7 +1011,7 @@ class Handler(BaseHTTPRequestHandler):
         if not ref:
             return {"error": "add the picture whose style you want"}
         t0 = time.time()
-        estilo_img = _img_de_data_url(ref)
+        estilo_img = _referencia(ref)
 
         # Medido: pedir "el estilo de <image2>" no mueve casi nada; nombrar la
         # tecnica si. Asi que primero se lee el cuadro con el VLM y lo que sale
@@ -1044,7 +1115,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def _generar(self, b):
         from PIL import Image
-        personas = [_img_de_data_url(d) for d in b.get("personas", [])]
+        personas = [_referencia(d) for d in b.get("personas", [])]
         pose = None
         if b.get("pose_lib"):
             ruta = P.ruta(b["pose_lib"])
@@ -1053,9 +1124,9 @@ class Handler(BaseHTTPRequestHandler):
             f = os.path.join(ENTRADAS, os.path.basename(b["pose_url"]))
             pose = Image.open(f).convert("RGB") if os.path.exists(f) else None
         elif b.get("pose"):
-            pose = _img_de_data_url(b["pose"])
-        escena = _img_de_data_url(b["escena"]) if b.get("escena") else None
-        estilo = _img_de_data_url(b["estilo"]) if b.get("estilo") else None
+            pose = _referencia(b["pose"])
+        escena = _referencia(b["escena"]) if b.get("escena") else None
+        estilo = _referencia(b["estilo"]) if b.get("estilo") else None
 
         steps = _pasos(b)
         base = int(b.get("seed", 0)) or int(time.time()) % 100000
@@ -1096,16 +1167,15 @@ class Handler(BaseHTTPRequestHandler):
         if descripcion:
             texto = (texto.strip() + " " + descripcion).strip()
 
-        usar("imagen")
-        if not motor.listo:
-            motor.cargar()
-            if not motor.listo:
-                return {"error": motor.error or "could not load the model"}
+        fallo = _cargar_motor()
+        if fallo:
+            return {"error": fallo}
         motor.ajustar_muestreo("turbo" if _turbo(b) else
                                str(b.get("muestreo") or leer_ajustes()["muestreo"]))
 
         hechas, prompt = [], ""
         with _lock:                # una generacion a la vez: la VRAM no da para mas
+            motor.usar_offload(leer_ajustes().get("offload") or cfg["offload"])
             motor.usar_vae(b.get("vae") or leer_ajustes().get("vae", "stock"))
             motor.aplicar_lora(os.path.join(LORAS, b["lora"]) if b.get("lora") else None,
                                float(b.get("fuerza_lora", 1.0)),
@@ -1116,8 +1186,7 @@ class Handler(BaseHTTPRequestHandler):
                                             texto=texto, res=res,
                                             ancho=ancho, alto=alto, transparencia=transp,
                                             steps=steps, seed=base + k,
-                                            cfg=float(b.get("cfg", 1.0)),
-                                            negativo=str(b.get("negativo", "")))
+                                            cfg=_cfg(b)[0], negativo=_cfg(b)[1])
                 receta = {"prompt": prompt, "caso": b.get("caso", "generate"),
                           "seed": base + k, "steps": steps, "vae": motor.vae_actual,
                           "tam": f"{img.width}x{img.height}", "ratio": b.get("ratio"),
