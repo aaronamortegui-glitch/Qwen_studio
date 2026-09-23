@@ -1,17 +1,18 @@
-"""Deteccion de hardware y eleccion del perfil de ejecucion.
+"""Hardware detection and the choice of an execution profile.
 
-No depende de torch: corre antes de instalar nada, para poder decidir QUE
-instalar. Usa solo la stdlib mas utilidades del sistema (nvidia-smi, sysctl,
-wmic) y, si torch ya esta disponible, lo aprovecha para afinar.
+It does not depend on torch: it runs before anything is installed, so it can
+decide WHAT to install. It uses only the standard library plus system tools
+(nvidia-smi, sysctl, wmic) and, when torch is already available, uses it to
+refine the answer.
 
-El perfil decide cuatro cosas:
-    backend      cuda | mps | cpu
-    dtype        bfloat16 | float16 | float32
-    cuantizacion none | int8 | int4        (solo CUDA: bitsandbytes no va en MPS)
-    offload      none | model | sequential
+The profile decides four things:
+    backend        cuda | mps | cpu
+    dtype          bfloat16 | float16 | float32
+    quantisation   none | int8 | int4   (CUDA only: bitsandbytes has no MPS)
+    offload        none | model | sequential
 
-La descarga de pesos es la misma en todos los perfiles (~33 GB del repo
-diffusers de Qwen). Lo que cambia es como se cargan.
+The weight download is the same in every profile (~33 GB from Qwen's diffusers
+repo). What changes is how they are loaded.
 """
 
 from __future__ import annotations
@@ -118,10 +119,10 @@ class Perfil:
         return json.dumps(asdict(self), indent=2, ensure_ascii=False)
 
 
-# El transformer son 7B y el text encoder Qwen3-VL 8B. En bf16 los dos juntos
-# pasan de 30 GB, asi que salvo en tarjetas muy grandes siempre hay offload o
-# cuantizacion de por medio.
-DESCARGA_GB = 34      # 31 el modelo + ~0.8 los auxiliares
+# The transformer is 7B and the text encoder is Qwen3-VL 8B. In bf16 the two
+# together pass 30 GB, so on anything but a very large card there is always
+# either offloading or quantisation in the way.
+DESCARGA_GB = 34      # 31 for the model + ~0.8 for the auxiliaries
 
 
 def detectar(destino_modelos: str | None = None) -> Perfil:
@@ -142,9 +143,9 @@ def detectar(destino_modelos: str | None = None) -> Perfil:
     elif es_arm_mac:
         backend = "mps"
         acelerador = chip or "Apple Silicon"
-        # en Apple Silicon la memoria es unificada: la GPU usa la RAM del sistema
+        # on Apple Silicon the memory is unified: the GPU uses system RAM
         vram = ram
-        torch_index = ""     # el wheel por defecto de PyPI ya trae MPS
+        torch_index = ""     # the default PyPI wheel already carries MPS
         avisos.append("Unified memory: the GPU shares system RAM, so close heavy "
                       "applications before generating.")
     else:
@@ -153,40 +154,41 @@ def detectar(destino_modelos: str | None = None) -> Perfil:
         vram = 0.0
         torch_index = ""
 
-    # --- eleccion de nivel -------------------------------------------------
-    # La tabla sale de lo medido el 2026-09-22 en una RTX 5090 Laptop (24 GB),
-    # retrato CON foto de referencia, 30 pasos, misma semilla:
+    # --- choosing the level ------------------------------------------------
+    # The table comes from what was measured on 2026-09-22 on an RTX 5090
+    # Laptop (24 GB), a portrait WITH a reference photo, 30 steps, same seed:
     #
-    #   bf16          1 MP   73 s  23.9 GB  |  4 MP  no termina, pagina
-    #   nf4 solo TE   1 MP  112 s  19.0 GB  |  cuantizar a medias es lo peor
-    #   nf4 ambos     1 MP   56 s  12.9 GB  |  4 MP  467 s, 24.0 GB de pico
-    #   int8 ambos    1 MP  pagina 24.1 GB  |  bnb int8 no es el Q8 de GGUF
+    #   bf16           1 MP   73 s  23.9 GB  |  4 MP  never finishes, pages
+    #   nf4 encoder    1 MP  112 s  19.0 GB  |  quantising halfway is worst
+    #   nf4 both       1 MP   56 s  12.9 GB  |  4 MP  467 s, 24.0 GB peak
+    #   int8 both      1 MP  pages  24.1 GB  |  bnb int8 is not GGUF's Q8
     #
-    # Re-medido el 2026-09-23 con nf4 y el tiling del VAE puesto, muestreando
-    # nvidia-smi cada 0.2 s. Los picos cambiaron tanto que la tabla anterior ya
-    # no describia esta app:
+    # Re-measured on 2026-09-23 with nf4 and VAE tiling on, sampling nvidia-smi
+    # every 0.2 s. The peaks moved so far that the older table no longer
+    # described this app:
     #
-    #   generar 1 MP   26 s    7.3 GB      generar 2 MP   51 s   7.3 GB
-    #   generar 4 MP  122 s    7.5 GB      editar  1 MP   26 s   9.2 GB
-    #   reescalar a 2K (la imagen es su propia referencia)  156 s  18.2 GB
+    #   generate 1 MP   26 s   7.3 GB      generate 2 MP   51 s   7.3 GB
+    #   generate 4 MP  122 s   7.5 GB      edit      1 MP   26 s   9.2 GB
+    #   rescale to 2K (the picture is its own reference)  156 s  18.2 GB
     #
-    # Generar a 2K cuesta 7.5 GB y editar a 2K cuesta 18.2. Son dos techos
-    # distintos y antes habia uno solo, que es como se prometio 2048 a tarjetas
-    # que luego paginaban en cuanto se les ponia una foto delante.
+    # Generating at 2K costs 7.5 GB and editing at 2K costs 18.2. Those are two
+    # different ceilings and there used to be one, which is how 2048 came to be
+    # promised to cards that paged the moment a photo went in front of them.
     #
-    # Lo que este archivo decia antes se midio sin referencia y prometia 2048
-    # en 24 GB. Con referencia eso no se sostiene. Y al revés de lo que ponia:
-    # en 24 GB nf4 no es el modo pobre, es el bueno -- mas rapido que bf16,
-    # la mitad de memoria, unica via a 2K, y a la misma semilla la calidad no
-    # se distingue. bf16 solo gana si los pesos caben enteros.
+    # What this file said before was measured without a reference and promised
+    # 2048 on 24 GB. With a reference that does not hold. And the opposite of
+    # what it claimed: on 24 GB nf4 is not the poor mode but the good one --
+    # faster than bf16, half the memory, the only way to 2K, and at the same
+    # seed indistinguishable by eye. bf16 only wins when the weights fit whole.
     if backend == "cuda":
-        # Tres tamanos y no uno: solo, con una referencia delante, y con
-        # varias. Medido en 24 GB -- 7.5 GB generando a 2K, 18.2 reescalando,
-        # 19.2 en un retrato, y dos referencias a 2K se llevaron el kernel.
-        # Los de una y varias van por debajo de lo que sobrevivio, no en el
-        # borde, porque el borde ya demostro lo que cuesta.
+        # Three sizes and not one: alone, with one reference in front of it,
+        # and with several. Measured on 24 GB -- 7.5 GB generating at 2K, 18.2
+        # rescaling, 19.2 on a portrait, and two references at 2K took the
+        # kernel down. The one- and several-reference numbers sit below what
+        # survived rather than at the edge, because the edge has already shown
+        # what it costs.
         if vram >= 40:
-            # aqui si caben los 29.6 GB de pesos sin trocear
+            # here the 29.6 GB of weights do fit without being broken up
             nivel, dtype, cuant, off = "XL", "bfloat16", "none", "none"
             res, res_ref, res_multi = 2048, 2048, 1536
         elif vram >= 20:
@@ -196,7 +198,7 @@ def detectar(destino_modelos: str | None = None) -> Perfil:
             nivel, dtype, cuant, off = "M", "bfloat16", "int4", "model"
             res, res_ref, res_multi = 2048, 1024, 1024
         elif vram >= 8:
-            # "model" y no "sequential": ver la nota de abajo
+            # "model" and not "sequential": see the note below
             nivel, dtype, cuant, off = "S", "bfloat16", "int4", "model"
             res, res_ref, res_multi = 1536, 1024, 1024
         else:
@@ -204,24 +206,24 @@ def detectar(destino_modelos: str | None = None) -> Perfil:
             res, res_ref, res_multi = 1024, 1024, 1024
             avisos.append(f"Only {vram:.0f} GB of VRAM. It will run, but slowly, and a "
                           f"reference photo may not fit at all.")
-        # El offload secuencial NO funciona con pesos nf4. Reproducido el
-        # 2026-09-23 a 0.5 MP y 8 pasos: "NotImplementedError: Cannot copy out
-        # of meta tensor; no data!" -- accelerate no puede mover por capas unos
-        # modulos que bitsandbytes ya dejo cuantizados. Estos dos perfiles lo
-        # llevaban puesto, asi que las tarjetas de menos de 12 GB no generaban
-        # ni una imagen, y nadie lo vio porque aqui solo hay una de 24.
+        # Sequential offload does NOT work with nf4 weights. Reproduced on
+        # 2026-09-23 at 0.5 MP and 8 steps: "NotImplementedError: Cannot copy
+        # out of meta tensor; no data!" -- accelerate cannot move layer by
+        # layer what bitsandbytes has already quantised. These two profiles
+        # carried it, so cards under 12 GB could not produce a single image,
+        # and nobody saw it because the only card here has 24.
         #
-        # "model" mueve componentes enteros en vez de capas y con nf4 si anda.
-        # En una tarjeta pequena sera justo -- el text encoder en nf4 son ~4.7
-        # GB -- pero justo y funcionando le gana a espacioso y roto. Sin medir:
-        # aqui no hay con que.
+        # "model" moves whole components rather than layers and does work with
+        # nf4. On a small card it will be tight -- the text encoder in nf4 is
+        # ~4.7 GB -- but tight and working beats roomy and broken. Unmeasured:
+        # there is nothing here to measure it on.
         if ram < 24:
             avisos.append(f"With {ram:.0f} GB of RAM, offloading to system memory is "
                           f"tight; 32 GB or more is comfortable.")
 
     elif backend == "mps":
-        # bitsandbytes no soporta MPS, asi que en Mac no hay cuantizacion:
-        # el ajuste es dtype y offload.
+        # bitsandbytes has no MPS support, so on a Mac there is no
+        # quantisation: the levers are dtype and offload.
         if vram >= 64:
             nivel, dtype, cuant, off = "XL", "bfloat16", "none", "none"
             res, res_ref, res_multi = 2048, 2048, 2048
@@ -251,26 +253,26 @@ def detectar(destino_modelos: str | None = None) -> Perfil:
         avisos.append(f"{disco:.0f} GB free; the weights need ~{DESCARGA_GB} GB, plus "
                       f"room to work.")
 
-    # medido: cuantizar solo uno de los dos es peor que no cuantizar ninguno
-    # (nf4 solo en el text encoder dio 112 s contra 73 s en bf16), asi que el
-    # encoder sigue al transformer y no se decide por separado
+    # measured: quantising only one of the two is worse than quantising
+    # neither (nf4 on the text encoder alone gave 112 s against 73 s in bf16),
+    # so the encoder follows the transformer and is not decided separately
     cuant_te = cuant
 
-    # El techo duro del asignador. Dos pantallazos azules el 2026-09-23, mismo
-    # bugcheck y mismos parametros, los dos empujando la VRAM contra el muro de
-    # una tarjeta de 24 GB: el driver se rompe bajo una reserva imposible y,
-    # con el hipervisor de por medio, se lleva el kernel en vez de reiniciarse
-    # solo. Reservar por debajo del total no es prudencia, es la diferencia
-    # entre una excepcion de Python y un reinicio.
+    # The allocator's hard ceiling. Two blue screens on 2026-09-23, same
+    # bugcheck and the same parameters, both while pushing the VRAM of a 24 GB
+    # card against its wall: the driver breaks under an allocation it cannot
+    # serve and, with the hypervisor in the path, takes the kernel down instead
+    # of resetting itself. Reserving below the total is not caution, it is the
+    # difference between a Python exception and a reboot.
     #
-    # La reserva es proporcional y no fija: 4 GB sobre 24 es el margen justo,
-    # 4 GB sobre 8 seria media tarjeta. Un 15%, con techo de 4 para que una
-    # tarjeta grande no regale de mas y suelo de 1.5 para que una pequena
-    # conserve algo. El escritorio, el navegador y lo que el propio driver
-    # reserva viven en ese hueco.
+    # The reserve is proportional rather than fixed: 4 GB out of 24 is the
+    # right margin, 4 GB out of 8 would be half the card. 15%, capped at 4 so a
+    # large card does not give away more than it needs, floored at 1.5 so a
+    # small one keeps something. The desktop, the browser and whatever the
+    # driver itself reserves all live in that gap.
     #
-    # Solo CUDA: set_per_process_memory_fraction no existe en MPS, asi que en
-    # Mac no hay techo que poner y el campo va a cero.
+    # CUDA only: set_per_process_memory_fraction does not exist on MPS, so on a
+    # Mac there is no ceiling to set and the field is zero.
     if backend == "cuda":
         limite = round(vram - min(4.0, max(1.5, vram * 0.15)), 1)
     else:
@@ -288,8 +290,8 @@ def detectar(destino_modelos: str | None = None) -> Perfil:
 
 
 def resumen(p: Perfil) -> str:
-    # ASCII puro: esto se imprime en la consola del instalador, que en Windows
-    # abre en cp1252 y convierte cualquier caracter bonito en un interrogante
+    # Pure ASCII: this prints in the installer's console, which on Windows
+    # opens in cp1252 and turns any pretty character into a question mark
     L = [
         f"  System         {p.so} - {p.maquina}",
         f"  Accelerator    {p.acelerador}",

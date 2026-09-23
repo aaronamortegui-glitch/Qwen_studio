@@ -103,16 +103,24 @@ def descargar_de_memoria() -> None:
         pass
 
 
-# Como reescribir un encargo suelto en algo que este modelo entienda. El orden
-# no es decorativo: el sujeto primero porque es lo que mas peso recibe, y la
-# optica al final porque es lo que menos. Las reglas son las que se midieron en
-# este proyecto, no preferencias de estilo.
-# Lo mismo, pero para editar, que no es lo mismo. Un encargo de texto a imagen
-# describe una foto que no existe; uno de edicion nombra un cambio sobre una que
-# si. Las reglas de abajo no son de estilo: cada una viene de una tarde perdida.
+# How to turn a loose request into something this model reads well. The order is
+# not decoration: the subject first because it carries the most weight, and the
+# optics last because they carry the least. These rules were measured in this
+# project rather than chosen as a matter of taste.
+# The same, for editing, which is not the same job. A text-to-image request
+# describes a photograph that does not exist; an edit names a change to one that
+# does. None of the rules below is a matter of style: each cost an afternoon.
 #
-# Las tres primeras son de QwenLM, del system_prompt_edit.txt de su repo, y las
-# tres se comprobaron aqui el 2026-09-23 sobre el mismo canje de persona.
+# The first three are QwenLM's, from the system_prompt_edit.txt in their repo,
+# and all three were checked here on 2026-09-23 against the same person swap.
+# What the reference is asked before anything is rewritten. Short and concrete:
+# the rewriter only needs to know what is there in order to name it instead of
+# guessing. Without this it wrote "the jacket and pants" about a t-shirt.
+MIRAR_REFERENCIA = (
+    "Describe only what this person looks like, in one sentence: the hair, the "
+    "facial hair if any, and the clothing they are wearing with its colour and "
+    "material. Name what you can see and nothing else. No preamble.")
+
 REDACTAR_EDICION = """You rewrite instructions for an image editing model.
 Rewrite the request below as one or two plain English sentences telling the model
 what to change.
@@ -133,6 +141,17 @@ Rules, each of which decides whether the edit happens at all:
   original garment untouched; giving the clothing its own verb and its own
   concrete target produced the whole exchange. While the original jacket stays,
   the jacket holds the original person in place.
+- Name only the features the reference actually has, and the list changes with
+  the reference. Two rewrites of the same request, differing only in what the
+  reference was found to show:
+    reference is a bearded man in a maroon t-shirt ->
+      "Put the face, the hair and the beard from <image2> on this person, and
+       change the clothing to a maroon short-sleeved t-shirt."
+    reference is a woman with cropped silver hair in a black blazer ->
+      "Put the face and the hair from <image2> on this person, and change the
+       clothing to a black blazer over a white shirt."
+  Never ask for a beard on a reference that has none, and never invent a
+  garment that is not there.
 - Say "on this person", not "on the person in <image1>". Naming the subject of
   the picture being edited weakens the edit even when the tag is right, because
   the noun "person" is what the model ignores, wherever it appears. Tag the
@@ -176,7 +195,7 @@ Request: """
 
 
 def redactar(texto: str, max_tokens: int = 320,
-             edicion: bool = False) -> str:
+             edicion: bool = False, contexto: str = "") -> str:
     """Rewrite a loose request into a prompt this model reads well.
 
     `edicion` switches the rules: describing a picture that does not exist and
@@ -194,10 +213,16 @@ def redactar(texto: str, max_tokens: int = 320,
 
     import torch
     m, proc = _estado["modelo"], _estado["processor"]
+    pie = texto.strip()
+    if contexto.strip():
+        # the facts go AFTER the request: the rewriter has to use them to name
+        # things, not mistake them for what was asked
+        pie += (chr(10) * 2 + "What the reference picture <image2> actually "
+                "shows: " + contexto.strip())
     mensajes = [{"role": "user",
                  "content": [{"type": "text",
                               "text": (REDACTAR_EDICION if edicion else REDACTAR)
-                                      + texto.strip()}]}]
+                                      + pie}]}]
     plantilla = proc.apply_chat_template(mensajes, tokenize=False,
                                          add_generation_prompt=True)
     entradas = proc(text=[plantilla], return_tensors="pt")

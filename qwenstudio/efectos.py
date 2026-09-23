@@ -77,9 +77,9 @@ EFECTOS: dict[str, dict] = {
     "noir": {
         "nombre": "Low key",
         "grupo": "Light",
-        # medido: pedir "la mayor parte del cuadro en sombra" se lo toma al pie de
-        # la letra y devuelve una foto negra. El encargo tiene que ser lo que SI
-        # se ve -- la cara bien expuesta -- y el resto cae solo
+        # measured: asking for "most of the frame in shadow" is taken literally
+        # and returns a black photograph. The request has to be what IS seen --
+        # the face properly exposed -- and the rest follows on its own
         "prompt": "Relight this photograph as low-key noir. The face is the brightest "
                   "thing in the frame, well exposed and fully readable, lit by a single "
                   "hard source from one side that carves a bright edge along the cheekbone "
@@ -88,14 +88,14 @@ EFECTOS: dict[str, dict] = {
                   "as they are.",
     },
     # --------------------------------------------------------- redibujar
-    # Estos seis salen de lo que TostUI expone como casos propios. No llevan
-    # pesos: son encargos, y por eso cuestan lo que cuesta escribirlos.
+    # These six come from what TostUI exposes as cases of its own. They carry
+    # no weights: they are requests, so they cost what writing them costs.
     #
-    # Ojo con la clausula final. En los de grado se dice que la cara se queda
-    # "exactamente como esta" porque solo cambia el tratamiento; aqui cambia la
-    # manera de dibujar, asi que pedir eso a la vez se contradice y el modelo
-    # resuelve la contradiccion no haciendo nada. Se nombra lo que de verdad se
-    # conserva -- quien es, la pose, el encuadre -- y se deja libre el resto.
+    # Mind the closing clause. The grading looks say the face stays "exactly as
+    # it is" because only the treatment changes; here the way of drawing
+    # changes, so asking for both at once is a contradiction, and the model
+    # resolves a contradiction by doing nothing. These name what is actually
+    # kept -- who it is, the pose, the framing -- and leave the rest free.
     "anime": {
         "nombre": "Anime",
         "grupo": "Redraw",
@@ -118,9 +118,9 @@ EFECTOS: dict[str, dict] = {
     "chibi": {
         "nombre": "Chibi",
         "grupo": "Redraw",
-        # la proporcion es el efecto entero, asi que aqui la composicion SI
-        # cambia: se nombra lo que se reconoce (ropa, pose, color de pelo) y no
-        # el encuadre, que es lo que en los otros se protege
+        # the proportions are the whole effect, so here the composition DOES
+        # change: what is named is what stays recognisable -- clothing, pose,
+        # hair -- and not the framing, which the others protect
         "prompt": "Redraw the subject as a chibi character: the head about a third of the "
                   "whole figure, large simplified eyes, a small rounded body and hands, "
                   "clean cel shading and flat bright colour on a simple background. The "

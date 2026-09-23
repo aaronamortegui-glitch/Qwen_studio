@@ -62,7 +62,7 @@ def main() -> None:
 
     index, fallos, ignorados = [], [], []
     for pose_id, src in fuentes.items():
-        # El catalogo lo define el metadata, no lo que haya en la carpeta: ahi
+        # the catalogue is defined by the metadata, not by what is in the
         # conviven salidas de pruebas y de tandas anteriores, y colarlas produce
         # duplicados con encuadre equivocado.
         if meta and pose_id not in meta:

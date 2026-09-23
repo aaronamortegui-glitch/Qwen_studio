@@ -1,17 +1,17 @@
-"""Instalador de QwenStudio. Corre DENTRO del venv que creo el lanzador.
+"""QwenStudio's installer. It runs INSIDE the venv the launcher created.
 
-No toca ningun Python del sistema: el venv y su interprete viven dentro de la
-carpeta de la app (los baja uv). Este script:
+It touches no system Python: the venv and its interpreter live inside the app's
+folder, fetched by uv. This script:
 
-  1. detecta el hardware y elige el perfil
-  2. instala torch para ese backend (cu128 en NVIDIA, MPS por defecto en Mac)
-  3. instala diffusers desde git (QwenImage21Pipeline llega en 0.41, que aun no
-     esta publicada en PyPI) y el resto de dependencias
-  4. instala bitsandbytes solo si hay CUDA (no existe para MPS)
-  5. guarda el perfil en config.json
+  1. detects the hardware and picks the profile
+  2. installs torch for that backend (cu128 on NVIDIA, the default MPS on Mac)
+  3. installs diffusers from git (QwenImage21Pipeline lands in 0.41, which is
+     not on PyPI yet) along with the rest of the dependencies
+  4. installs bitsandbytes only when there is CUDA (it does not exist for MPS)
+  5. writes the profile into config.json
 
-Los pesos NO se bajan aqui: eso pasa en el primer arranque, para que instalar
-sea rapido y se pueda revisar el perfil antes de comprometer ~33 GB.
+The weights are NOT downloaded here: that happens on first run, so installing
+is quick and the profile can be reviewed before committing to ~33 GB.
 """
 
 from __future__ import annotations
@@ -29,15 +29,15 @@ from qwenstudio.hardware import detectar, resumen, DESCARGA_GB  # noqa: E402
 CONFIG = os.path.join(APP, "config.json")
 UV = os.path.join(APP, ".uv", "uv.exe" if os.name == "nt" else "uv")
 
-# commit de diffusers con QwenImage21Pipeline ya mergeado (PR #14804).
-# Se fija para que el instalador sea reproducible; subir cuando salga 0.41.0.
+# the diffusers commit with QwenImage21Pipeline already merged (PR #14804).
+# Pinned so the installer is reproducible; raise it when 0.41.0 ships.
 DIFFUSERS = "git+https://github.com/huggingface/diffusers.git@main"
 
 COMUNES = [
     "transformers>=5.5",
-    # peft lo exige diffusers para cargar un LoRA. Sin el, load_lora_weights
-    # lanza "PEFT backend is required" y la funcion entera no existe, que es
-    # justo lo que pasaba hasta que un efecto con LoRA lo destapo.
+    # diffusers requires peft to load a LoRA. Without it, load_lora_weights
+    # raises "PEFT backend is required" and the whole function is missing --
+    # which is exactly what happened until a LoRA-backed effect uncovered it.
     "peft>=0.14",
     "accelerate>=1.0",
     "safetensors>=0.4",
@@ -50,10 +50,10 @@ COMUNES = [
 
 
 def pip(*args: str) -> None:
-    """Instala con uv si esta disponible (mucho mas rapido), si no con pip."""
+    """Install with uv when it is available (far faster), otherwise with pip."""
     if os.path.exists(UV):
-        # link-mode=copy: si el cache de uv y la app estan en discos distintos
-        # no se pueden usar hardlinks y uv avisa en cada paquete.
+        # link-mode=copy: when uv's cache and the app are on different drives
+        # hardlinks cannot be used and uv warns on every package.
         cmd = [UV, "pip", "install", "--python", sys.executable, "--link-mode=copy", *args]
     else:
         cmd = [sys.executable, "-m", "pip", "install", *args]
@@ -75,10 +75,10 @@ PERRITO = r"""
 
 
 def lloriquear(nivel: str, acelerador: str, vram: float) -> None:
-    """La pantalla para los equipos que no dan la talla.
+    """The screen for machines that are not up to it.
 
-    Decirlo en seco es una porteria vacia; el perro dice lo mismo y deja que
-    decida el usuario, que para eso la instalacion sigue disponible.
+    Saying it flatly is an open goal; the dog says the same thing and leaves
+    the decision to the user, which is why the install stays available.
     """
     print(PERRITO)
     if nivel == "INVIABLE":
@@ -95,11 +95,11 @@ def lloriquear(nivel: str, acelerador: str, vram: float) -> None:
     print(f"  {acelerador} - {vram:.1f} GB - profile {nivel}")
 
 
-# Lo que este instalador no decia y costaba una tarde: cuanto tarda cada cosa
-# en la maquina que acaba de detectar, y donde esta el techo de verdad. Las
-# cifras de la fila L estan medidas aqui el 2026-09-23 (nf4 en ambos
-# componentes, 16 pasos, tiling del VAE); el resto se escala desde ellas y se
-# dice que es una extrapolacion, porque lo es.
+# What this installer did not say and what cost an afternoon: how long each
+# thing takes on the machine it has just detected, and where the real ceiling
+# is. The figures in the L row were measured here on 2026-09-23 (nf4 on both
+# components, 16 steps, VAE tiling on); the rest are scaled from them and are
+# said to be extrapolations, because they are.
 ESPERA = {           # nivel -> (1 MP, 2K, nota)
     "XL":     ("~18 s", "~80 s", ""),
     "L":      ("26 s", "122 s", "measured on an RTX 5090 Laptop, 24 GB"),

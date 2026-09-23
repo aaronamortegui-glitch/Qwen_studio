@@ -1,7 +1,7 @@
-"""Servidor local de QwenStudio.
+"""QwenStudio's local server.
 
-Sirve la interfaz en http://127.0.0.1:7860 y ejecuta la inferencia en proceso,
-sin ComfyUI. Nada sale de la maquina.
+It serves the interface at http://127.0.0.1:7860 and runs inference in
+process, without ComfyUI. Nothing leaves the machine.
 """
 
 from __future__ import annotations
@@ -20,11 +20,11 @@ import uuid
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-# El asignador de CUDA fragmenta cuando se le piden formas distintas una
-# detras de otra, que es exactamente lo que hace esta app: un texto a imagen,
-# luego un retrato con referencia, luego un 2K. Con segmentos expandibles el
-# bloque reservado se estira en vez de dejar huecos. Va antes de que nada
-# reserve memoria, y no cuesta nada cuando no hay CUDA.
+# CUDA's allocator fragments when it is asked for differently shaped blocks one
+# after another, which is exactly what this app does: a text-to-image, then a
+# portrait with a reference, then a 2K. With expandable segments the reserved
+# block stretches instead of leaving holes. This goes before anything allocates,
+# and costs nothing when there is no CUDA.
 os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 
 APP = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -49,8 +49,8 @@ LORAS = os.path.join(APP, "loras")
 AJUSTES = os.path.join(APP, "ajustes.json")
 EJEMPLOS = os.path.join(APP, "ejemplos")
 
-# Ajustes que el usuario puede cambiar en caliente, separados de config.json
-# (que lo escribe el instalador y describe el hardware, no las preferencias).
+# Settings the user can change while the app runs, kept apart from config.json
+# (written by the installer, describing the hardware rather than preferences).
 AJUSTES_DEF = {
     "describir_escena": True,     # describir la escena con el VLM antes de generar
     "resumen": True,              # generar la hoja de contacto en cada corrida
@@ -60,8 +60,8 @@ AJUSTES_DEF = {
     # 25 add nothing worth 5 and 11 more seconds (18 / 21 / 27 / 33 / 38 s).
     # So the knee is between 12 and 16, and 12 is a draft rather than a result.
     "steps": 16,
-    # 1 MP: el tamano con el que se trabaja. 2K ya funciona y esta a un clic;
-    # poner 0 aqui significa "lo que aguante la tarjeta detectada".
+    # 1 MP: the size work happens at. 2K works and is one click away; a 0 here
+    # means "whatever the detected card can take".
     "megapixeles": 1,
     # Sampler and scheduler, the FlowMatchEuler fields ComfyUI puts in its
     # dropdowns. "base" is what the weights shipped with. See motor.MUESTREO.
@@ -70,20 +70,20 @@ AJUSTES_DEF = {
     # it keeps a face, but with the two sheets side by side the base model was
     # the better picture, so speed is something you reach for while iterating
     # rather than what you get without asking.
-    # Donde viven los pesos entre llamadas. "" deja mandar al perfil.
-    # Medido el 2026-09-23 a 1 MP en caliente: con offload de modelo 26 s, sin
-    # offload 19 s -- un 27% -- por 1.6 GB mas residentes. No sale gratis: sin
-    # offload, 2.25 MP con una referencia ya no cabe bajo el techo y devuelve
-    # un error. Velocidad contra tamano, y el que conserva el tamano manda.
+    # Where the weights live between calls. "" lets the profile decide.
+    # Measured warm at 1 MP on 2026-09-23: with the model offload 26 s, without
+    # it 19 s -- 27% -- for 1.6 GB more resident. Not free: without the offload,
+    # 2.25 MP with a reference no longer fits under the ceiling and comes back
+    # as an error. Speed against size, and size wins by default.
     "offload": "",
     "turbo": False,
-    # Pasos cuando el turbo esta puesto. Su autor recomienda 4 y su demo acepta
-    # de 3 a 8. Medido aqui el 2026-09-22: a 4 devuelve manos fantasma, con
-    # nuestro shift_terminal y con el suyo, y a 8 sale limpio y sigue siendo un
-    # tercio mas rapido. Su propia ficha lo admite -- "multi-reference
-    # composition, face swaps and identity-document edits can produce
-    # duplicated or ghosted figures". Se deja en 4 porque es lo que el modelo
-    # pide y el interruptor existe para ir rapido; 8 esta a un numero.
+    # Steps when turbo is on. Its author recommends 4 and their demo accepts 3
+    # to 8. Measured here on 2026-09-22: at 4 it returns ghost hands, with our
+    # shift_terminal and with its own, and at 8 it comes out clean and is still
+    # a third faster. Their own card admits it -- "multi-reference composition,
+    # face swaps and identity-document edits can produce duplicated or ghosted
+    # figures". Left at 4 because that is what the model asks for and the
+    # switch exists to go fast; 8 is one number away.
     "turbo_pasos": 4,
     # Detail pass, on. Above 1 the pipeline runs a second forward pass against
     # the negative prompt, which costs ~80% more time and buys detail that is
@@ -100,16 +100,16 @@ AJUSTES_DEF = {
     "negativo": "blurry, deformed hands, extra fingers, watermark, text artefacts",
     "vlm_bits": 4,                # 4 u 8; 8 describe algo mejor y ocupa ~13 GB
     "mantener_montado": False,    # no desmontar entre bloques (para lotes)
-    # hdr por defecto: medido el 2026-09-22 con la misma semilla, +19% de
-    # saturacion y +27% de energia de gradiente sin tocar contraste ni luz
-    # media. Si el archivo no esta, usar_vae cae al de serie sin quejarse.
+    # hdr by default: measured on 2026-09-22 at the same seed, +19% saturation
+    # and +27% edge energy with contrast and mean exposure untouched. If the
+    # file is not there, usar_vae falls back to the stock one without fuss.
     "vae": "hdr",                 # hdr | stock
-    # entre imagenes de un lote, esperar a que la tarjeta baje de aqui. 0 lo
-    # desactiva. No protege de nada roto: evita que un lote largo se pase la
-    # noche estrangulado y tarde el doble
+    # between images of a batch, wait until the card drops below this. 0 turns
+    # it off. It protects against nothing broken: it stops a long batch
+    # spending the night throttled and taking twice as long
     "limite_c": 80,
-    # afinar con SAM 2 la mascara que sale del texto. Medido: CLIPSeg solo se
-    # comia el pelo que cae sobre la prenda; con SAM 2 el borde la sigue
+    # refine the text-driven mask with SAM 2. Measured: CLIPSeg alone ate the
+    # hair falling across the garment; with SAM 2 the edge follows it
     "afinar_mascara": True,
 }
 
@@ -141,7 +141,7 @@ def _tope(refs: int) -> int:
 
 def leer_ajustes() -> dict:
     a = dict(AJUSTES_DEF)
-    # el techo del perfil, resuelto aqui para no repetirlo en cada llamada
+    # the profile's ceiling, resolved here so it is not repeated at every call
     if not a.get("megapixeles"):
         tope = int(cfg.get("res_max", 1024))
         a["megapixeles"] = 4 if tope >= 2048 else (2 if tope >= 1536 else 1)
@@ -279,14 +279,14 @@ def _img_de_data_url(data_url: str):
     return Image.open(io.BytesIO(base64.b64decode(m.group(1)))).convert("RGB")
 
 
-# Lo que el modelo fue destilado para ver. El Space de Viggle lo dice sin
-# rodeos -- "condition images are encoded at 1024-area, as in distillation" --
-# y es la razon de que a ellos les quepan tres referencias.
+# What the model was distilled to see. The Viggle Space says it plainly --
+# "condition images are encoded at 1024-area, as in distillation" -- and it is
+# why three references fit for them.
 #
-# Aqui no se encogia ninguna: una foto de movil de 12 MP entraba entera en la
-# secuencia de atencion, doce veces lo que el modelo espera, y el coste no lo
-# pagaba la calidad sino la memoria. Lo que se recorta es la REFERENCIA, nunca
-# la imagen que se edita: esa define el tamano de salida.
+# Here none was being shrunk: a 12 MP phone photograph went whole into the
+# attention sequence, twelve times what the model expects, and the cost was
+# paid in memory rather than in quality. What gets capped is the REFERENCE,
+# never the picture being edited: that one sets the output size.
 REF_MP = 1.0
 
 
@@ -302,7 +302,7 @@ def _referencia(data_url: str, tope_mp: float = REF_MP):
     return img
 
 
-# lo que se guarda dentro del archivo, y el orden en que se lee
+# what is written inside the file, and the order it is read in
 CAMPOS_META = ("prompt", "caso", "efecto", "seed", "steps", "tam", "ratio",
                "megapixeles", "vae", "lora", "fuerza_lora", "orden", "modelo",
                "tecnica_leida")
@@ -322,8 +322,8 @@ def _guardar(img, prefijo="out", meta: dict | None = None) -> str:
     info = PngImagePlugin.PngInfo()
     if meta:
         info.add_text("generator", "QwenStudio / Qwen-Image 2.1")
-        # una clave que no este en la lista no llega al archivo, y callarselo
-        # cuesta caro: cuesta creer que fallo el paso que la calculo
+        # a key missing from the list never reaches the file, and keeping quiet
+        # about it is expensive: it looks like the step that computed it failed
         sobra = [k for k in meta if k not in CAMPOS_META]
         if sobra:
             print(f"  [meta] no se guarda, falta en CAMPOS_META: {', '.join(sobra)}",
@@ -349,7 +349,7 @@ def _leer_meta(ruta: str) -> dict:
 
 
 def _esqueleto(img):
-    """Deriva un esqueleto OpenPose si hay un python con easy-dwpose a mano."""
+    """Derive an OpenPose skeleton if a python with easy-dwpose is at hand."""
     if not os.path.exists(DWPOSE_PY):
         raise RuntimeError("No environment with easy-dwpose installed. Upload a "
                            "skeleton you already have instead of a photograph.")
@@ -377,12 +377,11 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
     def handle_one_request(self):
-        """Un cliente que se va no es un fallo del servidor.
+        """A client that leaves is not a server failure.
 
-        Cerrar una pestana a mitad de peticion levanta ConnectionReset o
-        ConnectionAborted, y socketserver lo imprime con traza completa. Con el
-        navegador abierto eso son veinte lineas por recarga, y un error de
-        verdad se pierde entre ellas.
+        Closing a tab mid-request raises ConnectionReset or ConnectionAborted,
+        and socketserver prints it with a full traceback. With the browser open
+        that is twenty lines per reload, and a real error gets lost among them.
         """
         try:
             super().handle_one_request()
@@ -412,8 +411,8 @@ class Handler(BaseHTTPRequestHandler):
                                                "cuantizacion", "offload", "res_max", "res_max_ref",
                                                "res_max_multi", "vram_limite_gb",
                                                "vram_gb", "ram_gb")},
-                # el boton de turbo solo aparece si el archivo esta: uno que
-                # no hace nada es peor que ninguno
+                # the turbo button only appears when the file is there: one
+                # that does nothing is worse than none
                 "turbo_disponible": motor.turbo_disponible(),
                 "avisos_perfil": cfg.get("avisos", []),
                 "pesos_listos": M.pesos_completos(cfg["ruta_modelos"]),
@@ -437,8 +436,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, leer_ajustes())
 
         if p == "/api/prompts":
-            # filtrada por camino: ofrecer ropa de invierno a quien esta
-            # reescalando una foto solo le hace dudar de para que sirve el campo
+            # filtered by path: offering winter clothing to someone rescaling a
+            # photograph only makes them doubt what the field is for
             caso = (self.path.split("caso=")[1].split("&")[0]
                     if "caso=" in self.path else None)
             return self._send(200, PR.catalogo_de(caso))
@@ -456,9 +455,9 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, M.progreso())
 
         if p == "/api/vitrina":
-            # Lo que la app hizo en esta maquina, con su receta al lado. Es lo
-            # que se ve al abrir por primera vez, cuando todavia no hay nada
-            # propio que ensenar.
+            # What the app made on this machine, with its recipe beside it.
+            # This is what shows on first opening, when there is nothing of
+            # one's own to show yet.
             f = os.path.join(EJEMPLOS, "vitrina.json")
             if not os.path.exists(f):
                 return self._send(200, [])
@@ -481,9 +480,9 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, fh.read(), "image/jpeg")
 
         if p.startswith("/api/receta"):
-            # La receta de un archivo suelto. La galeria la trae con cada item,
-            # pero un resultado recien hecho todavia no ha pasado por ahi y
-            # tiene el mismo derecho a decir como se hizo.
+            # One file's recipe. The gallery carries it with every item, but a
+            # result just made has not been through there yet and has the same
+            # right to say how it was made.
             from urllib.parse import parse_qs, urlparse
             q = parse_qs(urlparse(self.path).query)
             nombre = os.path.basename((q.get("archivo") or [""])[0])
@@ -496,8 +495,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, self._galeria())
 
         if p.startswith("/fuentes/"):
-            # Inter Tight viaja dentro del paquete: la app tiene que verse igual
-            # sin red, y una fuente que se pide a un CDN no cumple eso.
+            # Inter Tight travels inside the package: the app has to look the
+            # same with no network, and a font fetched from a CDN does not.
             f = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                              "estatico", "fuentes", os.path.basename(p[9:]))
             if not os.path.exists(f):
@@ -570,15 +569,15 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, self._borrar(b))
 
         if p == "/api/cancelar":
-            # no toca el lock a proposito: el trabajo esta dentro y hay que
-            # poder interrumpirlo desde fuera mientras lo tiene cogido
+            # deliberately does not take the lock: the work is inside it and
+            # has to be interruptible from outside while it is held
             M.cancelar()
             return self._send(200, {"ok": True})
 
         if p == "/api/liberar":
-            # soltar los modelos y luego devolver a la tarjeta lo reservado:
-            # en ese orden, porque vaciar la cache antes de desmontar no suelta
-            # nada que siga referenciado
+            # drop the models and then give the card back what was reserved,
+            # in that order, because emptying the cache before unmounting
+            # releases nothing that is still referenced
             soltados = registro.desmontar_todo()
             r = M.vaciar_cache()
             r["desmontados"] = soltados
@@ -783,17 +782,18 @@ class Handler(BaseHTTPRequestHandler):
                 if SEG.cargar_afinador(dev, M.ruta_aux(cfg['ruta_modelos'])):
                     m = SEG.afinar(img, m)
         crecer = int(b.get("crecer", crecer_por_defecto))
-        # lo pintado ya es lo que el usuario quiere: crecerlo se lo comeria
+        # what was painted is already what the user meant: growing it would
+        # swallow more than they asked for
         if crecer and not pintada:
             m = IN.dilatar(m, crecer)
         return m, None
 
     @staticmethod
     def _galeria(limite: int = 120):
-        """Lo que hay en salidas/, lo mas reciente primero.
+        """What is in salidas/, newest first.
 
-        La carpeta ES la galeria: no hay base de datos que se desincronice con
-        el disco, y borrar un archivo ahi lo borra aqui.
+        The folder IS the gallery: there is no database to fall out of sync
+        with the disk, and deleting a file there deletes it here.
         """
         filas = []
         try:
@@ -831,7 +831,7 @@ class Handler(BaseHTTPRequestHandler):
         if not nombre or nombre.startswith("."):
             return {"error": "no file given"}
         origen = os.path.join(SALIDAS, nombre)
-        # basename ya corta cualquier ../, pero se comprueba el resultado igual
+        # basename already strips any ../, but the result is checked anyway
         if not os.path.isfile(origen) or os.path.dirname(os.path.abspath(origen)) != \
                 os.path.abspath(SALIDAS):
             return {"error": "that file is not in the outputs folder"}
@@ -907,11 +907,30 @@ class Handler(BaseHTTPRequestHandler):
         if not VIS.disponible():
             return {"error": VIS.error() or "could not load the vision model"}
         t0 = time.time()
-        # el caso decide las reglas: editar y generar no se piden igual
-        salida = VIS.redactar(texto, edicion=bool(b.get("edicion")))
+        # Look at the reference before writing about it. Without this the
+        # rewriter reads only text and guesses: it wrote "the jacket and pants"
+        # about a photograph of a man in a t-shirt. It is the same step the
+        # style transfer already takes with a painting, applied to clothing.
+        contexto = ""
+        ref = b.get("referencia")
+        if ref and b.get("edicion"):
+            try:
+                with _lock:
+                    contexto = VIS.preguntar(_referencia(ref), "free",
+                                             extra=VIS.MIRAR_REFERENCIA,
+                                             max_tokens=90).strip()
+            except Exception as e:
+                print(f"  [reescritor] no se pudo mirar la referencia: "
+                      f"{type(e).__name__}", flush=True)
+
+        # the case decides the rules: editing and generating are not asked for
+        # in the same way
+        salida = VIS.redactar(texto, edicion=bool(b.get("edicion")),
+                              contexto=contexto)
         if not salida:
             return {"error": "the rewrite came back empty"}
-        return {"antes": texto, "texto": salida, "segundos": round(time.time() - t0, 1)}
+        return {"antes": texto, "texto": salida, "visto": contexto,
+                "segundos": round(time.time() - t0, 1)}
 
     def _editar_region(self, img, texto, b, lora=None, fuerza=1.0, prefijo="inpaint",
                        caso="replace", extra=None):
@@ -963,8 +982,8 @@ class Handler(BaseHTTPRequestHandler):
                 salidas.append({"archivo": "/salidas/" + _guardar(final, prefijo, receta),
                                 "seed": base + k, "tam": f"{final.width}x{final.height}"})
             if lora:
-                # se descarga al salir: cada ejecucion vuelve a aplicar el suyo,
-                # y asi ninguno se queda puesto para la siguiente que no lo pida
+                # unloaded on the way out: every run applies its own again, so
+                # none is left attached for the next one that did not ask
                 motor.aplicar_lora(None, 1.0, turbo=_turbo(b))
         return {"imagenes": salidas, "caja": list(caja), "prompt": prompt,
                 "crop": f"{caja[2]-caja[0]}x{caja[3]-caja[1]}", "generado": f"{aw}x{ah}"}, None
@@ -980,8 +999,8 @@ class Handler(BaseHTTPRequestHandler):
         img = _img_de_data_url(b["imagen"])
         t0 = time.time()
 
-        # con mascara, el look va solo a esa region y el resto vuelve identico;
-        # sin ella, al cuadro entero, que es lo habitual
+        # with a mask the look goes only to that region and the rest comes
+        # back identical; without one, to the whole frame, which is the norm
         if b.get("mascara") or (b.get("frase") or "").strip():
             r, err = self._editar_region(img, e["prompt"], b, lora=lora,
                                          fuerza=e.get("fuerza", 1.0),
@@ -1054,10 +1073,11 @@ class Handler(BaseHTTPRequestHandler):
         t0 = time.time()
         estilo_img = _referencia(ref)
 
-        # Medido: pedir "el estilo de <image2>" no mueve casi nada; nombrar la
-        # tecnica si. Asi que primero se lee el cuadro con el VLM y lo que sale
-        # -- formas planas, empaste visible, trama de semitono, lo que sea --
-        # va al generador como texto, que es a lo que este modelo responde.
+        # Measured: asking for "the style of <image2>" barely moves anything;
+        # naming the technique does. So the picture is read with the VLM first
+        # and what comes out -- flat shapes, visible impasto, a halftone screen,
+        # whatever it is -- goes to the generator as text, which is what this
+        # model responds to.
         tecnica = ""
         if b.get("leer_estilo", True):
             try:
@@ -1082,8 +1102,8 @@ class Handler(BaseHTTPRequestHandler):
         if tecnica:
             texto = (texto + " " if texto else "") + tecnica
 
-        # Con la tecnica leida la referencia sobra, y peor que sobrar: estorba.
-        # Se la deja solo cuando no se pudo leer el cuadro.
+        # With the technique read, the reference is not merely redundant, it
+        # gets in the way. It is kept only when the picture could not be read.
         refs = [] if tecnica and not b.get("ref_estilo") else [estilo_img]
         res, err = self._editar_entero(img, texto, b,
                                        referencias=refs, modo="estilo")
@@ -1174,8 +1194,8 @@ class Handler(BaseHTTPRequestHandler):
         variantes = max(1, min(6, int(b.get("variantes", 1))))
         transp = bool(b.get("transparencia"))
 
-        # el perfil limita el area, no el lado: un 16:9 a 4 MP es mas ancho que
-        # res_max pero cuesta lo mismo que un cuadrado de res_max
+        # the profile caps the area, not the side: a 16:9 at 4 MP is wider than
+        # res_max but costs the same as a res_max square
         mp = float(b.get("megapixeles", 1))
         n_refs = (len(personas) + (escena is not None) + (estilo is not None)
                   + (pose is not None))
@@ -1189,10 +1209,11 @@ class Handler(BaseHTTPRequestHandler):
             ancho, alto = M.dimensiones(ratio, mp)
             res = int((mp * 1024 * 1024) ** 0.5)
 
-        # Medido el 2026-09-21: con una escena cargada y un prompt que no la
-        # menciona, la escena se ignora — gana el contexto de la foto de la
-        # persona, que tambien trae fondo, ropa y luz. La clausula de andamiaje
-        # sola no basta. Se describe la escena y se anade al texto.
+        # Measured on 2026-09-21: with a scene loaded and a prompt that does
+        # not mention it, the scene is ignored -- the context of the person's
+        # photograph wins, since that one also carries a background, clothing
+        # and light. The scaffolding clause alone is not enough. The scene is
+        # described and the description appended to the text.
         texto = b.get("prompt", "")
         descripcion = ""
         if escena is not None and b.get("describir_escena", leer_ajustes()["describir_escena"]):

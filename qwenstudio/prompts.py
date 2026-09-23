@@ -214,8 +214,8 @@ def catalogo() -> list[dict]:
              "items": [{"etiqueta": e, "texto": t} for e, t in items]}
             for c, items in BIBLIOTECA.items()]
 
-# caso de uso -> puntos de partida propios. Lo primero que se ve al abrir la
-# libreria desde ese camino, porque un campo vacio no dice que se espera en el.
+# use case -> its own starting points. The first thing seen when the library is
+# opened from that path, because an empty field says nothing about what goes in it.
 BASES: dict[str, list[tuple[str, str]]] = {
     "blank": [
         ("Product", "A weathered brass diving helmet on an oak workbench, studio product "

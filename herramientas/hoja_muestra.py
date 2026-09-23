@@ -80,8 +80,8 @@ def main() -> None:
         cx = MARGEN + (i % cols) * (CELDA + HUECO)
         cy = y0 + (i // cols) * (CELDA + PIE + HUECO)
         im = Image.open(ruta).convert("RGB")
-        # se encaja dentro de la celda conservando la proporcion: una muestra
-        # que deforma su propia salida se desmiente sola
+        # fitted inside the cell keeping its aspect ratio: a contact sheet that
+        # distorts its own output contradicts itself
         im.thumbnail((CELDA, CELDA), Image.LANCZOS)
         caja = Image.new("RGB", (CELDA, CELDA), (238, 243, 228))
         caja.paste(im, ((CELDA - im.width) // 2, (CELDA - im.height) // 2))

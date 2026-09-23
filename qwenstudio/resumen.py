@@ -49,8 +49,8 @@ def hoja(entradas: list[tuple[str, Image.Image]], salida: Image.Image,
     f_lab = _fuente(13, True)
     f_op = _fuente(26, True)
 
-    # cada celda se escala a una altura comun y conserva su proporcion, asi que
-    # su ancho lo decide la imagen. Nada se estira ni se rellena con bandas.
+    # every cell is scaled to one shared height and keeps its aspect ratio, so
+    # its width is decided by the image. Nothing is stretched or letterboxed.
     ins = [(et, _escalar(im, lado)) for et, im in entradas]
     out = _escalar(salida, alto_out)
 

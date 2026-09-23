@@ -97,20 +97,20 @@ CELDA_B = _p(9, 12.4, font=None, space=0)
 
 
 def _seccion(titulo, primero):
-    """Un H2 y lo primero que viene detras, pegados.
+    """An H2 and whatever comes next, kept together.
 
-    Un titular al pie de pagina con su texto en la siguiente es la forma mas
-    facil de que un documento parezca roto sin estarlo.
+    A heading at the foot of a page with its text on the next one is the
+    easiest way to make a document look broken without being broken.
     """
     return KeepTogether([Paragraph(titulo, H2), primero])
 
 
 def _tabla(filas, anchos, cabecera=True):
-    """Cada celda va envuelta en Paragraph.
+    """Every cell is wrapped in a Paragraph.
 
-    Una cadena suelta en una Table de reportlab no se ajusta al ancho: se sale
-    por encima de la columna siguiente sin avisar. Solo un Paragraph rompe la
-    linea, asi que aqui no entra texto pelado.
+    A bare string in a reportlab Table does not wrap to the width: it runs over
+    the next column without warning. Only a Paragraph breaks the line, so no
+    naked text goes in here.
     """
     celda_h = ParagraphStyle("celda_h", parent=CELDA, fontName=B)
     envuelto = [[Paragraph(str(c), celda_h if (cabecera and i == 0) else CELDA)
@@ -137,18 +137,18 @@ def _tabla(filas, anchos, cabecera=True):
 # ------------------------------------------------------------------ paginas
 
 def _marca(canvas, x, y, lado, fondo, figura):
-    """El simbolo, dibujado una sola vez y reusado en las dos plantillas.
+    """The mark, drawn once and reused by both page templates.
 
-    Las coordenadas son las del SVG de la interfaz sobre un lienzo de 48, para
-    que el icono de la app y el del documento sean la misma forma y no dos
-    parecidas que se van separando con cada retoque.
+    The coordinates are the interface's SVG on a 48-unit canvas, so the app's
+    icon and the document's are the same shape rather than two similar ones
+    drifting apart with every touch-up.
     """
     import math
     u = lado / 48.0
     canvas.setFillColor(fondo)
     canvas.roundRect(x, y, lado, lado, 12 * u, fill=1, stroke=0)
 
-    # el eje y del pdf sube y el del svg baja, asi que la y va como 48 - y
+    # the pdf's y axis goes up and the svg's goes down, so y becomes 48 - y
     cx, cy, rm, grosor, largo = 22.8, 48 - 21.8, 10.9, 4.6, 9.0
     canvas.setStrokeColor(figura)
     canvas.setLineWidth(grosor * u)
@@ -164,7 +164,7 @@ def _fondo(canvas, doc):
     canvas.saveState()
     canvas.setFillColor(HUESO)
     canvas.rect(0, 0, *A4, fill=1, stroke=0)
-    # la marca, pequena, arriba a la izquierda
+    # the mark, small, top left
     x, y, s = MARGEN, A4[1] - MARGEN + 3 * mm, 6.5 * mm
     _marca(canvas, x, y, s, TINTA, LIMA)
 
@@ -242,11 +242,11 @@ def construir() -> str:
     f = []
 
     # --- portada (vacia: la dibuja onPage) --------------------------------
-    # NextPageTemplate es obligatorio: la primera plantilla sigue activa
-    # hasta que se cambia, y la portada se pintaria sobre todo el documento
+    # NextPageTemplate is mandatory: the first template stays active until it
+    # is changed, and the cover would be painted over the whole document
     f += [Spacer(1, 1), NextPageTemplate("normal"), PageBreak()]
 
-    # --- 1. que es ---------------------------------------------------------
+    # --- 1. what it is -----------------------------------------------------
     f += [CondPageBreak(45 * mm),
           Paragraph("What this is", H2),
           Paragraph("An image generation and editing app that runs Qwen-Image 2.1 on one "
@@ -519,6 +519,13 @@ def construir() -> str:
          "exchanging it; “give” and “edit to match” did almost "
          "nothing. Replace is the verb every example uses, this one included, and it "
          "sits in the middle."),
+        ("One example is a template; two are a rule.",
+         "The prompt rewriter was given one worked example of an edit "
+         "instruction and copied its wording exactly, asking for a beard on a "
+         "reference that had none. Two examples differing only in what the "
+         "reference showed, and it began adapting the list instead of "
+         "reproducing it. The same sentence that teaches a form also teaches "
+         "that the form is fixed, unless something shows it is not."),
         ("Close anything else using the GPU first.",
          "Starting with VRAM half full makes generation crawl with no error: utilisation "
          "reads 100%, power draw stays low, nothing finishes. Half an hour went to a "
@@ -528,7 +535,7 @@ def construir() -> str:
         f.append(KeepTogether([Paragraph(titulo, H3), Paragraph(texto, CUERPO),
                                Spacer(1, 2.5 * mm)]))
 
-    # el titulo y su tabla no se separan: un "Numbers" solo al pie de pagina
+    # the heading and its table do not separate: a lone "Numbers" at the foot
     # no dice nada
     f += [Spacer(1, 3 * mm),
           KeepTogether([Paragraph("Numbers", H3),
@@ -565,7 +572,7 @@ def construir() -> str:
                     TENUE_P),
           Spacer(1, 9 * mm)]
 
-    # --- 5. como se comprueba y licencias ---------------------------------
+    # --- 5. how it is checked, and licences --------------------------------
     f += [CondPageBreak(45 * mm),
           Paragraph("How it is checked", H2),
           Paragraph("Nineteen cases run against the live app. They check the shape of what "

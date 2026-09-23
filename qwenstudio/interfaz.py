@@ -2132,8 +2132,11 @@ $('#btnMejorar').onclick=async()=>{
     const r=await (await fetch('/api/mejorar_prompt',{method:'POST',
       // editar y generar no se piden igual, asi que el reescritor usa unas
       // reglas u otras segun el caso en el que estes
+      // y la referencia, si la hay: el reescritor la mira antes de nombrar
+      // la ropa, en vez de adivinarla
       body:JSON.stringify({prompt:t, edicion:['editar','inpaint','efecto',
-        'estilo'].includes(caso().mode)})})).json();
+        'estilo'].includes(caso().mode),
+        referencia:(S.img.extra||S.img.style||[])[0]||null})})).json();
     if(r.error){avisar(r.error, true);return}
     S.promptPrevio=r.antes;              // un solo paso atras, que es lo que hace falta
     $('#prompt').value=r.texto;

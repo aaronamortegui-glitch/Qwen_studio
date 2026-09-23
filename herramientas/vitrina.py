@@ -66,16 +66,17 @@ def base(caso: str, nombre: str) -> str:
 
 IDENTIDAD = " The face of the subject must match the reference exactly."
 
-# clave -> lo que hay que pedirle a la app y como se presenta despues.
-#   titulo  el nombre en la ficha
-#   caso    el camino de la interfaz al que pertenece
-#   que     la frase que explica que se hizo, en la ficha y bajo la miniatura
+# key -> what to ask the app for, and how it is presented afterwards.
+#   titulo  the name on the card
+#   caso    the interface path it belongs to
+#   que     the sentence explaining what was done, on the card and under the
+#           thumbnail
 #   grupo   en cual de las dos rejillas aparece
 CAMINOS = "What each path does"
 ESTILOS = "How far the style stretches"
 
 PIEZAS: list[dict] = [
-    # --- la cadena: una persona inventada y todo lo que se hace con ella ----
+    # --- the chain: an invented person and everything done with them -------
     {"clave": "personaje", "titulo": "A person from text", "caso": "blank",
      "ratio": "3:4", "seed": 5103,
      "prompt": "A studio headshot of a woman in her early sixties with close-cropped "
@@ -128,7 +129,7 @@ PIEZAS: list[dict] = [
             "The transparency comes from the model, not from cutting the background out "
             "afterwards."},
 
-    # --- lo que este modelo hace mejor que la mayoria ----------------------
+    # --- what this model does better than most -----------------------------
     {"clave": "cartel", "titulo": "Poster", "caso": "sign", "ratio": "3:4", "seed": 3109,
      "prompt": base("sign", "Poster"),
      "que": "Words inside double quotes come out as lettering. This is the thing this "
@@ -139,7 +140,7 @@ PIEZAS: list[dict] = [
      "que": "The same mechanism at night: the glow and the spelling are asked for in one "
             "sentence."},
 
-    # --- las tres ediciones, sobre imagenes de esta misma vitrina ----------
+    # --- the three edits, over pictures from this same showcase -------------
     {"clave": "cambio", "titulo": "Replace something", "caso": "replace",
      "seed": 6101, "fuente": "paisaje", "endpoint": "/api/inpaint",
      "frase": "the sky",
@@ -202,11 +203,11 @@ PIEZAS: list[dict] = [
      "que": "The Illustration starting point: four flat colours and no gradients. Not "
             "everything this model does is photographic."},
 
-    # --- lo mismo de siempre, texto a imagen, pero cambiando de idioma -----
-    # visual en vez de de tarea. Los prompts siguen la estructura que publica
+    # --- the same text to image, but changing visual language rather than ---
+    # the task. The prompts follow the structure published by
     # la guia de Qwen-Image (sujeto primero, luego estilo, detalle, encuadre y
     # luz) y, en pixel art, las convenciones de Civitai: nombrar la escala,
-    # nombrar la paleta y nombrar la vista.
+    # naming the palette and naming the view.
     {"clave": "pixel", "titulo": "Pixel art", "caso": "blank", "grupo": ESTILOS,
      "ratio": "3:2", "seed": 7101,
      "prompt": "Pixel art of a hooded traveller standing at the mouth of a moss-covered "
@@ -414,8 +415,8 @@ def _encoger(origen: str, destino: str) -> int:
     from PIL import Image
     with Image.open(origen) as im:
         if im.mode == "RGBA":
-            # un tablero de transparencia dice la verdad donde un blanco liso
-            # haria pasar un PNG con alfa por una foto normal
+            # a transparency checkerboard tells the truth where flat white
+            # would pass an alpha PNG off as an ordinary photograph
             fondo = Image.new("RGB", im.size, (255, 255, 255))
             c = 24
             for y in range(0, im.height, c):
@@ -457,9 +458,9 @@ def empacar(hechas: dict | None = None) -> None:
                  "grupo": p.get("grupo", CAMINOS),
                  "que": p["que"], "archivo": "/vitrina/" + jpg, "meta": _receta(png)}
         if p.get("fuente"):
-            # la foto de partida es otra pieza de la vitrina: se apunta a ella
-            # en vez de duplicar el archivo, y de paso queda dicho que una cosa
-            # se hizo encima de la otra
+            # the source photograph is another showcase piece: it is pointed
+            # at rather than duplicated, and that also says one thing was made
+            # on top of the other
             pieza["antes"] = "/vitrina/" + p["fuente"] + ".jpg"
             pieza["antes_de"] = titulos[p["fuente"]]
         salida.append(pieza)

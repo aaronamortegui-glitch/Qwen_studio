@@ -86,6 +86,25 @@ things survive. Ordered by what it costs against what it gives.
   ComfyUI-GGUF or stable-diffusion.cpp, which is the dependency this app
   exists to avoid. Revisit when diffusers adds the class, not before.
 
+- **Instruction editing**, `/api/editar` and the "Tell it what to change" case:
+  the whole picture, up to three references and a sentence, with no mask and no
+  seam. Changing a garment, changing a background and putting someone somewhere
+  else all work with an ordinary sentence. Swapping one person for another works
+  when the target is the busier photograph and not when it is the cleaner one,
+  which is why it is not in the test suite: a case that passes half the time
+  measures nothing, and the model's own card lists face swaps among its weak
+  points.
+- **The rules that decide whether an edit happens**, applied by the rewriter
+  rather than written down for someone to remember. Three are QwenLM's, from
+  their `system_prompt_edit.txt`: name the attribute and not the person, put
+  the change before the preservation, keep the preservation generic. Two were
+  measured here and are in nobody's documentation: the verb matters — "put X
+  from <image2> on ..." did the most and "replace", which every example uses,
+  sat in the middle — and to change who someone is you have to name the
+  clothing, because while the original garment stays it holds the original
+  person in place. The rewriter reads the reference with the VLM first so it
+  names the garment that is there instead of guessing one.
+
 ## Worth an experiment, not a promise
 
 - **An fp8 text encoder would cut the download, nothing else.** The encoder is
@@ -100,6 +119,20 @@ things survive. Ordered by what it costs against what it gives.
   refusal directions ablated out of `o_proj` and `down_proj` — which is a
   behaviour change riding along with the size change. A clean fp8 of the
   original would be the thing to look for.
+
+## Known and not fixed
+
+- **The transparent cutout depends on the seed when the source has a busy
+  background.** Measured on one photograph: 0.7%, 16.2% and 47.2% opaque across
+  seeds, where a clean studio source gives a usable 48-51% every time. Naming
+  the opaque subject at the end of the clause moved every case upward and fixed
+  none of them reliably. The real repair is to stop asking the model to paint
+  transparency and build the alpha from the segmenter, which this app already
+  carries for the masking paths: the mask is geometry and does not negotiate.
+  The case now states its own limit where it is chosen.
+- **A person swap works in one direction and not the other**, depending on
+  which photograph is the target rather than on the wording. Every phrasing
+  tried moved which direction worked without removing the problem.
 
 ## Documentation debt
 

@@ -42,8 +42,9 @@ def dibujar(lado: int) -> Image.Image:
     ri = r_ext - grosor
     d.ellipse([(cx - ri) * u, (cy - ri) * u, (cx + ri) * u, (cy + ri) * u], fill=TINTA)
 
-    # la cola arranca en el centro del trazo del anillo, no dentro del contra:
-    # asi cruza el aro como en una Q de verdad y no deja un bulto suelto
+    # the tail starts at the centre of the ring's stroke, not inside the
+    # counter: that way it crosses the ring as a real Q does, with no loose
+    # lump left over
     rm = r_ext - grosor / 2
     ang = math.radians(45)
     x1, y1 = cx + rm * math.cos(ang), cy + rm * math.sin(ang)

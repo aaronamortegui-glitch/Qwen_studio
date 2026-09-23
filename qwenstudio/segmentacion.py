@@ -135,7 +135,8 @@ def afinar(imagen, burda):
         fina = Image.fromarray((arr > 0).astype("uint8") * 255)
         if fina.size != imagen.size:
             fina = fina.resize(imagen.size, Image.NEAREST)
-        # si SAM se queda casi sin nada, es que no entendio la caja: mejor la burda
+        # if SAM comes back with almost nothing it misread the box: the crude
+        # mask is the better answer
         if (np.asarray(fina) > 127).mean() < 0.005:
             return burda
         return fina

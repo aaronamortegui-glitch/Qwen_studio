@@ -41,26 +41,27 @@ PANTALLAS: dict[str, tuple[str, int]] = {
     "ui-portrait": ("?caso=portrait", ALTO),
     "ui-text":     ("?caso=sign", ALTO),
     "ui-vitrina":  ("?caso=blank", 1150),
-    # el pie queda al final de una pagina larga: se toma entera y se recorta.
-    # La altura se mide en vez de fijarla: la vitrina crece y una ventana corta
-    # hacia que el recorte cayera sobre las miniaturas en vez de sobre el pie.
+    # the footer sits at the end of a long page: the whole page is captured and
+    # then cropped. The height is measured rather than fixed, because the
+    # showcase grows and a short window made the crop land on the thumbnails
+    # instead of on the footer.
     "ui-indice":   ("?caso=look", 0),
     "ui-brush":    ("?caso=replace&abrir=mask", ALTO),
     "ui-poses":    ("?caso=pose&abrir=poses", ALTO),
     "ui-looks":    ("?caso=look&abrir=efectos", ALTO),
     "ui-restyle":  ("?caso=restyle", ALTO),
-    # los tres ajustes de motor viven abajo del panel: se toma entero
+    # the engine settings live at the bottom of the panel
     "ui-settings": ("?abrir=ajustes", ALTO),
     "ui-gallery":  ("?abrir=galeria", ALTO),
     "ui-dark":     ("?caso=portrait&tema=dark", ALTO),
-    # la ficha de una receta necesita un archivo concreto, asi que su enlace se
-    # arma en tiempo de ejecucion con lo ultimo que haya en salidas/
+    # a recipe card needs one specific file, so its link is built at run time
+    # from whatever is newest in salidas/
     "ui-recipe":   ("?receta=", ALTO),
 }
 
 
 def _ultimo_resultado() -> str:
-    """El nombre del archivo mas reciente de la galeria, para la ficha."""
+    """The newest file in the gallery, for the recipe card."""
     import json
     import urllib.request
     with urllib.request.urlopen(APP + "/api/galeria", timeout=30) as r:
@@ -78,8 +79,8 @@ def _chrome() -> str:
 
 def tomar(nombre: str, enlace: str, alto: int, chrome: str) -> None:
     destino = os.path.join(DOCS, nombre + ".png")
-    # virtual-time-budget deja correr los temporizadores de la pagina: los
-    # dialogos se abren con setTimeout y las miniaturas cargan en diferido
+    # virtual-time-budget lets the page's timers run: the dialogs open on a
+    # setTimeout and the thumbnails load lazily
     if alto == 0:
         alto = _alto_de_pagina(enlace, chrome)
     cmd = [chrome, "--headless=new", "--disable-gpu", "--hide-scrollbars",
@@ -97,15 +98,15 @@ def tomar(nombre: str, enlace: str, alto: int, chrome: str) -> None:
 
 
 def _alto_de_pagina(enlace: str, chrome: str) -> int:
-    """Cuanto mide la pagina de verdad, para que quepa entera en la captura."""
+    """How tall the page really is, so the capture holds all of it."""
     import json
     import tempfile
     d = tempfile.mkdtemp()
     cmd = [chrome, "--headless=new", "--disable-gpu", f"--window-size={ANCHO},1200",
            "--virtual-time-budget=9000", "--dump-dom", APP + "/" + enlace]
     subprocess.run(cmd, capture_output=True, text=True, timeout=180)
-    # --dump-dom no da la altura: se pide a la propia app cuantas piezas hay y
-    # se acota generosamente. Mas simple y no falla en silencio.
+    # --dump-dom does not give the height: the app itself is asked how many
+    # bounded generously. Simpler, and it does not fail silently.
     try:
         import urllib.request
         with urllib.request.urlopen(APP + "/api/vitrina", timeout=30) as r:

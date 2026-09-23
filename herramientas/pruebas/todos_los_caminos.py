@@ -26,11 +26,11 @@ APP = "http://127.0.0.1:7860"
 RAIZ = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SALIDAS = os.path.join(RAIZ, "salidas")
 EJEMPLOS = os.path.join(RAIZ, "ejemplos")
-# Las tres entradas vienen del propio repositorio, no de carpetas sueltas de
-# esta maquina. Antes la persona salia de un dataset de entrenamiento privado:
-# la suite es la que llena salidas/, salidas/ es lo que sale en el pantallazo de
-# la galeria, y asi la cara de alguien real acababa en el repositorio sin que
-# nadie lo decidiera. Ademas, con esto la suite corre en cualquier clon.
+# The three inputs come from the repository itself, not from loose folders on
+# this machine. The person used to come from a private training dataset: the
+# suite is what fills salidas/, salidas/ is what appears in the gallery
+# screenshot, and that way a real person's face ended up in the repository
+# without anyone deciding it should. It also means the suite runs in any clone.
 PERSONA = os.path.join(EJEMPLOS, "person.jpg")
 ESCENA = os.path.join(EJEMPLOS, "scene.jpg")
 ESTILO = os.path.join(EJEMPLOS, "style.jpg")
@@ -66,11 +66,11 @@ def dimensiones(url_rel: str) -> tuple[int, int]:
 
 
 def juzgar(url_rel: str, esperado: list[str]) -> str:
-    """Pregunta al VLM que ve y exige que aparezca lo que el prompt encargo.
+    """Ask the VLM what it sees and require what the prompt asked for.
 
-    Un caso puede devolver una imagen del tamano correcto y aun asi haber
-    ignorado la instruccion; eso es lo que esto detecta. Basta una de las
-    palabras: son sinonimos de lo mismo, no una lista de requisitos.
+    A case can return an image of the right size and still have ignored the
+    instruction; that is what this catches. One of the words is enough: they
+    are synonyms for the same thing, not a list of requirements.
     """
     ruta = os.path.join(SALIDAS, os.path.basename(url_rel))
     r = pedir("/api/describir", {"imagen": data_url(ruta), "tarea": "describe"}, timeout=900)
@@ -92,7 +92,7 @@ def alfa_real(url_rel: str) -> float:
     if im.mode != "RGBA":
         return 0.0
     # histograma en vez de recorrer pixeles: getdata() esta deprecado y esto
-    # ademas no construye una lista de un millon de enteros
+    # and it does not build a list of a million integers
     h = im.getchannel("A").histogram()
     return sum(h[:16]) / (im.width * im.height)
 
@@ -194,11 +194,12 @@ def caso_mascara():
 
 
 def caso_inpaint():
-    # Se le cambia el color a la prenda en vez de cambiarla por otra, a
-    # proposito. Recortar y recoser sirve para un cambio local; sustituir una
-    # prenda que se sale del recorte deja sus mangas a la vista como contexto y
-    # el modelo armoniza con ellas -- la limitacion que documenta el README.
-    # Probar eso aqui no medía el recosido, medía el fallo conocido.
+    # The garment's colour is changed rather than the garment itself, on
+    # purpose. Crop-and-stitch is for a local change; replacing a garment that
+    # runs outside the crop leaves its sleeves visible as context and the model
+    # harmonises with them -- the limitation the README documents.
+    # Testing that here would not measure the stitching, it would measure
+    # the known failure.
     r = pedir("/api/inpaint", {"imagen": data_url(ESCENA), "frase": "the yellow sweater",
                                "prompt": "The same knitted sweater in deep forest green, "
                                          "the same weave, the same folds, the same light "
@@ -210,9 +211,9 @@ def caso_inpaint():
     assert (w, h) == (ow, oh), f"inpaint changed the size: {w}x{h}"
     juzgar(r["imagenes"][0]["archivo"], ["green"])
 
-    # Y medido, no solo leido. Buscar la palabra "yellow" en la descripcion era
-    # demasiado fragil: la mascara afinada deja el pelo fuera, y entre las hebras
-    # asoman unas pocas hebras del color viejo que bastan para que el VLM lo
+    # And measured, not merely read. Looking for the word "yellow" in the
+    # description was too fragile: the refined mask leaves the hair out, and a
+    # few strands of the old colour show between them, enough for the VLM to
     # nombre aunque la prenda entera haya cambiado. Se cuenta cuanto amarillo
     # fuerte queda frente al que habia.
     import numpy as np
@@ -259,7 +260,8 @@ def caso_pincel():
     dentro = ImageChops.difference(src.crop(caja), out.crop(caja))
     assert max(dentro.convert("L").getextrema()) > 40, "the painted region came back unchanged"
 
-    # y arriba, lejos del recorte y de su difuminado, tiene que ser la misma foto
+    # and at the top, far from the crop and its feathering, it has to be the
+    # same photograph
     alto = (0, 0, src.width, int(src.height * .35))
     fuera = ImageChops.difference(src.crop(alto), out.crop(alto)).convert("L")
     peor = fuera.getextrema()[1]
@@ -277,7 +279,7 @@ def caso_look_entero():
     assert not r.get("error"), r.get("error")
     out = Image.open(os.path.join(SALIDAS,
                      os.path.basename(r["imagenes"][0]["archivo"]))).convert("RGB")
-    # blanco y negro de verdad: la saturacion media se desploma en todo el cuadro
+    # genuinely black and white: mean saturation collapses across the frame
     antes = sat(src)
     despues = sat(out)
     assert despues < antes * .25, f"saturation only fell from {antes:.0f} to {despues:.0f}"
@@ -287,9 +289,10 @@ def caso_look_entero():
 def caso_look_region():
     """The same look confined to a painted region.
 
-    Esto es lo que separa el look del reemplazo: no se nombra nada, solo se
-    pinta donde, y el efecto tiene que quedarse ahi. Dentro la saturacion cae;
-    arriba, lejos del recorte, la foto tiene que volver identica.
+    This is what separates a look from a replacement: nothing is named, only
+    painted over, and the effect has to stay there. Inside, the saturation
+    falls; at the top, far from the crop, the photograph must come back
+    identical.
     """
     import base64
     import io as _io
@@ -388,8 +391,8 @@ def caso_reescalar():
     out = Image.open(os.path.join(SALIDAS,
                      os.path.basename(r["imagenes"][0]["archivo"])))
     assert max(out.size) > max(src.size), f"{out.size} is no larger than {src.size}"
-    # redibujar recupera detalle; interpolar no. La energia de gradiente por
-    # pixel cae cuando algo se estira, y aqui no debe caer.
+    # redrawing recovers detail; interpolating does not. Edge energy per
+    # pixel falls when something is stretched, and here it must not.
     import numpy as np
     def nitidez(im):
         a = np.asarray(im.convert("L"), dtype=np.float32)
@@ -459,8 +462,8 @@ def caso_editar():
     f = os.path.join(SALIDAS, os.path.basename(r["imagenes"][0]["archivo"]))
     out = Image.open(f).convert("RGB")
     assert out.size == antes.size, f"{out.size} against the source {antes.size}"
-    # under-editing es el modo de fallo que documentan los autores: la salida
-    # se parece tanto a la entrada que parece que no paso nada. Se mide.
+    # under-editing is the failure mode the authors document: an output so
+    # close to the input that it looks like nothing ran. It is measured.
     a = np.asarray(antes.resize((256, 256)), np.float32)
     b = np.asarray(out.resize((256, 256)), np.float32)
     d = float(np.abs(a - b).mean())
@@ -495,9 +498,10 @@ def caso_editar_fondo():
     antes = Image.open(PERSONA).convert("RGB")
     assert out.size == antes.size, f"{out.size} against the source {antes.size}"
 
-    # El fondo tiene que moverse y el centro quedarse: se miran por separado,
-    # porque una diferencia global no distingue "cambio el fondo" de "cambio
-    # la foto entera", que es justo el fallo que hay que cazar.
+    # The background has to move and the centre has to stay: they are looked at
+    # separately, because a global difference cannot tell "changed the
+    # background" from "changed the whole photograph", which is exactly the
+    # failure worth catching.
     def trozo(im, caja):
         return np.asarray(im.resize((256, 256)).crop(caja), np.float32)
     borde = (0, 0, 64, 256)

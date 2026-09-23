@@ -406,6 +406,24 @@ gave identical output), naming who stays rather than who arrives, and adding an
 identity tail after the instruction — that last one made it worse, because with
 `<image2>` in the final sentence the model returns `<image2>` whole.
 
+**The rewriter looks at the reference before it writes about it.** Left to the
+text alone it guessed: asked to swap a person, it wrote "change the clothing to
+the jacket and pants from `<image2>`" about a photograph of a man in a t-shirt.
+It now reads the reference with Qwen3-VL first — one sentence, only what can be
+seen — and names the garment that is actually there. Same request, same
+reference, with and without that look:
+
+| | the instruction it produced |
+|---|---|
+| text only | …change the clothing to **the jacket and pants** from `<image2>`. |
+| having looked | …change the clothing to **a maroon short-sleeved t-shirt**. |
+
+One example in a rule is a template, and two examples are a rule. With a single
+worked example the rewriter copied its exact wording and asked for a beard on a
+reference that had none; with two examples differing only in what the reference
+showed, it started adapting the list — "the face, the hair and the beard" for
+one, "the face and the hair" for the other.
+
 Person swapping remains the hard case and is not reliable in both directions;
 the model's own card lists face swaps among its known weak points. Ordinary
 edits — a garment, an object, a background — work with an ordinary sentence.

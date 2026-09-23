@@ -30,8 +30,8 @@ APP = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SERVIDOR = os.environ.get("QWENSTUDIO_URL", "http://127.0.0.1:7860")
 SALIDAS = os.path.join(APP, "salidas")
 
-# mcp 2.x renombro FastMCP a MCPServer; se acepta cualquiera de las dos para
-# no atarse a una version concreta del SDK.
+# mcp 2.x renamed FastMCP to MCPServer; either is accepted so this is not tied
+# to one particular version of the SDK.
 try:
     from mcp.server.mcpserver import MCPServer as _Servidor   # mcp >= 2
 except ImportError:                                            # pragma: no cover

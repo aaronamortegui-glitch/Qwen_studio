@@ -22,12 +22,13 @@ INCLUIR_ARCHIVOS = [
     "INSTALL.bat", "install.command", "RUN.bat", "run.command",
     "SHORTCUT.bat", "QwenStudio.ico", "bootstrap.py", "README.md", ".gitignore",
 ]
-# docs/ viaja porque el README lo referencia y porque el PDF explicativo esta
-# ahi: quien recibe el zip sin pasar por GitHub tambien tiene que poder leerlo.
+# docs/ travels because the README references it and because the explanatory
+# PDF is there: whoever receives the zip without going through GitHub has to be
+# able to read it too.
 INCLUIR_CARPETAS = ["qwenstudio", "herramientas", "poses", "ejemplos", "docs",
                     "referencia"]
 
-# lo que no viaja, y por que
+# what does not travel, and why
 EXCLUIR_DIRS = {
     ".venv",        # lo crea el instalador, 4.6 GB
     ".uv",          # lo descarga el instalador
