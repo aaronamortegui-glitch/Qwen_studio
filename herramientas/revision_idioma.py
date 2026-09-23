@@ -38,7 +38,8 @@ tercera queda pasa vale cuesta sigue ademas mientras hallazgos ninguno ninguna
 falta faltan guardar guardado abrir cerrar listo generando siguiente anterior
 sobre bien mejor grande nuevo linea ancho prueba pruebas hay responde limpio
 sucio cambios commitear respaldo fecha ahora aun todavia ninguno cuantos
-tamano copiados
+tamano copiados funciona funcionan usa usan pesos cuantizados cuantizada
+arranca arrancar corre corren sirve sirven pone ponen quita quitan
 """.split())
 
 # ...and the ones that are identifiers here, so a line naming a function or a

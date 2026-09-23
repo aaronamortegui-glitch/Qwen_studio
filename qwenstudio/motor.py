@@ -612,8 +612,8 @@ class Motor:
             # anything.
             if (self.cfg.get("offload") == "sequential"
                     and self.cfg.get("cuantizacion") in ("int4", "int8")):
-                print("  [offload] sequential no funciona con pesos cuantizados; "
-                      "se usa 'model'", flush=True)
+                print("  [offload] sequential does not work with quantised "
+                      "weights; using 'model'", flush=True)
                 self.cfg["offload"] = "model"
 
             dtype = {"bfloat16": torch.bfloat16,

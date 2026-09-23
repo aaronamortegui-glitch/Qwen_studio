@@ -2013,8 +2013,8 @@ function estimar(){
   const v=loQueVaACorrer();
   const mp=+$('#mp').value;
   const n=Math.max(1,+$('#variants').value||1);
-  // el detail pass corre el paso positivo y el negativo en el mismo lote:
-  // medido 29 s contra 52 s a 16 pasos, de ahi el 1.8
+  // the detail pass runs the positive and the negative step in the same
+  // batch: measured 29 s against 52 s at 16 steps, hence the 1.8
   const cfgX = (v.cfg>1 && v.negativo) ? 1.8 : 1;
   const sg=baseSegundos(mp, v.pasos)*factorMaquina()*n*cfgX;
   const tam=$('#medida').textContent.trim();
@@ -2464,8 +2464,8 @@ $('#cfg').onclick=e=>{if(e.target.id==='cfg')$('#cfg').close()};
     setTimeout(()=>$('#aj_cfg')?.closest('.opt')
       ?.scrollIntoView({block:'start'}), 120);
   }, 500);
-  // ?receta=<archivo> abre la ficha de un resultado concreto: sirve para
-  // mandarle a alguien como se hizo una imagen, no solo la imagen
+  // ?receta=<file> opens one result's card: for sending someone how an
+  // image was made rather than only the image
   const receta=q.get('receta');
   if(receta) setTimeout(async()=>{
     try{
