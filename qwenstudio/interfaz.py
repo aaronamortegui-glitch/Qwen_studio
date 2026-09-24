@@ -2508,7 +2508,9 @@ $('#cfg').onclick=e=>{if(e.target.id==='cfg')$('#cfg').close()};
 (function(){
   const q=new URLSearchParams(location.search);
   const c=q.get('caso');
-  aplicarCaso(CASOS[c] ? c : 'portrait');
+  // S.caso is where the default lives; naming it again here is how the app
+  // kept opening on the old one after that default was changed.
+  aplicarCaso(CASOS[c] ? c : S.caso);
   const t=q.get('tema');
   if(t==='dark'||t==='light'||t==='auto') aplicarTema(t);
   const abrir=q.get('abrir');
