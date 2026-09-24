@@ -2390,7 +2390,7 @@ const OPCIONES=[
  ['turbo','check','Turbo adapter (draft speed)',
   'Runs everything at 8 steps with the Viggle turbo adapter. Measured warm at 1 MP: generation 28s → 20s, and an edit that has to keep a face 29s → 19s, with the face indistinguishable. Side by side the base model still made the better picture, so this is for iterating rather than for the final frame. Ignores the step setting. Needs modelos/turbo.safetensors.'],
  ['muestreo','muestreo','Sampling',
-  'Ancestral turns on stochastic sampling. Measured at one seed and 16 steps: far more skin texture on a face (edge energy 7.5 against 3.8), but it dropped a background the prompt had asked for and came out flatter on a lettering job. The karras, exponential and beta schedules are not offered — the first two return smears because their sigma remapping fights the dynamic shifting this model ships with, and the third needs scipy.'],
+  'Both are FlowMatchEuler, which is the solver these weights were trained against; ancestral is the same one with stochastic sampling switched on. Measured at one seed and 16 steps: far more skin texture on a face (edge energy 7.5 against 3.8), but it dropped a background the prompt had asked for and came out flatter on a lettering job. Measured at one seed and 16 steps: far more skin texture on a face (edge energy 7.5 against 3.8), but it dropped a background the prompt had asked for and came out flatter on a lettering job. Of the eleven flow-matching schedulers diffusers ships, only UniPC also runs here, and it came out sharper and grainier in equal measure; the rest fail because the pipeline hands over explicit sigmas their set_timesteps does not take. The karras, exponential and beta schedules are not offered — the first two return smears because their sigma remapping fights the dynamic shifting this model ships with, and the third needs scipy.'],
 ];
 let AJ={};
 function aplicarTema(t){
@@ -2416,8 +2416,8 @@ function pintarAjustes(){
       <option value="model"${AJ[k]==='model'?' selected':''}>Model offload · bigger</option>
       <option value="none"${AJ[k]==='none'?' selected':''}>Resident · faster</option></select>` }
     else if(tipo==='muestreo'){ ctrl=`<select id="aj_${k}">
-      <option value="base"${AJ[k]==='base'?' selected':''}>Base</option>
-      <option value="ancestral"${AJ[k]==='ancestral'?' selected':''}>Ancestral</option></select>` }
+      <option value="base"${AJ[k]==='base'?' selected':''}>Euler</option>
+      <option value="ancestral"${AJ[k]==='ancestral'?' selected':''}>Euler ancestral</option></select>` }
     else { ctrl=`<input type="number" id="aj_${k}" value="${AJ[k]}" min="1" max="60">` }
     row.innerHTML = tipo==='check'
       ? `${ctrl}<div><b>${tit}</b><small>${desc}</small></div>`
