@@ -193,9 +193,28 @@ Rules:
 
 Request: """
 
+# Added to either block when a reference photograph is loaded.
+#
+# Measured on 2026-09-23: the same request, the same seed, the same reference,
+# with and without forty words of appearance wrapped around it. The bare version
+# came back the more like the person. Text and reference go into the same
+# encoder -- `encode_prompt` takes the condition images too -- so a written face
+# and a photographed face arrive as rival descriptions of one thing and the
+# model averages them. Who it is was settled when the photograph went in.
+CON_REFERENCIA = """
+
+Also, a photograph of the subject is already loaded:
+- Their face, hair, build and skin are decided. Do not describe any of them, not
+  even to say they should stay. Write the wardrobe, the place, the framing, the
+  light and the lens, and let the photograph say who it is.
+- Do not write "the same face", "identical features" or any other instruction to
+  keep the likeness. The app adds that sentence itself, last, where it weighs
+  most."""
+
 
 def redactar(texto: str, max_tokens: int = 320,
-             edicion: bool = False, contexto: str = "") -> str:
+             edicion: bool = False, contexto: str = "",
+             con_referencia: bool = False) -> str:
     """Rewrite a loose request into a prompt this model reads well.
 
     `edicion` switches the rules: describing a picture that does not exist and
@@ -222,6 +241,7 @@ def redactar(texto: str, max_tokens: int = 320,
     mensajes = [{"role": "user",
                  "content": [{"type": "text",
                               "text": (REDACTAR_EDICION if edicion else REDACTAR)
+                                      + (CON_REFERENCIA if con_referencia else "")
                                       + pie}]}]
     plantilla = proc.apply_chat_template(mensajes, tokenize=False,
                                          add_generation_prompt=True)

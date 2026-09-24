@@ -215,7 +215,7 @@ def revisar_js() -> list[str]:
     s = open(RUTA, encoding="utf-8").read()
     trozos = re.findall(r"<script>(.*?)</script>", s, re.S)
     if not trozos:
-        return ["no se encontro ningun <script> en la pagina"]
+        return ["no <script> was found in the page"]
 
     fallos: list[str] = []
     for n, js in enumerate(trozos, 1):

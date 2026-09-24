@@ -206,9 +206,15 @@ def main() -> None:
 
     if perfil.cuantizacion in ("int8", "int4"):
         print("\n" + "-" * 66)
-        print(f"  Quantisation {perfil.cuantizacion}: installing bitsandbytes")
+        print(f"  Quantisation {perfil.cuantizacion}")
         print("-" * 66)
+        # nf4 comes from bitsandbytes and is installed either way, because a
+        # profile can fall back to it. Eight bits comes from quanto instead:
+        # bitsandbytes' int8 is LLM.int8() and its fp16 outlier path does not
+        # fit alongside the transformer on the cards this runs on.
         pip("bitsandbytes>=0.45")
+        if perfil.cuantizacion == "int8":
+            pip("optimum-quanto>=0.2.7")
 
     # ---- verificacion ---------------------------------------------------
     print("\n" + "-" * 66)

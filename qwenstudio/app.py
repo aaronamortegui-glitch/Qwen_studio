@@ -84,7 +84,9 @@ AJUSTES_DEF = {
     # face swaps and identity-document edits can produce duplicated or ghosted
     # figures". Left at 4 because that is what the model asks for and the
     # switch exists to go fast; 8 is one number away.
-    "turbo_pasos": 4,
+    # five, and its own sigmas with it: the adapter is a distillation and the
+    # schedule is part of it. See motor.TURBO_SIGMAS.
+    "turbo_pasos": 5,
     # Detail pass, on. Above 1 the pipeline runs a second forward pass against
     # the negative prompt, which costs ~80% more time and buys detail that is
     # not there otherwise: a watch movement went from a gold blur to resolved
@@ -263,8 +265,12 @@ def _cfg(b: dict) -> tuple[float, str]:
     return cfg_v, neg
 
 
-# What a reference face costs, measured on 2026-09-23 at one seed: at 16 the
-# person comes back slimmer and younger, at 24 close, at 28 themselves.
+# What holding on to something costs, measured on 2026-09-23 at one seed: at
+# 16 the person comes back slimmer and younger, at 24 close, at 28 themselves.
+# Four sources put the base pipeline higher still -- the model card's editing
+# example passes 40, the ComfyUI template's note says "about 40-50 with
+# euler", the most-shared workflow ships 25-27, and the turbo adapter's card
+# describes itself as five passes "instead of 40".
 PASOS_PERSONA = 28
 
 
@@ -285,7 +291,12 @@ def _pasos(b: dict) -> int:
     # blander version of them; at 28 it is them, which is what every example in
     # the showcase that keeps a face was made at. The interface sets the same
     # number per path; this is here so an agent calling the API gets it too.
-    if b.get("personas"):
+    # A reference face is the clearest case, but not the only one: an edit
+    # has to hold on to the photograph it started from, and the grain people
+    # report on this model is incomplete denoising rather than the decoder.
+    # So the floor applies wherever something has to survive the run, and
+    # only plain text to image keeps the 16 the texture sweep settled on.
+    if b.get("personas") or b.get("imagen"):
         return max(int(leer_ajustes()["steps"]), PASOS_PERSONA)
     return int(leer_ajustes()["steps"])
 
@@ -345,7 +356,7 @@ def _guardar(img, prefijo="out", meta: dict | None = None) -> str:
         # about it is expensive: it looks like the step that computed it failed
         sobra = [k for k in meta if k not in CAMPOS_META]
         if sobra:
-            print(f"  [meta] no se guarda, falta en CAMPOS_META: {', '.join(sobra)}",
+            print(f"  [meta] not saved, missing from CAMPOS_META: {', '.join(sobra)}",
                   flush=True)
         for k in CAMPOS_META:
             v = meta.get(k)
@@ -939,7 +950,7 @@ class Handler(BaseHTTPRequestHandler):
                                              extra=VIS.MIRAR_REFERENCIA,
                                              max_tokens=90).strip()
             except Exception as e:
-                print(f"  [reescritor] no se pudo mirar la referencia: "
+                print(f"  [rewriter] could not look at the reference: "
                       f"{type(e).__name__}", flush=True)
 
         # the case decides the rules: editing and generating are not asked for

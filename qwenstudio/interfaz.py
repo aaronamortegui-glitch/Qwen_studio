@@ -312,7 +312,7 @@ details>summary{cursor:pointer;font-size:13px;color:var(--link);margin-top:18px;
   color:var(--on-sf-var);display:inline-flex;align-items:center}
 .gal .acciones .quitar:hover,.gal .acciones .quitar:focus-visible{color:var(--bad)}
 
-/* ---- LoRA a la vista ---- */
+/* ---- the LoRA row ---- */
 .lora{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px;
   background:var(--sf-1);border:1px solid var(--line-soft);border-radius:var(--r-s);
   padding:10px 12px}
@@ -1093,14 +1093,14 @@ function construirCampos(){
     : c.mode==='editar' ? 'What to change — name the thing, not the person'
     : c.mode==='reescalar' ? 'Nothing to write: the picture is its own instruction'
     : 'Instruction';
-  // los dos caminos de edicion ya han gastado el 3 en la region
+  // both editing paths have already spent the 3 on the region
   const nPaso = (c.mode==='inpaint'||c.mode==='efecto')
     ? '4' : ($('#lblPrompt').dataset.n||'3');
   $('#lblPrompt').innerHTML=`<i>${nPaso}</i><span id="lblPromptTxt">${etiqueta}</span>`;
   // it is an <h2>, not a <label>: for= binds nothing here, aria-labelledby does,
   // and this way the step number stays out of the announced name
   $('#prompt').setAttribute('aria-labelledby','lblPromptTxt');
-  // en estos dos el prompt no se escribe: uno se escoge y el otro es fijo
+  // neither of these two is typed: one is picked and the other is fixed
   $('#prompt').hidden = c.mode==='efecto';
   $('#barraPrompt').hidden = c.mode==='efecto';
   $('#zonaEfecto').hidden = c.mode!=='efecto';
@@ -1119,7 +1119,13 @@ function construirCampos(){
 // them. Every example in the showcase that keeps a face was made at 28 or 30,
 // which is the measurement nobody wrote down. So the paths that carry a person
 // ask for 28 and the rest keep 16, and the settings panel still overrides both.
-const PASOS_CASO = {portrait:28, scene:28, pose:28, cutout:28, free:28};
+// Anything the result has to hold on to -- a face from a reference, or the
+// photograph being edited -- needs the steps. Only the two text-to-image
+// paths invent everything from nothing, and there the 16 that the texture
+// sweep settled on still stands: with no reference there is no likeness to
+// lose, only detail, and detail is resolved by 16.
+const PASOS_CASO = {portrait:28, scene:28, pose:28, cutout:28, free:28,
+                    look:28, editar:28, restyle:28, enlarge:28, replace:28};
 function pasosDe(k){ return PASOS_CASO[k] || (AJ && AJ.steps) || 16; }
 function ponerPasos(k){
   const s=$('#steps'); if(!s) return;
@@ -1171,7 +1177,7 @@ CATS.forEach(([k,etiqueta,ayuda])=>{
     CAT=k;
     [...$('#cats').children].forEach(x=>x.setAttribute('aria-pressed',x.dataset.c===k));
     pintarCasos();
-    // al cambiar de grupo se entra por el primero: dejar el caso de otro grupo
+    // changing group enters at its first case: leaving another group's case
     // seleccionado y ningun boton marcado no lo entiende nadie
     const primero=Object.keys(CASOS).find(n=>CASOS[n].cat===k);
     if(primero && CASOS[S.caso].cat!==k) aplicarCaso(primero);
@@ -1241,8 +1247,8 @@ function pintarTurbo(){
   if(!hay) return;
   b.setAttribute('aria-pressed', AJ.turbo ? 'true' : 'false');
   $('#turboNota').textContent = AJ.turbo
-    ? `on · ${AJ.turbo_pasos||4} steps, detail pass off`
-    : `${AJ.turbo_pasos||4} steps, no detail pass`;
+    ? `on · ${AJ.turbo_pasos||5} steps, detail pass off`
+    : `${AJ.turbo_pasos||5} steps, no detail pass`;
   estimar();
 }
 $('#turbo').onclick=()=>{
@@ -1860,7 +1866,7 @@ function pintarEstadoMask(){
   if(hay) n.innerHTML = caso().mode==='efecto'
     ? '<b>The look goes only where you painted.</b> Everything outside comes back untouched.'
     : '<b>Using the mask you painted.</b> The words above are ignored while it is here.';
-  // grow y threshold pertenecen al segmentador; con el pincel no tocan nada
+  // grow and threshold belong to the segmenter; with the brush they do nothing
   ['grow','thr'].forEach(id=>{
     const c=$('#'+id); if(!c) return;
     c.disabled=hay;
@@ -2058,7 +2064,7 @@ $('#parar').onclick=async()=>{
 // letting the server drop it to 1 would work, but then the number above would
 // lie, which is the thing this app has spent the whole session avoiding.
 function loQueVaACorrer(){
-  if(AJ.turbo && TURBO_HAY) return {pasos:+(AJ.turbo_pasos||4), cfg:1, negativo:''};
+  if(AJ.turbo && TURBO_HAY) return {pasos:+(AJ.turbo_pasos||5), cfg:1, negativo:''};
   const c = +(AJ.cfg||1);
   return {pasos:+$('#steps').value, cfg:c,
           negativo:(c>1 ? ($('#negativo')||{}).value||'' : '')};
@@ -2156,7 +2162,7 @@ $('#go').onclick=async()=>{
     }
     if(r.cancelado){ avisar('Stopped. Nothing was saved.'); return }
     if(r.error){ avisar(r.error, true); return }
-    // lo que acaba de tardar afina la estimacion de la proxima
+    // what this one took sharpens the estimate for the next
     aprender((Date.now()-t0)/1000, +$('#mp').value, +$('#steps').value);
     $('#vacio').hidden=true;
     $('#avisos').innerHTML=(r.avisos||[]).map(a=>`<div class="nota">${a}</div>`).join('');
@@ -2175,7 +2181,7 @@ function elegirComparar(src, el){
     pendiente=src; pendienteEl=el; el.textContent='comparing…'; el.style.color='var(--link)';
     return;
   }
-  if(pendiente===src){                       // clic en el mismo: cancelar
+  if(pendiente===src){                       // the same one again: cancel
     el.textContent='compare'; el.style.color=''; pendiente=null; pendienteEl=null; return;
   }
   const card=tarjeta({archivo:src, tam:'comparison'}, pendiente);

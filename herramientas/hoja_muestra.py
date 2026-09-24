@@ -57,8 +57,8 @@ def main() -> None:
             if os.path.exists(ruta):
                 entradas.append((etiqueta, ruta))
     if not entradas:
-        raise SystemExit(f"  no hay imagenes en {MUESTRA}\n"
-                         f"  generalas primero con la app en marcha")
+        raise SystemExit(f"  no images in {MUESTRA}\n"
+                         f"  make some first, with the app running")
 
     cols = 4
     filas = (len(entradas) + cols - 1) // cols

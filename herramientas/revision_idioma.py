@@ -40,6 +40,8 @@ sobre bien mejor grande nuevo linea ancho prueba pruebas hay responde limpio
 sucio cambios commitear respaldo fecha ahora aun todavia ninguno cuantos
 tamano copiados funciona funcionan usa usan pesos cuantizados cuantizada
 arranca arrancar corre corren sirve sirven pone ponen quita quitan
+pudo pudieron puso pusieron dejo dejaron saco sacaron trajo trajeron
+encontro encontraron devuelve devuelven espera esperan necesita necesitan
 """.split())
 
 # ...and the ones that are identifiers here, so a line naming a function or a
@@ -55,6 +57,27 @@ inpaint muestreo turbo ajustes config perfil nivel destino origen raiz sello
 PALABRAS = CASTELLANO - NOMBRES
 UMBRAL = 2          # two carrying words in one fragment is a sentence
 
+# Word counting kept losing to lines carrying a single Spanish word, where
+# every other word was a name or an English homograph. Eleven of those were
+# still in the repository after three separate passes had each declared it
+# clean. These pairs do not occur in English, so one is enough on its own.
+#
+# They are pairs of whole words and not substrings, which the first version got
+# wrong: searching for the two characters of one word followed by the first of
+# the next found Spanish inside "made lamp" and "matches unusual", and reported
+# seventy-five findings in a repository that had none. And written as tuples so
+# this file does not trip over its own list.
+PAREJAS = {
+    ("no", "se"), ("se", "pudo"), ("se", "puede"), ("se", "pueden"),
+    ("se", "ha"), ("se", "han"), ("se", "usa"), ("se", "hace"),
+    ("se", "queda"), ("se", "deja"), ("de", "la"), ("de", "los"),
+    ("de", "las"), ("en", "el"), ("en", "la"), ("en", "los"), ("a", "la"),
+    ("por", "el"), ("por", "la"), ("que", "no"), ("lo", "que"),
+    ("hay", "que"), ("para", "que"), ("con", "el"), ("con", "la"),
+    ("es", "un"), ("es", "una"), ("no", "hay"), ("ya", "que"),
+    ("asi", "que"), ("del", "que"), ("al", "que"),
+}
+
 # inline code, URLs, file paths and snake_case names are not prose, and they
 # are full of words that look Spanish because the identifiers here are Spanish
 CODIGO = re.compile(r"`[^`]*`|https?://\S+|\S*[/\\]\S*|\b\w+_\w+\b")
@@ -69,9 +92,18 @@ WEB = re.compile(r"(?<![:/])//(.*)$|/\*(.*?)\*/")
 
 
 def _castellano(frag: str) -> list[str]:
-    """The Spanish words in a fragment, once the code has been taken out."""
+    """The Spanish in a fragment, once the code has been taken out.
+
+    A pair counts double, so one of them alone trips the threshold.
+    """
     frag = CODIGO.sub(" ", frag)
-    return [w for w in LETRAS.findall(frag.lower()) if w in PALABRAS]
+    palabras = LETRAS.findall(frag.lower())
+    hallado = [w for w in palabras if w in PALABRAS]
+    for a, b in zip(palabras, palabras[1:]):
+        if (a, b) in PAREJAS:
+            hallado += [a + " " + b] * 2
+            break
+    return hallado
 
 
 def _es_prosa(s: str) -> bool:

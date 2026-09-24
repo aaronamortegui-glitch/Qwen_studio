@@ -8,7 +8,8 @@ refine the answer.
 The profile decides four things:
     backend        cuda | mps | cpu
     dtype          bfloat16 | float16 | float32
-    quantisation   none | int8 | int4   (CUDA only: bitsandbytes has no MPS)
+    quantisation   none | int8 | int4   (CUDA only: neither backend has MPS)
+                   int8 is quanto, int4 is bitsandbytes nf4 -- see motor.py
     offload        none | model | sequential
 
 The weight download is the same in every profile (~33 GB from Qwen's diffusers
@@ -192,7 +193,10 @@ def detectar(destino_modelos: str | None = None) -> Perfil:
             nivel, dtype, cuant, off = "XL", "bfloat16", "none", "none"
             res, res_ref, res_multi = 2048, 2048, 1536
         elif vram >= 20:
-            nivel, dtype, cuant, off = "L", "bfloat16", "int4", "model"
+            # int8 here and four bits below it: the eight-bit path peaked at
+            # 12.1 GB on this portrait against nf4's 10.1, which a 20 GB card
+            # has room for and a 12 GB one does not.
+            nivel, dtype, cuant, off = "L", "bfloat16", "int8", "model"
             res, res_ref, res_multi = 2048, 1536, 1024
         elif vram >= 12:
             nivel, dtype, cuant, off = "M", "bfloat16", "int4", "model"

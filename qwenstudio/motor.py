@@ -465,12 +465,21 @@ class Motor:
     def listo(self) -> bool:
         return self.pipe is not None
 
-    # Measured on 2026-09-23, warm, 1 MP, same seed. Against base at 16 steps:
-    # generation 28 s -> 20 s, and a black-and-white edit that has to keep a
-    # face 29 s -> 19 s, with the face indistinguishable. At its advertised 4
-    # steps it returns ghost hands whichever shift_terminal it is given, so the
-    # number that ships is 8 and it is not a knob.
-    TURBO_PASOS = 8
+    # The adapter is a distillation, and a distillation is trained against one
+    # sigma schedule. Its card asks for five steps at [1.0, .875, .75, .5, .25]
+    # with shift_terminal None, and this app passed the steps and the
+    # shift_terminal but never the sigmas -- which the pipeline does accept.
+    # That is why the note here used to say it returned ghost hands at the four
+    # steps it advertises whichever shift_terminal it was given: it was being
+    # run off its own schedule, and the conclusion drawn from that ("eight is
+    # the number, and not a knob") was drawn from a broken setup.
+    #
+    # Its card is also clear about what it is not for: it "falls short of the
+    # 40-step base model on complicated image editing", naming multi-reference
+    # composition and identity-preserving edits, and warns of identity drift on
+    # "keep everything the same" requests. So it is a text-to-image lever.
+    TURBO_PASOS = 5
+    TURBO_SIGMAS = [1.0, 0.875, 0.75, 0.5, 0.25]
     TURBO_ARCHIVO = "turbo.safetensors"
 
     def _poner_techo_vram(self) -> None:
@@ -504,7 +513,7 @@ class Motor:
             self.techo_vram = round(total * frac, 1)
         except Exception as e:
             # working without a ceiling is possible; saying nothing is not
-            print(f"  [vram] no se pudo poner el techo: {type(e).__name__}: {e}",
+            print(f"  [vram] could not set the ceiling: {type(e).__name__}: {e}",
                   flush=True)
 
     def turbo_disponible(self) -> bool:
@@ -641,17 +650,40 @@ class Motor:
                 from diffusers import BitsAndBytesConfig as DiffBnb
                 from transformers import BitsAndBytesConfig as TrfBnb
 
-                def _cfg(clase, modo):
+                # Eight bits and four bits come from different libraries here,
+                # and the reason is measured. bitsandbytes' load_in_8bit is
+                # LLM.int8(): it splits the outliers out of every matrix and
+                # runs them down a parallel fp16 path, and that path costs a
+                # fortune in activations. On 2026-09-23 on a 24 GB card it took
+                # encoding ONE 1024 px reference to 20.14 GB and died there,
+                # with the transformer not even loaded yet. quanto's int8 is
+                # weight-only, dequantised on the fly, no outlier branch: the
+                # same portrait peaked at 12.1 GB and took 8% longer than nf4.
+                #
+                # nf4 stays with bitsandbytes, where it is measured and fine.
+                def _cfg(dif, trf, cual, modo):
+                    clase = dif if cual == "transformer" else trf
                     if modo == "int8":
-                        return clase(load_in_8bit=True)
+                        if cual == "transformer":
+                            from diffusers import QuantoConfig
+                            return QuantoConfig(weights_dtype="int8")
+                        from transformers import QuantoConfig
+                        return QuantoConfig(weights="int8")
                     return clase(load_in_4bit=True, bnb_4bit_quant_type="nf4",
                                  bnb_4bit_compute_dtype=dtype)
 
+                if "int8" in mapa.values():
+                    try:
+                        import optimum.quanto  # noqa: F401
+                    except ImportError:
+                        print("  [quant] optimum-quanto is not installed; "
+                              "falling back to nf4", flush=True)
+                        mapa = {k: "int4" for k in mapa}
+
                 quant_mapping = {}
-                if "transformer" in mapa:
-                    quant_mapping["transformer"] = _cfg(DiffBnb, mapa["transformer"])
-                if "text_encoder" in mapa:
-                    quant_mapping["text_encoder"] = _cfg(TrfBnb, mapa["text_encoder"])
+                for cual in ("transformer", "text_encoder"):
+                    if cual in mapa:
+                        quant_mapping[cual] = _cfg(DiffBnb, TrfBnb, cual, mapa[cual])
                 kwargs["quantization_config"] = PipelineQuantizationConfig(
                     quant_mapping=quant_mapping)
 
@@ -807,6 +839,7 @@ class Motor:
         kw = dict(prompt=prompt, num_inference_steps=int(steps),
                   true_cfg_scale=float(cfg), generator=gen,
                   output_resolution=int(res))
+        kw.update(self._horario(steps))
         # A negative prompt only exists above 1.0: at 1.0 the second forward
         # pass is not run, so passing one would cost nothing and do nothing,
         # which is worse than not offering it.
@@ -826,6 +859,17 @@ class Motor:
         finally:
             _fin()
         return out.images[0], prompt
+
+    def _horario(self, steps: int) -> dict:
+        """The sigmas the turbo adapter was distilled against, when it is on.
+
+        Only at its own step count: asked for more, the schedule no longer
+        describes the run and the list would be the wrong length anyway.
+        """
+        turbo = bool(self._lora and self._lora[2])
+        if turbo and int(steps) == self.TURBO_PASOS:
+            return {"sigmas": list(self.TURBO_SIGMAS)}
+        return {}
 
     def _admite_callback(self) -> bool:
         """Not every pipeline accepts it; checked once."""
