@@ -32,7 +32,9 @@
 
 ## Two ways to use it
 
-**1. By hand.** Double-click, a page opens at `127.0.0.1:7860`, you drop
+**1. By hand.** Double-click and it opens in a window of its own -- no tab
+strip, no address bar, its own icon in the taskbar. It is still a browser
+underneath, serving `127.0.0.1:7860`, but nothing about it says so. You drop
 photos into boxes and press Generate. Nine use cases in three groups, each
 showing only the inputs it needs, each opening with a worked example already
 loaded.
@@ -81,6 +83,10 @@ first run, with a resumable progress bar, so you can look at the detected
 profile before committing the disk.
 
 `SHORTCUT.bat` (Windows) puts a desktop shortcut with the icon on your desktop.
+The console window that carries the server starts minimised. It is not hidden:
+it is where the download progress, the detected profile and any error appear,
+and a local app that fetches 31 GB and can run out of VRAM should not swallow
+its own explanation.
 
 ---
 

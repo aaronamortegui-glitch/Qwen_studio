@@ -1392,6 +1392,58 @@ class Handler(BaseHTTPRequestHandler):
                 "resumen": hoja_resumen}
 
 
+def _abrir(url: str) -> str:
+    """Show the interface in a window of its own when a Chromium browser is here.
+
+    `webbrowser.open` puts the page in a tab, so what appears in the taskbar is
+    the browser. Chrome and Edge both take `--app=<url>`, which opens the same
+    page in a plain window with no tab strip and no address bar, and Windows
+    then uses the page's own favicon for the taskbar entry. The page declares
+    one, so this is the whole difference between looking like a website and
+    looking like a program.
+
+    Falls back to a tab whenever that is not available, which is the behaviour
+    this had before and is never worse than nothing. Returns what it did, for
+    the line printed at startup.
+    """
+    import shutil
+    import subprocess
+
+    candidatos = []
+    if sys.platform == "win32":
+        pf = [os.environ.get("PROGRAMFILES", r"C:\Program Files"),
+              os.environ.get("PROGRAMFILES(X86)", r"C:\Program Files (x86)"),
+              os.environ.get("LOCALAPPDATA", "")]
+        for base in filter(None, pf):
+            candidatos += [
+                os.path.join(base, "Google", "Chrome", "Application", "chrome.exe"),
+                os.path.join(base, "Microsoft", "Edge", "Application", "msedge.exe"),
+            ]
+    candidatos += [shutil.which(n) for n in
+                   ("chrome", "google-chrome", "chromium", "msedge")]
+
+    for ruta in candidatos:
+        if not ruta or not os.path.exists(ruta):
+            continue
+        try:
+            # detached: closing the window must not take the server with it,
+            # and the server must not wait on the browser
+            kw = {}
+            if sys.platform == "win32":
+                kw["creationflags"] = (getattr(subprocess, "DETACHED_PROCESS", 0)
+                                       | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
+            subprocess.Popen([ruta, f"--app={url}"], close_fds=True, **kw)
+            return "its own window"
+        except Exception:
+            continue
+
+    try:
+        webbrowser.open(url)
+        return "a browser tab"
+    except Exception:
+        return "nothing -- open the address yourself"
+
+
 def main():
     os.makedirs(SALIDAS, exist_ok=True)
     os.makedirs(ENTRADAS, exist_ok=True)
@@ -1404,10 +1456,8 @@ def main():
     print("=" * 60)
     if not M.pesos_completos(cfg["ruta_modelos"]):
         print("\n  The weights are not here yet. Opening the page lets you fetch them.\n")
-    try:
-        webbrowser.open(url)
-    except Exception:
-        pass
+    print(f"  Opening in {_abrir(url)}.  This console can stay minimised;\n"
+          f"  it is where progress and any error will appear.")
     try:
         srv.serve_forever()
     except KeyboardInterrupt:
