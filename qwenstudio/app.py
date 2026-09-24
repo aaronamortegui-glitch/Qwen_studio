@@ -263,7 +263,10 @@ def _mensaje(e: Exception) -> str:
         # inherited the problem.
         try:
             e.__traceback__ = None
-            M.vaciar_cache()
+            # The traceback holds the frames that hold the tensors, so it goes
+            # first; and then the engine puts its offload hooks away, which is
+            # the part a collector cannot do for it.
+            motor.tras_fallo()
         except Exception:
             pass
         techo = cfg.get("vram_limite_gb")

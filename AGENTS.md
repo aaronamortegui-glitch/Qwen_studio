@@ -201,6 +201,65 @@ classifier-free guidance and its card says so. `_cfg()` already returns
 
 ---
 
+
+## Measuring without wasting a day
+
+Every rule here cost something on 2026-09-23/24. They are about the method,
+not the model.
+
+**Measure against the configuration that ships.** The one-reference ceiling
+was walked with the adapter on, which turns guidance off, and the number was
+then used by the path that runs guidance. The same mistake twice: the step
+count came from a watch movement and was applied to faces. Before a number
+becomes a default, check that the thing measured is the thing that runs.
+
+**A failure poisons the next measurement.** An out-of-memory leaves the card
+holding what it was using. Release between cells, and treat any non-monotone
+result as contamination until proven otherwise: if a smaller size fails
+between two larger ones that pass, nothing has been learned. Two sets of
+readings were thrown away for this.
+
+**Never move a ceiling on contaminated data, or with a counter-example
+standing.** A wrong ceiling is worse than a conservative one: it promises a
+size the hardware will refuse.
+
+**Build the number after the eye finds the thing.** Three times a metric
+disagreed with the picture and the picture was right: a speckle score cleared
+the best result of a run and flagged a perfect stack of linen, and HSV
+saturation failed a black-and-white that CIELAB put at 2.2. Metrics locate and
+protect a finding. They do not decide whether it is there.
+
+**Verify by running it, never by reading the diff.** A transparency fix used a
+variable from another function and raised NameError on every call. The default
+use case was written in two places, so changing one changed nothing visible.
+Both were found by looking at the running app.
+
+**Before changing a constant, grep for a second copy.** That is what the
+default case was, and what the interface's ceiling arithmetic was after the
+server's changed.
+
+**Do not call something fixed until it is verified through the path a user
+takes.** The out-of-memory recovery worked in-process and was committed as
+fixed; through the server it left 18 GB stranded for another half-day.
+
+**Test the component, not the app, when the component is the question.** Forty
+eight tiled decodes took four seconds each against two minutes for a
+generation, and answered the same question. Load the VAE alone, the encoder
+alone, whatever the question is about.
+
+**Wait on something unique, and clean up after.** Polling a log for `done`
+matches the `done` of the run before it -- two false "finished" readings came
+from that. Wait for a file this run creates, or a string only it writes. And
+a waiter whose signal never arrives never exits: two were found still looping
+fourteen hours and three hours later, costing nothing but noise. Stop them
+when the thing they watch has ended.
+
+**Stop at functional.** A measurement that is interesting is not a reason to
+keep the tree uncommitted. Land what is verified, write the rest in
+PENDIENTE.md with its conditions, and say plainly which is which.
+
+---
+
 ## Writing the prompt: what was measured
 
 These are not style preferences. Each was measured with the same picture, the

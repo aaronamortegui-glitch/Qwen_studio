@@ -350,6 +350,22 @@ saying the background looked strange.
   measurements were thrown away before this was noticed, because they were
   failing for the previous cell's reason and looked like findings. It was
   claimed fixed in the commit of the night before; it is not.
+- **The one-reference ceiling was measured with guidance off.** The walk that
+  produced 2.30 MP began by turning the adapter on, and the adapter turns
+  guidance off -- so every cell in it ran one forward pass where the default
+  path runs two. The editing path already carries a separate, guided ceiling
+  for exactly this reason; generating does not, because its number looked
+  measured and was, against the wrong configuration.
+  Walking it again guided gave a monotone column -- 1.50 MP fits, 1.75, 2.00
+  and 2.30 do not -- and that column contradicts a portrait at 1344x1792,
+  2.30 MP, guided, that ran through the server in 267 s the same afternoon.
+  Same area, different shape, opposite outcome, and no explanation for it.
+  The unguided column of the same walk is not usable: 2.00 failed between a
+  2.30 that passed and a 1.75 that passed, which is carry-over rather than a
+  wall, so the in-process recovery is not complete either.
+  **Nothing was changed on the strength of this.** A ceiling moved on
+  contaminated data with an unexplained counter-example is worse than the
+  ceiling that is there.
 - **An IndexError at 2048x2048** appeared once, after a turbo-on / turbo-off
   sequence, and has not reproduced: not in eight generations at four tile
   sizes with a LoRA swap between each pair, not in forty-eight isolated

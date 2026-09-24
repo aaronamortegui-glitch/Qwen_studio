@@ -960,6 +960,28 @@ class Motor:
     BALDOSA_PX = 768
     BALDOSA_PASO = 576
 
+    def tras_fallo(self) -> dict:
+        """Put the card back the way a finished call would have left it.
+
+        `enable_model_cpu_offload` gives the weights to accelerate, which moves
+        each module on as it is needed and off again in
+        `maybe_free_model_hooks()` -- the last line of the pipeline's
+        `__call__`, with no try/finally around it. A call that raises never
+        reaches it, so whichever module was resident stays resident. Measured
+        after an out-of-memory while encoding references: 18.0 GB held with
+        nothing running.
+
+        Collecting does not help, because those tensors are not garbage:
+        accelerate is still holding them, correctly, since as far as it knows
+        the call has not ended. Asking it to end is what was missing.
+        """
+        try:
+            if self.pipe is not None and hasattr(self.pipe, "maybe_free_model_hooks"):
+                self.pipe.maybe_free_model_hooks()
+        except Exception:
+            pass
+        return vaciar_cache()
+
     def _baldosas(self, ancho: int | None, alto: int | None, res: int) -> None:
         """Tile the decoder only for pictures large enough to need it."""
         if self.pipe is None:
