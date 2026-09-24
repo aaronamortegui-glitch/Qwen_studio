@@ -340,6 +340,16 @@ saying the background looked strange.
   nowhere, because it was run before it was believed, which is the only reason
   this line is in the "fixed" list rather than in a bug report from someone
   else.
+- **The out-of-memory recovery is only half fixed.** Releasing the exception's
+  traceback before collecting works in-process: a walk down the sizes came back
+  monotone, each cell paying only for itself. Through the server it does not.
+  After a failure while encoding references the card sat at **18.0 GB with
+  nothing running**, and only an explicit call to the release endpoint brought it back to
+  1.4. So the tensors that failed are still referenced by something the
+  handler cannot see -- the pipeline, a cached embedding, another frame. Two
+  measurements were thrown away before this was noticed, because they were
+  failing for the previous cell's reason and looked like findings. It was
+  claimed fixed in the commit of the night before; it is not.
 - **An IndexError at 2048x2048** appeared once, after a turbo-on / turbo-off
   sequence, and has not reproduced: not in eight generations at four tile
   sizes with a LoRA swap between each pair, not in forty-eight isolated
