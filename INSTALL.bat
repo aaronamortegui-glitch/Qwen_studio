@@ -51,5 +51,13 @@ if errorlevel 1 (
   exit /b 1
 )
 
+REM A .bat cannot carry an icon; a shortcut can. Making it here means the
+REM icon exists from the first minute rather than after someone finds
+REM SHORTCUT.bat and wonders what it is for.
+call "%~dp0SHORTCUT.bat" quiet >nul 2>&1
+if exist "%USERPROFILE%\Desktop\QwenStudio.lnk" (
+  echo   QwenStudio is on your desktop.
+)
+
 echo.
 pause

@@ -878,9 +878,15 @@ class Motor:
             # as the noir look, which returned a black photograph when asked
             # for "most of the frame in shadow": name what IS seen, not only
             # what is not.
+            # Whatever is meant to survive gets named, and named last. With a
+            # photograph in play that is the person; with nothing but words it
+            # is whatever the text describes, and saying "the person" there
+            # asks for one -- which is the whole reason an icon came back with
+            # somebody in it.
+            quien = "The person is" if personas else "The subject described above is"
             prompt = ("This is an RGBA image with transparency. " + prompt.strip()
                       + " The image has an alpha channel and the background is "
-                        "transparent. The person is fully opaque, solid and "
+                        "transparent. " + quien + " fully opaque, solid and "
                         "completely visible, filling the frame.")
 
         self._baldosas(ancho, alto, res)
@@ -933,13 +939,38 @@ class Motor:
     # which is what the ceiling is for.
     BALDOSAS_MP = 2.0
 
+    # How big each decoder tile is, and how far apart their corners sit.
+    #
+    # The library ships 256 with a stride of 192 -- a 64-pixel overlap -- which
+    # on a 2752x1536 frame is about sixty-six tiles, and on a gradient sky
+    # their edges are a visible grid. Texture hides them; a blurred background
+    # or a clear sky does not, and it was there in every 2K picture this app
+    # had ever made, with the adapter and without it.
+    #
+    # Walked on a 2048x2048 gradient, which is the worst case for a seam and
+    # the easiest place to see one. How far the worst row or column stands
+    # above the typical one: 7.28 at 256, 6.03 at 512, 5.67 at 768, 5.71 at
+    # 1024. It stops improving at 768 and 1024 buys nothing back.
+    #
+    # And it is free. The decoder's own peak runs from 1.1 GB at 256 to 7.2 at
+    # 1024, but the whole generation peaks at 9.5 GB at every tile size,
+    # because by the time the decode runs the transformer has already given
+    # its memory back. The stride keeps a quarter of each tile overlapping,
+    # which is what there is to blend a seam across.
+    BALDOSA_PX = 768
+    BALDOSA_PASO = 576
+
     def _baldosas(self, ancho: int | None, alto: int | None, res: int) -> None:
         """Tile the decoder only for pictures large enough to need it."""
         if self.pipe is None:
             return
         pixeles = (ancho * alto) if (ancho and alto) else (int(res) ** 2)
         if pixeles > self.BALDOSAS_MP * 1024 * 1024:
-            self.pipe.vae.enable_tiling()
+            self.pipe.vae.enable_tiling(
+                tile_sample_min_height=int(self.BALDOSA_PX),
+                tile_sample_min_width=int(self.BALDOSA_PX),
+                tile_sample_stride_height=int(self.BALDOSA_PASO),
+                tile_sample_stride_width=int(self.BALDOSA_PASO))
             self.pipe.vae.enable_slicing()
         else:
             self.pipe.vae.disable_tiling()

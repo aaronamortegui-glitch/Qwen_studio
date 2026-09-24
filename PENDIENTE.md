@@ -303,6 +303,15 @@ texture detector. It is useful for *noticing that something changed* and it
 cannot be a pass mark, which is the same mistake as measuring a likeness with
 mean pixel difference, made again three weeks later with a different number.
 
+**And the tiles, found the next morning by looking at a fox.** The decode
+has been tiled above 2 MP since tiling went in, with whatever tile size
+diffusers defaults to, which is 256 pixels. Nobody chose it and nobody looked
+at what it does: on a gradient sky and on a blurred background it leaves a
+visible grid, and it has been doing that in every 2K image this app has ever
+made, in base as much as with the adapter. Every test subject until then had
+texture, which hides it. It took someone generating a fox in soft bokeh and
+saying the background looked strange.
+
 **Still open after that night:**
 
 - Whole-frame editing regenerates the whole frame. With guidance it keeps the
@@ -314,6 +323,28 @@ mean pixel difference, made again three weeks later with a different number.
 - The guided whole-frame ceiling, 1.50 MP, is measured on this card at int8
   and inherited by everything else by the same rule as the other ceilings.
   Nobody has run it on a card that does not have 24 GB.
+
+## The morning after: four more, and one of them was mine
+
+- **The decoder tiled in 256-pixel squares**, which is whatever diffusers
+  defaults to, and left a grid on every gradient and every blurred background
+  at 2K. Fixed at 768 with a 576 stride, which is where the improvement stops
+  -- 1024 measured no better. It costs nothing: the whole generation peaks at
+  9.5 GB at every tile size, because the decode runs after the transformer has
+  given its memory back.
+- **The transparency clause said "the person"** whether or not there was one,
+  so asking for an icon asked for somebody to be in it. It names the subject
+  now when there is no photograph.
+- **The first version of that fix used a variable from another function** and
+  raised NameError on every transparent request without a person. It shipped
+  nowhere, because it was run before it was believed, which is the only reason
+  this line is in the "fixed" list rather than in a bug report from someone
+  else.
+- **An IndexError at 2048x2048** appeared once, after a turbo-on / turbo-off
+  sequence, and has not reproduced: not in eight generations at four tile
+  sizes with a LoRA swap between each pair, not in forty-eight isolated
+  decodes, not in-process with a traceback waiting for it. Recorded here with
+  its conditions rather than called fixed.
 
 ## Documentation debt
 

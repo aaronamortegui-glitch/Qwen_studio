@@ -8,6 +8,12 @@ getting it wrong fails silently rather than loudly.
 HTML = r"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<!-- The window frame in --app mode is painted from these. Without them
+     Chrome uses the system light theme and draws a white band above a
+     dark interface. Two, because the page follows the system theme. -->
+<meta name="theme-color" content="#f7f9f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#081917" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
 <title>QwenStudio</title>
 <style>
 /* Superside: fondo hueso, tinta verde casi negra, lima para la accion.
@@ -896,6 +902,17 @@ const CASOS={
       +'beside it, framed slightly above eye level with the helmet off-centre, a single '
       +'softbox from the left falling off into near black, shot on a 100mm macro lens, '
       +'fine grain.'},
+  icono:{cat:'text', icon:'star', name:'Icon on transparency',
+    hint:'Flat symbols on nothing, saved as PNG with an alpha channel.',
+    mode:'generate', zonas:[], opt:[], ratio:'1:1', transp:true,
+    nota:'Transparency is painted by the model, not cut out afterwards. Flat '
+      +'shapes on an empty ground are the easy case for it; a photograph with '
+      +'a busy background is the hard one, and that is what Remove the '
+      +'background is for.',
+    prompt:'A single flat vector icon of a paper aeroplane, rounded corners, '
+      +'two tones of teal with one warm accent, thick even strokes, no outline '
+      +'box, no drop shadow, no background, centred with generous margin.'},
+
   sign:{cat:'text', icon:'sign', name:'Text in the image', hint:'Posters, signs, packaging.',
     mode:'generate', zonas:[], opt:[], ratio:'3:4',
     prompt:'A vintage screen-printed travel poster for the Atacama desert. The word '
@@ -961,6 +978,7 @@ const CASOS={
 const EJ={
   blank:{ins:{}, out:'out_blank.jpg',
     que:'No reference, no photo: the prompt on the left is the whole input.'},
+  icono:null,
   sign:{ins:{}, out:'out_sign.jpg',
     que:'The words in quotes come out as actual lettering. This is what this model does '
       +'better than most.'},
@@ -1150,6 +1168,10 @@ function aplicarCaso(k){
   const sinEntradas=!c.zonas.length;
   $('#secEntradas').hidden=sinEntradas;
   $('#zonas').hidden=sinEntradas;
+  // With no reference there is no app-written instruction to keep separate
+  // from your words, so the second box would only be somewhere else to type
+  // the same sentence. It is joined with a space either way.
+  $('#zonaExtra').hidden=sinEntradas;
   $('#tituloEntradas').innerHTML='<i>2</i>'+(c.mode==='inpaint'?'Image':'Inputs');
   $('#lblPrompt').dataset.n=sinEntradas?'2':'3';
   const nc=$('#notaCaso');
@@ -2074,9 +2096,13 @@ function loQueVaACorrer(){
 // the light are not the same kind of sentence, and pouring both into one box
 // is how a prompt ends up asking for two photographs. The model still gets
 // one string, with the complement last, where the weight is.
-const promptCompleto=()=>[$('#prompt').value.trim(),
-                          ($('#complemento')||{}).value?.trim()||'']
-                         .filter(Boolean).join(' ');
+// the complement counts only while it is on screen: hiding it must drop
+// what is in it, or a sentence typed on another path would ride along unseen
+const promptCompleto=()=>{
+  const ex=$('#zonaExtra'), c=$('#complemento');
+  const extra = (ex && !ex.hidden && c) ? (c.value||'').trim() : '';
+  return [$('#prompt').value.trim(), extra].filter(Boolean).join(' ');
+};
 const comunes=()=>{
   const v = loQueVaACorrer();
   return {prompt:promptCompleto(), steps:v.pasos, seed:+$('#seed').value,

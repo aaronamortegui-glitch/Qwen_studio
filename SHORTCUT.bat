@@ -23,6 +23,9 @@ if errorlevel 1 (
   exit /b 1
 )
 
+REM "quiet" is the installer calling: it reports this itself and must not
+REM stop on a keypress nobody is waiting to press.
+if "%~1"=="quiet" exit /b 0
 echo.
 echo   QwenStudio is on your desktop.
 echo.

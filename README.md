@@ -259,6 +259,22 @@ each was measured to be a trade rather than a free win:
 On a machine that cannot run this usefully, the installer and the app both say
 so plainly — with a puppy — and then let you through anyway.
 
+### One box where the second one was buying nothing
+
+The split below earns its keep wherever a reference is involved: the
+instruction is the app's, carrying the identity clause and the reference
+order, and the complement is yours. Text to image has neither. Both boxes are
+your words and they are joined with a space, so a second box promises a
+control with a weight of its own and there isn't one.
+
+Measured, because it was worth checking before removing anything: a wildlife
+photograph in the first box and *"a green slime gigant study in a collage"* in
+the second came back a wildlife photograph, at seven steps, at sixteen and at
+twenty-eight. The recipe saved inside the image showed both halves joined in
+the right order, so nothing was broken -- the model simply discards a trailing
+fragment that contradicts the scene already established. The three paths with
+no inputs at all now show one box.
+
 ### Two boxes, because a prompt says two different kinds of thing
 
 **Instruction** says what to make. **Look and feel** says how it should look.
@@ -345,6 +361,7 @@ wrong thing.
 | the turbo adapter rejected | the wrong adapter, and without its sigmas | the conclusion was drawn from a broken setup |
 | tiling the VAE | peak memory at 4 MP | 24.5 levels and a different man |
 | guidance, when editing | nothing -- it was never measured | the frame repainted, and a look silently ignored |
+| the decoder's tile size | nothing -- it arrived with the library | a grid across every sky and every blurred background |
 
 Sharpness, saturation, gigabytes, seconds. **Not one of them was ever measured
 against a likeness**, and identity is the one thing that cannot be recovered
@@ -382,7 +399,20 @@ So, the rule, in the order it matters:
    note says "about 40-50 with euler", the most-shared community workflow ships
    25-27, and the turbo adapter describes itself as five passes "instead of 40".
 
-6. **For a likeness, the eye is the instrument.** Mean pixel difference said 24
+6. **A number that disagrees with the picture is usually the wrong number.**
+   Three times in one night. A speckle score -- the picture against a median
+   of itself -- found the repainting, then flagged a stack of linen and a
+   brick wall at 6.8 and 8.1 that were perfect, and cleared the best result of
+   the run at 5.6; it is a texture detector. The black-and-white check used
+   HSV saturation, which is a ratio, so a high-contrast monochrome look, being
+   mostly deep shadow, scored 38 with no colour in it at all; in CIELAB the
+   same picture is 2.2. And the seams above moved a grid score from 2.46 to
+   2.30, a difference of nothing, between two pictures anyone can tell apart
+   at a glance. Each number was measuring something adjacent to the question.
+   Build the number *after* the eye has found the thing, to locate it and to
+   keep it found -- never to decide whether it is there.
+
+7. **For a likeness, the eye is the instrument.** Mean pixel difference said 24
    levels and could not say that the 24 levels were a different man; it gave
    the same 11.7-13.3 to six person-swap attempts that the eye separated at a
    glance. Numbers locate the cause *after* somebody has seen that something is
@@ -447,6 +477,29 @@ The **Style** slot serves two different jobs, and the interface says which one
 you are in. In the generation paths it lends a grade — contrast, grain, the
 quality of the light. In **Match a style** it lends a whole visual language,
 and it is not handed to the generator as a picture at all. See below.
+
+---
+
+## Icons, and transparency that is not a person
+
+Transparency is asked for with a checkbox and the model paints the alpha
+channel itself. The clause the engine adds for it used to end *"The person is
+fully opaque, solid and completely visible, filling the frame"* -- measured on
+a cutout of somebody, where it fixes a real failure: without it a reference
+with a busy background comes back 0.7% opaque, the subject dissolved along
+with everything else.
+
+Bolted on to a request with no person in it, that sentence asks for one, last
+and therefore loudest. It now names the person when there is a photograph and
+"the subject described above" when there are only words, which is what makes
+an icon on transparency possible at all. Two paper aeroplanes at 1024, 74% and
+80% alpha, nobody in either.
+
+Flat shapes on an empty ground are the easy case for painted transparency. A
+photograph with a busy background is the hard one, and it is seed-dependent:
+0.7%, 16.2% and 47.2% opaque across three seeds on the same picture, where a
+clean studio source gives a usable 48-51% every time. That path says so where
+it is chosen.
 
 ---
 
@@ -693,6 +746,21 @@ frame at the full 1792 is 2.30 MP and peaks at 17.0.
 | M | 12-20 GB | 4.00 MP | 1.00 MP | 1.00 MP |
 | S | 8-12 GB | 2.25 MP | 1.00 MP | 1.00 MP |
 | MINIMO | under 8 GB | 1.00 MP | 1.00 MP | 1.00 MP |
+
+**And the tiles have a size, which is not the one the library ships.**
+Above 2 MP the decode is tiled, because the whole frame does not fit.
+diffusers defaults to 256-pixel tiles with a 192 stride, so a 64-pixel
+overlap, and a 2752 x 1536 frame comes out of about sixty-six of them. On
+anything textured the seams hide inside the texture. On a blurred background
+or a gradient sky they are a visible grid, in base at sixteen steps as much as
+with the adapter. A card with 24 GB is not obliged to decode in tiles a
+twelfth of its budget: **768 with a 576 stride**. Walked on a gradient sky, the
+worst row-to-row jump against the typical one falls 7.28, 6.03, 5.67, 5.71
+for tiles of 256, 512, 768 and 1024 -- it stops improving at 768 and 1024
+buys nothing. And it is free: the decoder's own peak runs from 1.1 GB to 7.2
+across that range, while the whole generation peaks at 9.5 GB at every one of
+them, because by the time the decode runs the transformer has given its
+memory back.
 
 **Editing the whole frame is capped lower still: 1.50 MP.** It is the only
 path that holds a picture at full size *and* produces one, and it runs with
