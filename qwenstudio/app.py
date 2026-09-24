@@ -84,9 +84,10 @@ AJUSTES_DEF = {
     # face swaps and identity-document edits can produce duplicated or ghosted
     # figures". Left at 4 because that is what the model asks for and the
     # switch exists to go fast; 8 is one number away.
-    # five, and its own sigmas with it: the adapter is a distillation and the
-    # schedule is part of it. See motor.TURBO_SIGMAS.
-    "turbo_pasos": 5,
+    # seven, and the adapter's own curve resampled to reach them: the schedule
+    # is part of the distillation. At five the body deforms, at six the
+    # shoulder still does. See motor.TURBO_PASOS for the six seeds.
+    "turbo_pasos": 7,
     # Detail pass, on. Above 1 the pipeline runs a second forward pass against
     # the negative prompt, which costs ~80% more time and buys detail that is
     # not there otherwise: a watch movement went from a gold blur to resolved

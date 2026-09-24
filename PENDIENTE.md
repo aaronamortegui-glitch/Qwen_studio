@@ -131,6 +131,61 @@ things survive. Ordered by what it costs against what it gives.
   each), along with a paragraph still saying enlarging was not offered, which it
   has been since nf4 took it from 754 seconds to 156.
 
+## The day the face came back
+
+Five decisions had each taken something off the likeness, and the sum of them
+was a different man. Each is listed with what it was measured against when it
+was chosen, because that is the part worth remembering.
+
+1. **Sixteen steps**, swept on a watch movement, a knurled ring and a hand.
+   Same prompt, same seed, same reference: 16 gives a thinner, younger
+   stranger, 24 is close, 28 is them. Now 28 on all twelve paths except the two
+   that invent everything from nothing.
+2. **The identity clause was not last.** Pose and scene each grew that line for
+   their own reason; the plain portrait, which takes the longest prompts, had
+   the identity at the start with sixty words of generic photograph after it.
+   Now fixed and last wherever there is a person.
+3. **The scaffolding competed with the reference.** Forty words describing a
+   face, sent into the same encoder that was already being handed one. The bare
+   sentence came back the more like the person, and the rewriter no longer
+   describes appearance when a reference is loaded.
+4. **nf4 rather than int8**, chosen on speed and memory. int8 is better on a
+   face at both the base model and the adapter, and it is reachable: not
+   through bitsandbytes, whose LLM.int8() splits outliers down a parallel fp16
+   path and took encoding one 1024 px reference to 20.14 GB, but through quanto,
+   which is weight-only and peaked at 12.1 GB against nf4's 10.1.
+5. **The VAE tiled everything, always** -- and this one was worth more than the
+   other four together. It went in to cap the decode peak at 4 MP (24.0 GB
+   against 7.5) and was switched on at load and never off, so it applied at
+   1 MP too, where the whole frame costs 12.1 GB under a 20.3 ceiling. Measured
+   at 1 MP: 24.5 levels of difference, slower (56 s against 47), and a worse
+   likeness.
+
+   The mechanism is the lesson. `pipe.vae` has two jobs, and `_encode` and
+   `_decode` read the same `use_tiling` flag. Tiling for the decode chopped the
+   reference on the way IN. The proof is that the composition changed at the
+   same seed, which a decoder cannot do: the latent was different because the
+   encoder had been handed the face in pieces.
+
+   Both halves are now measured separately. The encode is never tiled, at any
+   size. The decode is tiled above 2 MP, and that threshold is no longer a
+   guess: at 1536 (2.25 MP) the whole frame OOMs against the ceiling and the
+   tiled one peaks at 17.5 GB. And with the encode protected, tiling the decode
+   costs 1.0 level at 1280 and 0.0 at 1536 -- all of the damage had been on the
+   way in.
+
+Six seeds at the settings that ship now come back as the same man, where before
+the fix one of six was a slimmer stranger and the rest were flattered. The
+suite has a `same man` case so the next regression of this kind fails a test
+instead of taking a day.
+
+**Still open from this:** 2K with a reference. Profile L caps at 1536 with one
+reference, and the ceiling is what stops it going higher -- not the decoder,
+which tiles happily. The staged engine is the way up, and for the reason the
+name hides: it is not about sending anything in parts, it is about freeing the
+~9 GB the text encoder occupies so that nothing has to be.
+
+
 ## The staged engine, and how far it got
 
 Every workflow the community shares loads `qwen_image_2.1_int8_convrot` and

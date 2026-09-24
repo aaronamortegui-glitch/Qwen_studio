@@ -81,6 +81,51 @@ def juzgar(url_rel: str, esperado: list[str]) -> str:
     return visto
 
 
+def mismo_hombre(url_rel: str) -> str:
+    """Ask the VLM whether the result is the person in the reference.
+
+    The suite could tell that a blazer had arrived and never that the man
+    wearing it was somebody else. Five separate decisions degraded the likeness
+    before anyone noticed, because every check here was about the shape of the
+    output and none about who was in it. This is the one that would have caught
+    them: the reference and the result, side by side, one question.
+
+    Deliberately generous. It asks about build, beard and face rather than
+    demanding certainty, because the model is not a face matcher and a test
+    that fails on a haircut is a test nobody keeps.
+    """
+    ruta = os.path.join(SALIDAS, os.path.basename(url_rel))
+    hoja = hoja_lado_a_lado(PERSONA, ruta)
+    r = pedir("/api/describir",
+              {"imagen": data_url(hoja), "tarea": "free",
+               "extra": "Two photographs of a man, side by side. Ignore the "
+                        "clothing, the lighting and the background. Looking only "
+                        "at the face, the beard and the build: is this the same "
+                        "man twice? Answer with one word, yes or no, then one "
+                        "short sentence saying why."},
+              timeout=900)
+    assert not r.get("error"), r.get("error")
+    dicho = r["texto"].strip()
+    assert dicho.lower().lstrip().startswith("yes"), \
+        f"the reference and the result are not the same man: {dicho[:160]}"
+    return dicho.split(".")[0][:70]
+
+
+def hoja_lado_a_lado(izq: str, der: str) -> str:
+    """One image with both, so the VLM sees them in a single glance."""
+    from PIL import Image
+    a, b = Image.open(izq).convert("RGB"), Image.open(der).convert("RGB")
+    alto = 768
+    a = a.resize((round(a.width * alto / a.height), alto), Image.LANCZOS)
+    b = b.resize((round(b.width * alto / b.height), alto), Image.LANCZOS)
+    hoja = Image.new("RGB", (a.width + b.width, alto), (255, 255, 255))
+    hoja.paste(a, (0, 0))
+    hoja.paste(b, (a.width, 0))
+    destino = os.path.join(SALIDAS, "_identidad.png")
+    hoja.save(destino)
+    return destino
+
+
 def modo(url_rel: str) -> str:
     from PIL import Image
     return Image.open(os.path.join(SALIDAS, os.path.basename(url_rel))).mode
@@ -127,6 +172,25 @@ def caso_retrato():
     assert w == h, f"1:1 asked, got {w}x{h}"
     juzgar(r["imagenes"][0]["archivo"], ["blazer", "suit", "jacket"])
     return f"{w}x{h}, wardrobe changed"
+
+
+def caso_identidad():
+    """The portrait again, at the settings that ship, judged on the face.
+
+    Everything else in this file checks the shape of what came back. This one
+    checks who came back, which is the only thing a reference photograph is
+    there to decide, and the thing five separate measurements missed.
+    """
+    r = pedir("/api/generar", {"personas": [data_url(PERSONA)],
+                               "prompt": "A colour editorial magazine portrait. "
+                                         "The subject wears a black tailored blazer "
+                                         "over a white shirt, standing in a sunlit "
+                                         "concrete gallery, hard side light from a "
+                                         "tall window, deep shadows.",
+                               "ratio": "3:4", "megapixeles": 1, "seed": 301,
+                               "resumen": False})
+    assert not r.get("error"), r.get("error")
+    return mismo_hombre(r["imagenes"][0]["archivo"])
 
 
 def caso_ratio():
@@ -515,7 +579,8 @@ def caso_editar_fondo():
 
 CASOS = [
     ("status", caso_estado), ("catalogues", caso_catalogos),
-    ("new portrait", caso_retrato), ("aspect ratio 16:9", caso_ratio),
+    ("new portrait", caso_retrato), ("same man", caso_identidad),
+    ("aspect ratio 16:9", caso_ratio),
     ("character in a scene", caso_escena), ("pose from library", caso_pose),
     ("style reference", caso_estilo), ("transparent cutout", caso_transparencia),
     ("mask preview", caso_mascara), ("inpaint", caso_inpaint),

@@ -1247,8 +1247,8 @@ function pintarTurbo(){
   if(!hay) return;
   b.setAttribute('aria-pressed', AJ.turbo ? 'true' : 'false');
   $('#turboNota').textContent = AJ.turbo
-    ? `on · ${AJ.turbo_pasos||5} steps, detail pass off`
-    : `${AJ.turbo_pasos||5} steps, no detail pass`;
+    ? `on · ${AJ.turbo_pasos||7} steps, detail pass off`
+    : `${AJ.turbo_pasos||7} steps, no detail pass`;
   estimar();
 }
 $('#turbo').onclick=()=>{
@@ -2064,7 +2064,7 @@ $('#parar').onclick=async()=>{
 // letting the server drop it to 1 would work, but then the number above would
 // lie, which is the thing this app has spent the whole session avoiding.
 function loQueVaACorrer(){
-  if(AJ.turbo && TURBO_HAY) return {pasos:+(AJ.turbo_pasos||5), cfg:1, negativo:''};
+  if(AJ.turbo && TURBO_HAY) return {pasos:+(AJ.turbo_pasos||7), cfg:1, negativo:''};
   const c = +(AJ.cfg||1);
   return {pasos:+$('#steps').value, cfg:c,
           negativo:(c>1 ? ($('#negativo')||{}).value||'' : '')};

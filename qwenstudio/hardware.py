@@ -197,7 +197,12 @@ def detectar(destino_modelos: str | None = None) -> Perfil:
             # 12.1 GB on this portrait against nf4's 10.1, which a 20 GB card
             # has room for and a 12 GB one does not.
             nivel, dtype, cuant, off = "L", "bfloat16", "int8", "model"
-            res, res_ref, res_multi = 2048, 1536, 1024
+            # 1536 with a reference was inherited from the night 2K with one
+            # took the machine down, and never revisited. Walked again on
+            # 2026-09-23 with the allocator ceiling in place, which turns the
+            # wall into an exception: 1536 peaks at 14.7 GB, 1792 at 17.0,
+            # and 2048 is the wall. So 1792, with 3.3 GB to spare.
+            res, res_ref, res_multi = 2048, 1792, 1024
         elif vram >= 12:
             nivel, dtype, cuant, off = "M", "bfloat16", "int4", "model"
             res, res_ref, res_multi = 2048, 1024, 1024

@@ -194,6 +194,39 @@ def progreso() -> dict:
     return p
 
 
+def _encode_entero(vae) -> None:
+    """Keep the reference out of the tiling, whatever the output size.
+
+    `pipe.vae` does two jobs: it encodes the condition photographs into the
+    conditioning and it decodes the result. Both `_encode` and `_decode` read
+    the same `use_tiling` flag, so switching tiling on for a large output also
+    chopped the reference up on the way in -- and the reference is what carries
+    the likeness. Measured on 2026-09-23 at 1 MP, where tiling was on by
+    mistake: the composition itself changed between tiled and whole at the same
+    seed, which a decoder cannot do. The latent was different because the
+    encoder had been handed the face in pieces.
+
+    The two jobs do not need the same answer. A condition image is capped near
+    1 MP before it gets here, and 1 MP encodes whole comfortably; the output is
+    what can reach 2K and need the tiles. So the flag is lifted for the
+    duration of the encode and put back, once, at load.
+    """
+    if getattr(vae, "_qs_encode_entero", False):
+        return
+    original = vae.encode
+
+    def encode(*a, **k):
+        antes = vae.use_tiling
+        vae.use_tiling = False
+        try:
+            return original(*a, **k)
+        finally:
+            vae.use_tiling = antes
+
+    vae.encode = encode
+    vae._qs_encode_entero = True
+
+
 def _vigilante(total: int):
     """The callback diffusers calls at the end of every step."""
     PARAR.clear()
@@ -478,8 +511,20 @@ class Motor:
     # 40-step base model on complicated image editing", naming multi-reference
     # composition and identity-preserving edits, and warns of identity drift on
     # "keep everything the same" requests. So it is a text-to-image lever.
-    TURBO_PASOS = 5
-    TURBO_SIGMAS = [1.0, 0.875, 0.75, 0.5, 0.25]
+    # Its card asks for five. Measured on 2026-09-23 at 1280 with a person
+    # reference, the curve resampled to each count. At five it turns a
+    # tailored blazer into a wide-lapelled overcoat and pulls the shoulders
+    # out of shape. Six still carries the shoulder. Seven and eight are both
+    # clean, twelve adds nothing, and the knee is seven -- held across the
+    # same six seeds the likeness was validated with: blazer in all six,
+    # shoulders right in all six, 30-34 s against the base's 90.
+    #
+    # This file said eight long before any of that, from a note reading "at
+    # its advertised four steps it returns ghost hands". The count was in the
+    # right place and the reason was missing: the sigmas were never passed.
+    TURBO_PASOS = 7
+    # the curve the distillation was trained against, at its own five points
+    TURBO_CURVA = [1.0, 0.875, 0.75, 0.5, 0.25]
     TURBO_ARCHIVO = "turbo.safetensors"
 
     def _poner_techo_vram(self) -> None:
@@ -711,8 +756,11 @@ class Motor:
             # right at the decode. Tiling attacks that peak and touches nothing
             # else.
             try:
-                pipe.vae.enable_tiling()
-                pipe.vae.enable_slicing()
+                # Tiling is NOT turned on here any more. It is decided per
+                # call, by size, in _baldosas(). See the note there.
+                pipe.vae.disable_tiling()
+                pipe.vae.disable_slicing()
+                _encode_entero(pipe.vae)
             except Exception:
                 pass
 
@@ -835,6 +883,7 @@ class Motor:
                         "transparent. The person is fully opaque, solid and "
                         "completely visible, filling the frame.")
 
+        self._baldosas(ancho, alto, res)
         gen = torch.Generator(device="cpu").manual_seed(int(seed))
         kw = dict(prompt=prompt, num_inference_steps=int(steps),
                   true_cfg_scale=float(cfg), generator=gen,
@@ -860,16 +909,68 @@ class Motor:
             _fin()
         return out.images[0], prompt
 
+    # Above this many pixels the decode is tiled; below it the frame is done
+    # in one piece. Both halves of that are measured.
+    #
+    # Tiling went in to cap the decode peak, which at 4 MP was 24.0 GB against
+    # 7.5 tiled -- the difference between an image and a reboot. But it was
+    # switched on at load and never off, so it also applied at 1 MP, where the
+    # whole frame peaks at 12.1 GB under a 20.3 ceiling. Measured on
+    # 2026-09-23, same prompt, same seed, same weights, only tiling moving:
+    # 24.5 levels of difference, the tiled version slower (56 s against 47 s)
+    # and a worse likeness.
+    #
+    # And the reason it costs a likeness is not the decode. `pipe.vae` does two
+    # jobs: it decodes the result AND encodes the reference photograph into the
+    # conditioning. Tiling applies to both, so the reference reached the model
+    # in pieces. The composition changed between the two runs, which a decoder
+    # cannot do -- the latent itself was different, because the encoder had
+    # been handed a tiled version of the face.
+    #
+    # The threshold sits at 2 MP: 1 MP is measured to fit whole, 4 MP is
+    # measured not to, and in between is interpolation. A wrong guess here is
+    # an OutOfMemoryError against the allocator ceiling rather than a crash,
+    # which is what the ceiling is for.
+    BALDOSAS_MP = 2.0
+
+    def _baldosas(self, ancho: int | None, alto: int | None, res: int) -> None:
+        """Tile the decoder only for pictures large enough to need it."""
+        if self.pipe is None:
+            return
+        pixeles = (ancho * alto) if (ancho and alto) else (int(res) ** 2)
+        if pixeles > self.BALDOSAS_MP * 1024 * 1024:
+            self.pipe.vae.enable_tiling()
+            self.pipe.vae.enable_slicing()
+        else:
+            self.pipe.vae.disable_tiling()
+            self.pipe.vae.disable_slicing()
+
     def _horario(self, steps: int) -> dict:
         """The sigmas the turbo adapter was distilled against, when it is on.
 
-        Only at its own step count: asked for more, the schedule no longer
-        describes the run and the list would be the wrong length anyway.
+        The shape of that curve is part of the distillation: the model learnt
+        to take those particular jumps. Asking for more steps and letting the
+        scheduler invent its own is what used to return ghost hands. So the
+        published curve is resampled to whatever count is asked for, keeping
+        its shape, rather than being dropped.
         """
         turbo = bool(self._lora and self._lora[2])
-        if turbo and int(steps) == self.TURBO_PASOS:
-            return {"sigmas": list(self.TURBO_SIGMAS)}
-        return {}
+        if not turbo:
+            return {}
+        return {"sigmas": self._curva(int(steps))}
+
+    def _curva(self, n: int) -> list:
+        """The published sigmas at n points, linear in index space."""
+        curva = self.TURBO_CURVA
+        if n == len(curva):
+            return list(curva)
+        ultimo = len(curva) - 1
+        fuera = []
+        for i in range(n):
+            x = i * ultimo / (n - 1)
+            k = min(int(x), ultimo - 1)
+            fuera.append(curva[k] + (curva[k + 1] - curva[k]) * (x - k))
+        return fuera
 
     def _admite_callback(self) -> bool:
         """Not every pipeline accepts it; checked once."""
@@ -966,6 +1067,7 @@ class Motor:
                       f"{'it' if una else 'them'}, and nothing else. The result keeps the "
                       f"shape, the lighting, the shadows and the perspective of <image1>.")
 
+        self._baldosas(ancho, alto, res)
         gen = torch.Generator(device="cpu").manual_seed(int(seed))
         kw = dict(prompt=prompt, image=refs, num_inference_steps=int(steps),
                   true_cfg_scale=1.0, generator=gen, output_resolution=int(res))

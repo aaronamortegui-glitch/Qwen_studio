@@ -199,6 +199,15 @@ same reference and the same seed; the README has the tables.
    guessed "the jacket and pants" about a photo of a man in a t-shirt. Reading
    the reference with Qwen3-VL first gets "a maroon short-sleeved t-shirt".
 
+10. **Everything that touches the reference is part of the identity path.**
+   `pipe.vae` decodes the output and encodes the condition images, so tiling
+   switched on for the decode also chopped the reference on the way in. It is
+   off below 2 MP and the encode is never tiled at all, at any size. If you
+   touch the VAE, the offload, the quantisation or the sampler, run the `same
+   man` case before believing the result.
+11. **Do not conclude about identity from a texture measurement.** Every one of
+   the five regressions found on 2026-09-23 came from exactly that.
+
 Tried and useless, so nobody tries again: enlarging the reference, naming who
 stays instead of who arrives, and adding an identity tail after the instruction
 — that last one makes it worse, because with `<image2>` in the final sentence

@@ -324,6 +324,71 @@ that sentence is the app's, not something the prompt can outrank.
 
 ---
 
+## Working on this model: the rule
+
+A portrait stopped looking like the person it was made from, and finding out
+why took a day. Five separate decisions had degraded the likeness. Not one of
+them was careless -- each was measured, and each measurement was against the
+wrong thing.
+
+| decision | measured against | what it did to a face |
+|---|---|---|
+| 16 steps | a watch movement, a knurled ring, a hand | at 16 the result is a thinner, younger stranger; at 28 it is them |
+| nf4 | speed, memory, and a texture | a little worse than int8, on both the base model and the adapter |
+| the hdr decoder | saturation and edge energy | almost nothing, 2.8 levels |
+| the turbo adapter rejected | the wrong adapter, and without its sigmas | the conclusion was drawn from a broken setup |
+| tiling the VAE | peak memory at 4 MP | 24.5 levels and a different man |
+
+Sharpness, saturation, gigabytes, seconds. **Not one of them was ever measured
+against a likeness**, and identity is the one thing that cannot be recovered
+afterwards: a soft picture can be sharpened and a flat one regraded, but a
+stranger cannot be turned back into the right person.
+
+So, the rule, in the order it matters:
+
+1. **Identity travels through the reference, and everything that touches the
+   reference is part of that path** -- including the knobs that look like they
+   are about memory. `pipe.vae` decodes the output *and* encodes the condition
+   photographs. Turning on tiling for the decode chopped the face up on the way
+   in, and the composition changed at the same seed, which a decoder cannot do.
+   The likeness is not lost where you are looking; it is lost where it enters.
+
+2. **Never conclude about identity from a measurement of texture.** Steps,
+   quantisation, decoders and samplers were all chosen on sharpness or memory,
+   and all five were wrong about faces. If a change could touch a person, the
+   test is a person.
+
+3. **Describe what the model has to invent. Never re-describe what the
+   reference already supplies.** Both the text and the reference go into the
+   same encoder -- `encode_prompt` takes the condition images too -- so a
+   written face and a photographed face arrive as rival descriptions of one
+   thing and the model averages them. Forty words insisting on the identity
+   came back *less* like the person than saying nothing about it.
+
+4. **What is read last weighs most.** The identity clause is the app's, fixed,
+   and goes after the user's words, where the weight is. It is not the user's
+   to phrase: whose face it is was decided when the photograph was dropped in.
+
+5. **Steps are an identity control, not a quality control.** Texture resolves
+   by 16. A face does not. Four independent sources put the base pipeline at
+   25-50: the model card's editing example passes 40, the ComfyUI template's
+   note says "about 40-50 with euler", the most-shared community workflow ships
+   25-27, and the turbo adapter describes itself as five passes "instead of 40".
+
+6. **For a likeness, the eye is the instrument.** Mean pixel difference said 24
+   levels and could not say that the 24 levels were a different man; it gave
+   the same 11.7-13.3 to six person-swap attempts that the eye separated at a
+   glance. Numbers locate the cause *after* somebody has seen that something is
+   wrong. On the day this was found, the person looking at the face said "that
+   is not him" three times before the first measurement agreed.
+
+And the rule is enforced rather than remembered: the test suite has a `same
+man` case that puts the reference and the result side by side and asks the VLM
+whether it is one person twice. Every one of the five decisions above would
+have failed it on the day it was made.
+
+---
+
 ## How this differs from a closed model
 
 Not "better". Different in ways that decide whether it fits what you are doing.
