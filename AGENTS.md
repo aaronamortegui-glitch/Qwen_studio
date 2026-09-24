@@ -163,9 +163,17 @@ Four things about this table are load-bearing:
 - **Sequential offload is incompatible with nf4.** `NotImplementedError: Cannot
   copy out of meta tensor` — accelerate cannot move layer by layer what
   bitsandbytes has already quantised. Every quantised profile uses `model`.
-- **Reference images are capped at ~1 MP** before they are encoded, matching
-  how the conditioning was distilled. Measured: 0.26, 0.92 and 2.0 MP gave
-  identical output. The image *being edited* is never capped.
+- **Reference images are capped at ~1 MP** before they are sent, which keeps a
+  12 MP phone photo out of memory on the way in. It does **not** decide the
+  size the model sees: the pipeline resizes every condition image to the area
+  of the output, so that is set by `output_resolution` and shrinking a
+  reference first is a no-op. The image *being edited* is never capped.
+- **References share a budget with the output.** Each one costs what the
+  output costs, so the count and the size trade against each other. Measured
+  on 24 GB: 2 references at 1.00 MP, 3 at 0.66, 4 at 0.50, 6 at 0.32, 8 at
+  0.25, and ten at no size tried. `/api/generar` divides the allowance and
+  refuses more than eight with a sentence rather than an out-of-memory. The
+  model card's "up to ten" is about the weights, not about a card.
 
 - **An out-of-memory error hands the card back before returning.** It used to
   keep the failed allocation's blocks -- 18.4 GB reserved with nothing running

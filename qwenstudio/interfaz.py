@@ -574,7 +574,7 @@ if(t!=='auto')document.documentElement.setAttribute('data-theme',t);})();</scrip
     <div id="campos"></div>
 
     <div class="sec"></div>
-    <h2 id="lblPrompt"><i>3</i>Instruction</h2>
+    <h2 id="lblPrompt"><i>3</i>Prompt</h2>
     <textarea id="prompt"></textarea>
     <div id="zonaExtra">
       <label class="lblNeg" for="complemento">Look and feel</label>
@@ -891,7 +891,7 @@ const ZONAS={
 };
 const CATS=[
   ['text','Text to image','Words only.'],
-  ['photo','From a photo','One or more references.'],
+  ['photo','From a photo','One or more references, or none in Anything.'],
   ['edit','Edit a photo','Change part of one image.'],
 ];
 const CASOS={
@@ -921,6 +921,12 @@ const CASOS={
       +'volcano over a white salt flat. Flat four-colour printing in ochre, rust and deep '
       +'teal, visible paper grain, slightly off-register ink.'},
 
+  free:{cat:'photo', icon:'free', name:'Anything',
+    hint:'Drop what you have, say what you want. Every slot is optional.',
+    mode:'generate', zonas:['person','pose','style','scene'],
+    opt:['person','pose','style','scene'],
+    ratio:'auto', prompt:'', abierto:true},
+
   portrait:{cat:'photo', icon:'portrait', name:'New portrait', hint:'A fresh photo of your character.',
     mode:'generate', zonas:['person'], opt:[], ratio:'3:4',
     prompt:'An editorial magazine portrait of the subject, wearing a black tailored blazer '
@@ -946,10 +952,6 @@ const CASOS={
     prompt:'Full body colour cutout of the subject, standing square to camera in a plain '
       +'charcoal t-shirt and dark jeans, even studio light with no cast shadow, clean edges '
       +'around the hair and the clothing.'},
-  free:{cat:'photo', icon:'free', name:'Free', hint:'Everything available, nothing assumed.',
-    mode:'generate', zonas:['person','pose','style','scene'], opt:['person','pose','style','scene'],
-    ratio:'auto', prompt:'', abierto:true},
-
   look:{cat:'edit', icon:'efecto', name:'Apply a look', hint:'Pick the treatment from a grid.',
     mode:'efecto', zonas:['source'], opt:[], ratio:'auto', prompt:''},
   restyle:{cat:'edit', icon:'style', name:'Match a style',
@@ -957,7 +959,7 @@ const CASOS={
     mode:'estilo', zonas:['source','style'], opt:[], ratio:'auto',
     prompt:''},
   editar:{cat:'edit', icon:'wand', name:'Tell it what to change',
-    hint:'The whole picture and an instruction. No mask, no seam.',
+    hint:'The whole picture and a prompt. No mask, no seam.',
     mode:'editar', zonas:['source','extra'], opt:['extra'], ratio:'auto',
     prompt:'Replace the face, the hair and the beard with those from <image2>, '
           +'and change the clothing to a dark t-shirt.'},
@@ -1000,7 +1002,10 @@ const EJ={
       +'frame unless you paint a region, and then it stays inside it.'},
   free:null,
 };
-const S={caso:'portrait', img:{}, poseLib:null, ratio:'1:1', esEjemplo:true,
+// The app opens on the general case. The others are this one with decisions
+// already taken, and each carries a worked example that runs on the first
+// click; this one carries none, because what goes in it is yours.
+const S={caso:'free', img:{}, poseLib:null, ratio:'1:1', esEjemplo:true,
          mascara:null, efecto:null, frag:{}};
 const caso=()=>CASOS[S.caso];
 
@@ -1109,8 +1114,8 @@ function construirCampos(){
     : c.mode==='efecto' ? 'The look'
     : c.mode==='estilo' ? 'Anything to add (optional)'
     : c.mode==='editar' ? 'What to change — name the thing, not the person'
-    : c.mode==='reescalar' ? 'Nothing to write: the picture is its own instruction'
-    : 'Instruction';
+    : c.mode==='reescalar' ? 'Nothing to write: the picture is its own prompt'
+    : 'Prompt';
   // both editing paths have already spent the 3 on the region
   const nPaso = (c.mode==='inpaint'||c.mode==='efecto')
     ? '4' : ($('#lblPrompt').dataset.n||'3');
@@ -1234,20 +1239,41 @@ function topePerfil(refs){
   const base = +(PERFIL.res_max||1024);
   if(refs<=0) return base;
   const t = +(PERFIL.res_max_ref||base);
-  return refs>1 ? Math.min(t,1024) : t;
+  const m = +(PERFIL.res_max_multi||1024);
+  return refs>1 ? Math.min(t,m) : t;
 }
+// The same rule the server applies, and it has to be the same or the size on
+// screen is a promise the server breaks. The ceiling is an area: the side for
+// one reference was measured on a 3:4 frame, and a square at that side is a
+// third more pixels than fits. Where the one-reference side was never raised
+// above the several-reference one -- the smaller cards -- it was measured
+// square and keeps the full area.
+function topeAreaMp(refs){
+  const lado = topePerfil(refs);
+  const multi = +(PERFIL.res_max_multi||lado);
+  if(refs===1 && lado>multi) return (lado*lado*0.75)/(1024*1024);
+  // A budget, not a constant: the pipeline resizes every reference to the area
+  // of the output, so each one costs what the output costs. Measured: 2 fit at
+  // 1.00 MP, 4 at 0.50, 8 at 0.25, ten at none. Same arithmetic as the server,
+  // because a size on screen the server overrules is worse than no size.
+  if(refs>1) return Math.max((lado*lado*2/refs)/(1024*1024), 0.25);
+  return (lado*lado)/(1024*1024);
+}
+const REFS_MAX = 8;
 function medida(){
   const mp=+$('#mp').value;
   setTimeout(estimar, 0);
   const refs = cuantasReferencias();
   const tope = topePerfil(refs);
-  const topeMp = (tope*tope)/(1024*1024);
+  const topeMp = topeAreaMp(refs);
   const real = Math.min(mp, topeMp);
   // why it was capped, said where the size is read. Measured: two references at
   // 2K took this whole machine down, so the limit is not caution
-  const nota = real<mp
-    ? (refs>1 ? ` · capped at ${tope} px: ${refs} references`
-              : ` · capped at ${tope} px by your card`)
+  const nota = refs>REFS_MAX
+    ? ` · ${refs} references is more than this card holds (${REFS_MAX})`
+    : real<mp
+    ? (refs>1 ? ` · capped at ${topeMp.toFixed(2)} MP: ${refs} references share the budget`
+              : ` · capped at ${topeMp.toFixed(2)} MP by your card`)
     : '';
   if(S.ratio==='auto'){$('#medida').textContent=`~${real} MP · from the reference${nota}`;return}
   const [a,b]=S.ratio.split(':').map(Number),r=a/b,area=real*1024*1024;
@@ -2262,7 +2288,7 @@ async function abrirBiblioteca(){
   // IS the instruction, so the entries are whole instructions and replace it.
   // The catalogue already knows which, so nobody has to find out by clicking.
   const nota=document.createElement('p'); nota.className='hint';
-  nota.textContent = 'A whole subject goes in Instruction and replaces what is '
+  nota.textContent = 'A whole subject goes in Prompt and replaces what is '
     + 'there \u2014 two of them in one prompt ask for two photographs. A clause '
     + 'about the light, the lens, the place, the wardrobe or the grade goes in '
     + 'Look and feel, where several live together and a second pick from the '
@@ -2286,7 +2312,7 @@ async function abrirBiblioteca(){
       const et=document.createElement('b'); et.textContent=it.etiqueta;
       const chip=document.createElement('span'); chip.className='plModo';
       chip.textContent = seleccion ? 'sets what to select'
-                       : reemplaza ? 'becomes the instruction'
+                       : reemplaza ? 'becomes the prompt'
                        : enUso     ? 'in look and feel \u00b7 pick another to swap'
                                    : 'add to look and feel';
       et.append(chip);

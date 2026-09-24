@@ -168,6 +168,20 @@ def _tope_area(refs: int) -> int:
     lado = _tope(refs)
     if refs == 1 and lado > int(cfg.get("res_max_multi", lado)):
         return int(lado * lado * 0.75)
+    if refs > 1:
+        # A budget, not a constant. Every condition image is resized to the
+        # area of the output -- the pipeline does it in one line -- so each
+        # reference costs what the output costs and only the total matters.
+        # Measured 2026-09-24 on the 24 GB card, releasing between cells:
+        # 2 references fit at 1.00 MP, 4 at 0.50, 8 at 0.25, and ten at none
+        # of them. Halve the output and twice as many fit, so the allowance
+        # for two is divided by half the count.
+        #
+        # The floor is a refusal rather than a thumbnail: below a quarter of a
+        # megapixel the picture has stopped being the thing that was asked
+        # for, and saying so is better than producing it.
+        base = lado * lado
+        return max(int(base * 2 / refs), int(REFS_MIN_MP * 1024 * 1024))
     return lado * lado
 
 
@@ -323,6 +337,15 @@ PASOS_PERSONA = 28
 # down on a portrait on 2026-09-24: 2.30, 2.00 and 1.75 MP all out of memory,
 # 1.50 fine at 150 s, 1.25 fine at 117.
 EDICION_GUIADA_MP = 1.5
+
+# The most reference images this card can hold, and the smallest picture worth
+# making with them. The model card says the model takes ten; measured here,
+# eight fit at a quarter of a megapixel and ten fit at no size tried, so ten is
+# a property of the weights and not of this machine. Below a quarter megapixel
+# the result has stopped being what anyone asked for, so that is the floor and
+# the count is refused rather than served as a thumbnail.
+REFS_MAX = 8
+REFS_MIN_MP = 0.25
 
 
 def _pasos(b: dict) -> int:
@@ -1304,6 +1327,14 @@ class Handler(BaseHTTPRequestHandler):
         mp = float(b.get("megapixeles", 1))
         n_refs = (len(personas) + (escena is not None) + (estilo is not None)
                   + (pose is not None))
+        # Measured on this card: eight references fit at a quarter of a
+        # megapixel and ten fit at no size tried. Refusing here, before
+        # anything is loaded, is the difference between a sentence and a
+        # minute of work ending in one.
+        if n_refs > REFS_MAX:
+            return {"error": f"{n_refs} reference images is more than this card "
+                              f"can hold. The most measured here is {REFS_MAX}, "
+                              f"and each one costs what the output costs."}
         tope_mp = _tope_area(n_refs) / (1024 * 1024)
         mp = min(mp, tope_mp)
         ratio = b.get("ratio", "1:1")

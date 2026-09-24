@@ -455,6 +455,43 @@ the reason.
 
 ---
 
+## How many references fit, which is not how many the model takes
+
+The model card says ten. That is a property of the weights and says nothing
+about any particular card, because it says nothing about memory -- and memory
+is the whole question.
+
+One line of the pipeline decides it. Every condition image is resized to the
+area of the output:
+
+```python
+input_width, input_height, _ = calculate_dimensions(
+    output_resolution * output_resolution, image_width / image_height)
+```
+
+So a reference costs whatever the output costs, shrinking one before sending
+it changes nothing -- it is scaled back up -- and what matters is the total.
+Which makes it a budget rather than a limit. Measured on the 24 GB card,
+releasing the card between cells so none pays for the one before:
+
+| references | largest output that fits |
+|---|---|
+| 2 | **1.00 MP** · 1024 × 1024 |
+| 3 | 0.66 MP · 832 × 832 |
+| 4 | 0.50 MP · 736 × 736 |
+| 6 | 0.32 MP · 576 × 576 |
+| 8 | **0.25 MP** · 512 × 512 |
+| 10 | does not fit at any size tried |
+
+Halve the output and twice as many fit, which is what sharing a budget looks
+like. The app divides the two-reference allowance by half the count, floors it
+at a quarter of a megapixel, and refuses more than eight outright -- in a
+sentence, before anything loads, rather than after a minute of work. The size
+on screen falls as you add references and says why.
+
+Ten is out of reach here. It is not out of reach for a larger card, and the
+difference is memory rather than the model.
+
 ## The four reference slots
 
 Each does exactly one job, so they compose without fighting:
