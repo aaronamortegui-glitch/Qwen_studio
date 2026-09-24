@@ -430,9 +430,12 @@ def construir() -> str:
                     "the image goes back in as its own reference and is redrawn larger, "
                     "which recovers detail instead of interpolating pixels. It was left "
                     "out of the interface for a while because under bf16 it took 754 "
-                    "seconds for one image, and twelve minutes is not a feature. With "
-                    "nf4 and a tiled VAE the same job takes 156 seconds, and the button "
-                    "came back when the number did.", CUERPO),
+                    "seconds for one image, and twelve minutes is not a feature. "
+                    "Quantised it takes 184 seconds, or 97 with the adapter, and the "
+                    "button came back when the number did. It is also the one edit path "
+                    "that runs without guidance, on purpose: it has no instruction to "
+                    "steer toward, and what guidance costs it is the size it exists to "
+                    "produce.", CUERPO),
           Spacer(1, 3 * mm),
           Paragraph("LoRAs, and a trap worth knowing", H3),
           Paragraph("Drop .safetensors into the loras folder and a selector appears with a "
@@ -503,13 +506,15 @@ def construir() -> str:
                "identical results"],
           ], [an * .34, an * .66]),
           Spacer(1, 4 * mm),
-          Paragraph("Sixteen steps is the default, swept by eye at 1 MP on subjects "
-                    "built to break first. The examples that ship were rendered "
-                    "higher, because a thumbnail that undersells the result is worse "
-                    "than no thumbnail. Resolution is capped by how many references "
-                    "are in play, not by the card alone — the app shows the ceiling "
-                    "before it runs, and refuses rather than reaching for it.",
-                    TENUE_P),
+          Paragraph("Twenty-eight steps where a person is involved, sixteen where "
+                    "none is. Sixteen was the default for everything once, swept on "
+                    "a watch movement and a hand — texture, which is resolved by "
+                    "sixteen. A face is not: at sixteen it comes back a thinner, "
+                    "younger stranger, at twenty-four close, at twenty-eight them. "
+                    "Resolution is capped by how much area the card can hold and by "
+                    "how many references are in play, not by the card alone — the "
+                    "app shows the ceiling before it runs, and refuses rather than "
+                    "reaching for it.", TENUE_P),
           Spacer(1, 9 * mm)]
 
     # --- 5. what was measured ----------------------------------------------
@@ -559,15 +564,35 @@ def construir() -> str:
          "colours, no gradients, crisp geometric edges — is what works. So the app "
          "reads the reference with Qwen3-VL first, asking only how the picture is made "
          "and never what it shows, and sends that sentence with a single image."),
-        ("Steps are cheap on the clock and not cheap in the picture.",
-         "At 1 MP the clock barely moves between 8 and 25 steps — 18 s to 38 s — "
-         "which made steps look free. The picture disagrees: 8 is mush, 12 leaves a watch "
-         "movement soft, 16 resolves its screws, and 20 and 25 add nothing. Measuring "
-         "the wrong quantity is how a default ends up at 12."),
-        ("int8 quantisation was counterproductive.",
-         "The hypothesis was that it would save memory. Measured: 2.8 s/step and 24.1 GB "
-         "peak, against 1.26 s/step and 21.2 GB unquantised — bitsandbytes int8 casts "
-         "bf16 to fp16 and back on every matmul. It is not in the profile ladder at all."),
+        ("Steps are an identity control before they are a quality control.",
+         "At 1 MP the clock barely moves between 8 and 25 steps — 18 s to 38 s — which "
+         "made steps look free. On texture the picture settles early: 8 is mush, 12 "
+         "leaves a watch movement soft, 16 resolves its screws, and 20 and 25 add "
+         "nothing. That sweep set the default at 16 and it was measured on the wrong "
+         "subject. A face keeps changing long after a watch has stopped: same prompt, "
+         "same seed, same reference, 16 returns a thinner and younger stranger, 24 gets "
+         "close, 28 is the person. Four independent sources put this pipeline at 25–50, "
+         "and none of them was consulted before a watch was."),
+        ("There are two int8s and only one of them works here.",
+         "The first attempt used bitsandbytes’ load_in_8bit, which is LLM.int8(): mixed "
+         "precision with an fp16 path for outliers. Measured at 2.8 s/step and 24.1 GB "
+         "peak against 1.26 s/step and 21.2 GB unquantised — slower and larger than not "
+         "quantising at all, which is the opposite of the point. What the profile uses is "
+         "quanto’s weight-only int8: eight-bit weights, bf16 arithmetic. That one is both "
+         "quicker than nf4 at the same job and better at holding a likeness, and it is "
+         "what a card with twenty gigabytes or more now gets. Same two words, opposite "
+         "results, which is why the recipe records which one made a picture."),
+        ("Every edit ran with no guidance at all, for as long as there has been editing.",
+         "Guidance needs two halves: a scale above one and a negative prompt to steer "
+         "away from. The editing paths passed a hardcoded scale and no negative prompt, "
+         "so the scale did nothing — diffusers prints a warning saying exactly that, and "
+         "it had been scrolling past on every edit for months. Measured on one source at "
+         "one seed, 1.0, 2.5 and 4.0 return byte-identical results, and 4.0 with a "
+         "negative prompt drops the speckle from 2.51 to 1.33. What it cost was not "
+         "subtle: whole frames repainted in mottled concrete, and a black-and-white look "
+         "that came back in colour with the effect ignored entirely. The rule was written "
+         "in this document and in the README, and neither was enough to make anyone check "
+         "the one path that was not following it."),
         ("An edit names the attribute, never the person.",
          "“Replace the woman with the man from &lt;image2&gt;” changes nothing, twice "
          "over. “Replace the face, the hair and the beard” works. It is the rule "
@@ -607,11 +632,13 @@ def construir() -> str:
           KeepTogether([Paragraph("Numbers", H3),
           _tabla([
               ["", ""],
-              ["1 MP (1024 px), 16 steps, warm", "26 s, 7.3 GB peak"],
-              ["2 MP (1440 px), 16 steps", "51 s, 7.3 GB peak"],
-              ["4 MP (2048 px, 2K native), 16 steps", "122 s, 7.5 GB peak"],
-              ["A look or an edit, 1 MP", "26 s, 9.2 GB peak"],
-              ["Rescale to 2K", "156 s, 18.2 GB peak"],
+              ["Text to image, 2048 px, 16 steps", "232 s · 72 s with the adapter"],
+              ["A face, 1344 × 1792, 28 steps", "278 s · 55 s with the adapter"],
+              ["Into a scene, two references, 1024 px", "146 s"],
+              ["A pose or a style, two references", "113 s"],
+              ["Masked replacement, 1344 × 1792", "56 s"],
+              ["Editing the whole frame, 1088 × 1440", "227 s, guided"],
+              ["Enlarging to 1536 px", "184 s · 97 s with the adapter"],
               ["Model load, first call", "27–35 s"],
               ["Segmentation, three phrases", "0.9 s"],
               ["Describe an image (Qwen3-VL, 4-bit)", "5–9 s, 7.1 GB"],
@@ -619,16 +646,24 @@ def construir() -> str:
               ["Weights", "~31 GB, downloaded once"],
           ], [an * .55, an * .45], cabecera=False)]),
           Spacer(1, 4 * mm),
-          Paragraph("Those figures are nf4 on both the transformer and the text encoder, "
-                    "which on this architecture is not the poor mode but the good one: "
-                    "faster than bf16, half the memory, and the only way 2K works at all. "
-                    "The same seed in bf16 and in nf4 gives two different pictures, so a "
-                    "recipe only reproduces within one precision.", TENUE_P),
+          Paragraph("Those figures are quanto int8 on both the transformer and the text "
+                    "encoder, on a 24 GB card. Cards with less use nf4, which is smaller "
+                    "and, measured at the same job, slower — 292 seconds against 232 at "
+                    "2048 px. An earlier version of this page argued that nf4 was the "
+                    "better mode; it was comparing against bf16 rather than against int8. "
+                    "The same seed in two precisions gives two different pictures, so a "
+                    "recipe only reproduces within one, which is why the recipe records "
+                    "it.", TENUE_P),
           Spacer(1, 3 * mm),
-          Paragraph("Two ceilings, not one. Generating at 2K peaks at 7.5 GB; rescaling to "
-                    "2K, where the picture is its own reference, peaks at 18.2. The profile "
-                    "carries both numbers, because quoting only the first is how a card "
-                    "gets promised a size it will page on.", TENUE_P),
+          Paragraph("The ceiling is an area, not a side, and there is more than one of "
+                    "them. With no reference a 24 GB card holds 4 MP; with one it holds "
+                    "2.30; with two or more, 1 MP; and editing a whole frame, which holds "
+                    "the picture at full size as well as producing one and runs guidance "
+                    "twice, holds 1.50. The profile used to store a side and square it, "
+                    "which is how enlarging came to ask for 3.21 MP on a path that could "
+                    "not have worked on any day: that side had been measured on a 3:4 "
+                    "frame, and a square at the same side is a third more pixels.",
+                    TENUE_P),
           Spacer(1, 3 * mm),
           Paragraph("ComfyUI is still about four times faster for the same image: it uses "
                     "int8_convrot weights with kernels built for them, a better memory "
