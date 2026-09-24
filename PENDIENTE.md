@@ -254,6 +254,38 @@ a watch movement and a hand.
   behaviour change riding along with the size change. A clean fp8 of the
   original would be the thing to look for.
 
+## Samplers: what was tried and what it settled
+
+Grain that does not move between seven steps and fifty is not sampling noise,
+so the sampler was walked on one subject at one seed with the stock decoder,
+so that only the solver moved.
+
+- **`shift_terminal` does nothing.** 0.02, 0.0 and None give 2.89, 2.90 and
+  2.90 grain at 19.21, 19.25 and 19.25 edges. It had been the strongest
+  hypothesis -- a terminal sigma above zero leaves a residue no step count can
+  clean -- and it was wrong.
+- **Karras and exponential sigmas break the picture.** Grain falls 32% and
+  edge energy falls 33% with it, which is blurring rather than cleaning, and
+  the results come back dark and undercooked. Those schedules are built for
+  classical diffusion; this model is flow matching and carries its own shift.
+  Beta refuses outright, wanting scipy.
+- **Of the eleven flow-matching schedulers diffusers ships, two run here.**
+  FlowMatchEuler, which is shipped, and UniPC, which is sharper and grainier
+  in equal measure: 3.52 grain at 22.96 edges against 2.89 at 19.21. Heun,
+  DPM++ 2M, DEIS and SA-Solver all build from the config and then fail inside
+  `retrieve_timesteps`, because the pipeline hands over explicit sigmas and
+  their `set_timesteps` does not take them. Removing that would mean giving up
+  the schedule the model was trained against, so it was not attempted.
+- **Euler stays**, chosen by eye against UniPC on the same seed.
+
+And the grain that prompted the question was in the prompt. The three images
+that raised it asked for it in words -- "heavy film grain, pronounced high-ISO
+noise", "kodak portra 400 film photo, grainy" -- and measured 4.04, 8.04 and
+11.14 against 2.89 for a prompt asking for sharp detail. More steps resolve
+the requested grain better, which is why fifty looked worse than seven. The
+decoder contributes too, about 40% more grain on a scene of fine hair and
+point lights than the stock one, but it is second to what the words ask for.
+
 ## Known and not fixed
 
 - **The transparent cutout depends on the seed when the source has a busy
