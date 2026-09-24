@@ -54,10 +54,33 @@ def pedir(ruta: str, carga: dict | None = None, timeout: int = 3600):
         return json.loads(r.read())
 
 
-def sat(img) -> float:
-    """Saturacion media en HSV. Un grado en blanco y negro la deja cerca de cero."""
-    from PIL import ImageStat
-    return ImageStat.Stat(img.convert("HSV")).mean[1]
+def croma(img) -> float:
+    """How far from neutral grey this picture is, 0-128, measured in CIELAB.
+
+    Not HSV saturation. That is (max - min) / max, a ratio, and a
+    high-contrast black-and-white look is mostly deep shadow, where three
+    levels out of twenty divide into a large number. It reported 38 for a
+    picture with no colour in it at all and failed the case.
+
+    CIELAB puts chroma on an absolute scale instead: the distance of the mean
+    (a, b) from the neutral axis. Measured here: a monochrome look lands at
+    0.7-2.2, and a photograph with a yellow sweater still in it lands at 10.
+    """
+    import math
+
+    from PIL import ImageCms, ImageStat
+    try:
+        t = ImageCms.buildTransformFromOpenProfiles(
+            ImageCms.createProfile("sRGB"), ImageCms.createProfile("LAB"),
+            "RGB", "LAB")
+        st = ImageStat.Stat(ImageCms.applyTransform(img.convert("RGB"), t))
+        return math.hypot(st.mean[1] - 128, st.mean[2] - 128)
+    except Exception:
+        # without littlecms, fall back to the mean distance between channels,
+        # which is cruder but still absolute rather than a ratio
+        st = ImageStat.Stat(img.convert("RGB"))
+        m = st.mean
+        return max(m) - min(m)
 
 
 def dimensiones(url_rel: str) -> tuple[int, int]:
@@ -343,11 +366,11 @@ def caso_look_entero():
     assert not r.get("error"), r.get("error")
     out = Image.open(os.path.join(SALIDAS,
                      os.path.basename(r["imagenes"][0]["archivo"]))).convert("RGB")
-    # genuinely black and white: mean saturation collapses across the frame
-    antes = sat(src)
-    despues = sat(out)
-    assert despues < antes * .25, f"saturation only fell from {antes:.0f} to {despues:.0f}"
-    return f"saturation {antes:.0f} -> {despues:.0f} across the frame"
+    # genuinely black and white: the chroma collapses toward neutral
+    antes, despues = croma(src), croma(out)
+    assert despues < 4.0, \
+        f"still has colour in it: chroma {antes:.1f} -> {despues:.1f}"
+    return f"chroma {antes:.1f} -> {despues:.1f} across the frame"
 
 
 def caso_look_region():
@@ -380,14 +403,15 @@ def caso_look_region():
                      os.path.basename(r["imagenes"][0]["archivo"]))).convert("RGB")
     assert out.size == src.size, f"the size changed: {out.size} vs {src.size}"
 
-    dentro_antes, dentro_despues = sat(src.crop(caja)), sat(out.crop(caja))
-    assert dentro_despues < dentro_antes * .35,         f"inside the region saturation only fell from {dentro_antes:.0f} to {dentro_despues:.0f}"
+    dentro_antes, dentro_despues = croma(src.crop(caja)), croma(out.crop(caja))
+    assert dentro_despues < dentro_antes * .5, \
+        f"inside the region the chroma only fell from {dentro_antes:.1f} to {dentro_despues:.1f}"
 
     alto = (0, 0, src.width, int(src.height * .35))
     fuera = ImageChops.difference(src.crop(alto), out.crop(alto)).convert("L")
     peor = fuera.getextrema()[1]
     assert peor <= 8, f"the untouched area moved by {peor} levels"
-    return (f"inside {dentro_antes:.0f} -> {dentro_despues:.0f} saturation, "
+    return (f"inside chroma {dentro_antes:.1f} -> {dentro_despues:.1f}, "
             f"outside within {peor} levels")
 
 

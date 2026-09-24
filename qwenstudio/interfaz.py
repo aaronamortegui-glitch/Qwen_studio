@@ -941,7 +941,7 @@ const CASOS={
     prompt:''},
   editar:{cat:'edit', icon:'wand', name:'Tell it what to change',
     hint:'The whole picture and an instruction. No mask, no seam.',
-    mode:'editar', zonas:['source','extra'], opt:[], ratio:'auto',
+    mode:'editar', zonas:['source','extra'], opt:['extra'], ratio:'auto',
     prompt:'Replace the face, the hair and the beard with those from <image2>, '
           +'and change the clothing to a dark t-shirt.'},
   enlarge:{cat:'edit', icon:'enlarge', name:'Enlarge',

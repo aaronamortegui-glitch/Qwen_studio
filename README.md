@@ -338,6 +338,7 @@ wrong thing.
 | the hdr decoder | saturation and edge energy | almost nothing, 2.8 levels |
 | the turbo adapter rejected | the wrong adapter, and without its sigmas | the conclusion was drawn from a broken setup |
 | tiling the VAE | peak memory at 4 MP | 24.5 levels and a different man |
+| guidance, when editing | nothing -- it was never measured | the frame repainted, and a look silently ignored |
 
 Sharpness, saturation, gigabytes, seconds. **Not one of them was ever measured
 against a likeness**, and identity is the one thing that cannot be recovered
@@ -626,11 +627,15 @@ underneath. The mask had room for both and the model used it. Saying the
 garment is closed and that nothing is visible underneath is what turns a layer
 into a replacement.
 
-**int8 quantisation was counterproductive.** The hypothesis was that it would
-save memory. Measured: 2.8 s/step and 24.1 GB peak, against 1.26 s/step and
-21.2 GB unquantised — bitsandbytes int8 casts bf16↔fp16 on every matmul. It is
-not in the profile ladder at all; nf4 only appears below 16 GB, where the
-transformer genuinely does not fit.
+**There are two int8s and only one of them works here.** The first attempt
+used bitsandbytes' `load_in_8bit`, which is LLM.int8(): mixed precision with an
+fp16 path for outliers, casting bf16↔fp16 on every matmul. Measured at 2.8
+s/step and 24.1 GB peak against 1.26 s/step and 21.2 GB unquantised — slower
+*and* larger than not quantising, which is the opposite of the point. What the
+profile uses is quanto's weight-only int8, which stores the weights at eight
+bits and computes in bf16. That one is what a 20 GB card gets, and against a
+face it holds a likeness better than nf4 does. Same two words, opposite
+results, which is why the setting records which one made a picture.
 
 **Describing an image costs no extra download.** The image model's text encoder
 *is* Qwen3-VL-8B, and the checkpoint on disk carries the vision tower and the
@@ -658,143 +663,208 @@ someone else's, the meter says so, because then the fix is not here.
 
 ---
 
-## Measured here (RTX 5090 Laptop, 24 GB)
+## What it costs, measured
 
-Every row is a single warm run through the app's own API, at the defaults the
-app ships with today: **nf4 on both the transformer and the text encoder, 16
-steps, VAE tiling on**. Peak VRAM is `nvidia-smi` sampled every 0.2 s, because
-the number that decides whether a card can do this at all is the peak and not
-the average.
+Every number here was taken on an RTX 5090 Laptop, 24 GB, at the settings the
+app ships with today: **profile L, int8 on both encoders, twenty-eight steps
+where a person is involved and sixteen where none is, the decode tiled only
+above 2 MP and the encode never**. One machine, so read the shape rather than
+the second decimal.
 
-| What | Output | Time | Peak VRAM |
-|---|---|---|---|
-| generate, 1 MP | 1024 × 1024 | **26 s** | 7.3 GB |
-| generate, 2 MP | 1440 × 1440 | **51 s** | 7.3 GB |
-| generate, 4 MP · 2K native | 2048 × 2048 | **122 s** | 7.5 GB |
-| a look or an edit, 1 MP | 832 × 1088 | **26 s** | 9.2 GB |
-| rescale to 2K | 1792 × 2048 | **156 s** | 18.2 GB |
+### The ceilings are areas
 
-The rows above are without the detail pass. It is on by default and it runs a
-second forward pass, so everything below costs roughly 1.8× what the same job
-costs without it. These are the numbers the app actually produces today,
-measured across every use case in one pass with one photograph:
+The profile stores a side, and for a long time every caller squared it. That
+is wrong in a way that only shows on a square frame: the side for one
+reference was measured on a 3:4 portrait, and a square at the same side is a
+third more pixels. Measured with one reference: 1600x1600, 2.40 MP, fits;
+1651x1651, 2.60 MP, reaches 20.2 GB and fails against the 20.3 ceiling; a 3:4
+frame at the full 1792 is 2.30 MP and peaks at 17.0.
 
-| With the detail pass on | Output | Time | Peak VRAM |
-|---|---|---|---|
-| portrait from one reference | 1344 × 1760 | 166 s | 18.5 GB |
-| into a scene, two references | 1248 × 832 | 106 s | 17.1 GB |
-| a pose, two references | 896 × 1184 | 73 s | 16.9 GB |
-| **a pose and a style, three references** | 896 × 1184 | 87 s | **21.0 GB** |
-| a look on a photograph | 512 × 512 | 14 s | 8.2 GB |
-| replace a garment, by mask | 512 × 512 | 89 s | 13.1 GB |
-| the same by instruction, no mask | 512 × 512 | 14 s | 8.4 GB |
-| rescale | 1536 × 1536 | 87 s | 13.5 GB |
+| profile | card | no reference | one reference | two or more |
+|---|---|---|---|---|
+| XL | 40 GB and up | 4.00 MP | 3.00 MP | 2.25 MP |
+| **L** | **20-24 GB** | **4.00 MP** · 2048 | **2.30 MP** · 1792 on the long side | **1.00 MP** |
+| M | 12-20 GB | 4.00 MP | 1.00 MP | 1.00 MP |
+| S | 8-12 GB | 2.25 MP | 1.00 MP | 1.00 MP |
+| MINIMO | under 8 GB | 1.00 MP | 1.00 MP | 1.00 MP |
 
-**Three references is the expensive corner**, and the only row that comes near
-the ceiling. Note also that a look or an instruction edit costs what the source
-photograph costs, not what the setting asks for: both rows above are 512 px
-because the photograph was, and both took 14 seconds.
+**Editing the whole frame is capped lower still: 1.50 MP.** It is the only
+path that holds a picture at full size *and* produces one, and it runs with
+guidance, which is a second forward pass. Enlarging is the exception
+and keeps the 2.30: it has no instruction to steer toward, and what guidance
+costs it is exactly the size it exists to produce.
 
-**Three ceilings, and a hard floor under all of them.** Generating at 2K costs
-7.5 GB; one reference at 2K costs 18.2 to 19.2; two references at 2K took this
-machine down. So the profile carries a size without a reference, a size with
-one, and a size with several — and, underneath, a limit on what the process may
-allocate at all.
+Only the L row is measured. The three-quarters that produces 2.30 from 1792 is
+applied only where the one-reference side was raised above the several-reference
+one, which is exactly where it came from a 3:4 measurement; on the smaller
+profiles the two are equal, that side was measured square, and it keeps the
+full area. XL is inferred and errs low: the cost of being wrong there is a
+refused size, not a reboot.
 
-That last one is the important one. On 2026-09-23 this machine blue-screened
-twice, same bugcheck and the same four parameters, both times while a test
-pushed a 24 GB card against its wall. There was a guard: a thread watching
-`nvidia-smi` that cancelled the run past a threshold. It never fired in time,
-because cancellation lands between denoising steps and the allocation spike
-happens inside one.
-
-The allocator can do what the watcher could not.
+Underneath all of them is a limit on what the process may allocate at all.
 `torch.cuda.set_per_process_memory_fraction` makes PyTorch raise
-`OutOfMemoryError` at the moment of the allocation, which is an exception the
-app catches and turns into a sentence. The reserve is proportional — 15% of the
-card, capped at 4 GB, floored at 1.5 — so a 24 GB card stops at 20.3 and an 8 GB
-card at 6.5. Verified at 4 GB and again at 12 with a job that wanted 19: it
-stopped at 11.0 GB and said *"that was too large for this card"*.
+`OutOfMemoryError` at the moment of the allocation, which the app catches and
+turns into a sentence. The reserve is 15% of the card, capped at 4 GB and
+floored at 1.5, so a 24 GB card stops at 20.3 and an 8 GB card at 6.5.
 
-Between images the cache goes back to the driver, so the card sits at 1.0 GB
-used with the model still mounted, and the machine stays usable while the app
-is open.
+That ceiling exists because on 2026-09-23 this machine blue-screened twice,
+the same bugcheck with the same four parameters, both times while a test
+pushed a 24 GB card against its wall. There was a guard before it -- a thread
+watching `nvidia-smi` that cancelled the run past a threshold -- and it never
+fired in time, because cancellation lands between denoising steps and the
+allocation spike happens inside one. The allocator can do what the watcher
+could not.
+
+**An out-of-memory error now hands the card back.** It did not: a failed
+allocation kept its blocks, the card sat at 18.4 GB with nothing running, and
+the next large request died in four seconds for the previous one's reason
+rather than its own. Measured, then fixed at the one place every failing path
+passes through.
 
 On Apple Silicon this field is zero: `set_per_process_memory_fraction` has no
 MPS equivalent, and there is no honest way to pretend otherwise.
 
-**nf4 is not the poor mode, it is the good one.** Against bf16 on this card it
-is faster (56 s against 73 s at the old 25-step default), uses half the memory,
-and is the only way 2K works at all — under bf16 a 4 MP job with a reference
-paged for hours. At the same seed the two are indistinguishable by eye. bf16
-only wins where the whole 29.6 GB of weights fits resident, which means 40 GB
-and up.
+Between images the cache goes back to the driver, so the card sits at 1.2-1.5
+GB with the model still mounted, and it stays there across twenty-five chained
+calls. The machine stays usable while the app is open.
 
-> **A recipe made in bf16 does not reproduce in nf4 at the same seed.**
-> Changing the precision changes every step slightly, and sixteen steps amplify
-> that into a different picture. The seed in a recipe is only a promise within
-> one precision. The app records the quantisation in the recipe for this
-> reason.
+### How long it takes
 
-**Time grows with the square of the megapixels, not with the megapixels.**
-Attention cost rises with the square of the token count. Doubling the pixels
-does not double the wait; going from 1 MP to 4 MP is nearly five times it.
+Generating, at twenty-eight steps where a person is involved and sixteen where
+none is, against the same job with the adapter at seven:
 
-**Steps are cheap on the clock and not cheap in the picture.** That distinction
-cost a regeneration to learn. At 1 MP the clock barely moves — 8 steps 18 s, 12
-steps 21 s, 16 steps 27 s, 20 steps 33 s, 25 steps 38 s — but the picture moves
-a great deal up to 16 and almost none after. Swept on a subject built to break
-first, a watch movement and a hand: 8 steps is mush, 12 leaves the movement
-soft, 16 resolves its screws and jewels, and 20 and 25 add nothing worth the
-extra 5 and 11 seconds. **16 is the knee.** 12 is a draft.
+| path | size | base | adapter | |
+|---|---|---|---|---|
+| text to image | 2048 × 2048 | 232 s | **72 s** | 3.2× |
+| a face, one reference | 1344 × 1792 | 278 s | **55 s** | 5.1× |
+| transparent cutout | 1344 × 1792 | 278 s | — | |
+| into a scene, two references | 1024 × 1024 | 146 s | — | |
+| a pose, two references | 896 × 1184 | 113 s | — | |
+| a style, two references | 896 × 1184 | 113 s | — | |
 
-| | |
-|---|---|
-| model load (first call) | 27–35 s |
-| segmentation, 3 phrases | 0.9 s |
-| describe an image (Qwen3-VL 4-bit) | 5–9 s, 7.1 GB |
-| read the technique of a style reference | 5–9 s, once per restyle |
+Editing, which runs with guidance and therefore two forward passes. The masked paths work on a crop and keep the frame they were given;
+the whole-frame ones are capped at 1.50 MP, which is what guidance costs.
 
-The app does not make you read this table. It shows the output size and an
-estimate above the Generate button, and corrects that estimate from your own
+| path | size | time | |
+|---|---|---|---|
+| masked replacement | 1344 × 1792 | **56 s** | the crop is what is paid for |
+| instruction, with a reference | 768 × 1024 | 78 s | two references, so 1 MP |
+| instruction, whole frame | 1088 × 1440 | 227 s | guided |
+| a look, whole frame | 1088 × 1440 | 155 s | guided |
+| restyle | 1088 × 1440 | 186 s | guided |
+| enlarge | 1536 × 1536 | 184 s · **97 s** with the adapter | unguided on purpose |
+
+The adapter pays most where the work is largest, because its cost is spread
+over seven passes rather than twenty-eight. Five minutes against fifty-five
+seconds on a full-size portrait is the difference between iterating at
+delivery resolution and not.
+
+And the whole run holds: twenty-five calls back to back, resident VRAM between
+them 1.2-1.5 GB throughout, nothing accumulating.
+
+### On a smaller card
+
+Two different things decide this, and only one of them is measurable here.
+
+**What the profile costs** was run on this card, with each profile's own
+settings -- its quantisation, its ceilings, its offload -- so these are
+measurements, not estimates. They are also, read literally, misleading in a
+useful way: the smaller profiles come out *faster*, because they ask for less
+work.
+
+| profile | asks for | text to image | a face |
+|---|---|---|---|
+| **L** · int8 | 2048, one reference 1792 | 2048² **232 s** · 72 turbo | 1344×1792 **278 s** · 55 turbo |
+| **M** · nf4 | 2048, one reference 1024 | 2048² **292 s** · 79 turbo | 896×1184 **95 s** · 30 turbo |
+| **S** · nf4 | 1536, one reference 1024 | 1536² **163 s** · 46 turbo | 896×1184 **94 s** · 28 turbo |
+
+Note the first column against the second: nf4 is *slower* than int8 at the
+same 2048² job, 292 s against 232. This README used to say nf4 was the faster
+mode, from a comparison against bf16 rather than against int8. Where a card
+has room for int8, int8 is both quicker and better at a likeness; nf4 is what
+the smaller cards use because 10.1 GB fits in 12 and 12.1 does not.
+
+**What the card costs** is the part that cannot be measured here, so it is
+stated rather than measured: multiply the row by how much slower the card is
+at bf16 matrix work, and add margin below 12 GB, where the weights stop fitting
+and layers start crossing PCIe on every step of every image. A rough shape, to
+be treated as the guess it is:
+
+| your GPU | profile | multiply the row above by |
+|---|---|---|
+| 40 GB and up | XL | ~0.7 |
+| 4090 / 5090, 24 GB | L | 1.0 *(this is the card measured)* |
+| 4080 / 3090, 16-24 GB | L | ~1.3-1.8 |
+| 4070 / 3080, 12-16 GB | M | ~2-3 |
+| 8-12 GB | S | ~4-8, and the bus becomes the limit |
+| under 8 GB | MINIMO | it runs; plan in tens of minutes |
+| Apple Silicon | M | unmeasured, and there is no card here to measure |
+
+The line that matters is 12 GB. Above it the quantised transformer stays
+resident and the card is doing arithmetic; below it, layers move across PCIe on
+every step and the card is mostly waiting on the bus.
+
+The app does not make anyone read this. It shows the output size and an
+estimate above the Generate button and corrects that estimate from your own
 runs, so after one generation it is describing your card rather than mine.
 
-### How long a generation takes, by card
+### What to use, and when
 
-Only the first row is measured, and only on Windows — there is no Apple Silicon
-here to time. The rest follow from the profile the hardware detection picks,
-scaled by the shape above. They are extrapolations from one card, not
-benchmarks, and they are labelled that way on purpose.
+| | steps | for |
+|---|---|---|
+| **base** | 28 | the picture you are keeping, and anything with a face in it |
+| **turbo** | 7 | finding the framing and the light |
+| text to image | 16 | no reference, so there is no likeness to lose |
 
-| Your GPU | Profile | 1 MP | 4 MP · 2K | Ceiling with a reference |
-|---|---|---|---|---|
-| RTX 5090 / 4090 laptop, 24 GB | L | **26 s** *(measured)* | **122 s** *(measured)* | 2048 *(measured)* |
-| 40 GB and up | XL | ~18 s | ~80 s | 2048 |
-| 20–24 GB | L | ~26 s | ~2 min | 2048 |
-| 12–20 GB | M | ~40 s | ~3 min | 1024 |
-| 8–12 GB | S | ~3–6 min | not advisable | 1024 |
-| under 8 GB | MINIMO | ~10 min+ | no | 1024 |
-| Apple Silicon, 32 GB+ | M | unmeasured | unmeasured | — |
-| no compatible GPU | INVIABLE | over half an hour | no | — |
+**Steps are an identity control before they are a quality control.** The sweep
+that set 16 was run on a watch movement, a knurled ring and a hand -- texture,
+which is resolved by 16. A face is not: same prompt, same seed, same
+reference, at 16 the result is a thinner, younger, more conventional version
+of the person, at 24 close, at 28 them. The clock barely notices the
+difference at 1 MP; the picture does.
 
-The line that matters is 12 GB. Above it the nf4 transformer stays resident and
-the card is doing arithmetic; below it, sequential offload moves layers across
-PCIe on every step of every image and the card is mostly waiting on the bus.
+**The turbo adapter is a distillation and behaves like one.** At the five
+steps its card advertises it turns a tailored blazer into an overcoat and
+pulls the shoulders out of shape; at six the shoulder still goes; **seven
+holds**, across six seeds. Its published sigma curve is resampled to whatever
+count is asked for, because the shape of that curve is part of the
+distillation and dropping it is what used to return ghost hands. It is also
+distilled without classifier-free guidance, so turning it on turns guidance
+off -- paying twice for a pass the student was never taught to use is the
+worst of both worlds.
+
+**int8, not nf4, on a card that has room for it.** This README used to argue
+the opposite, from a measurement of speed, memory and texture. Against a face
+int8 is the better of the two, and the profile for a 20 GB card and up picks
+it. nf4 remains what the smaller profiles use, because 10.1 GB fits on a 12 GB
+card and 12.1 does not.
+
+> **A recipe made in one quantisation does not reproduce in another at the
+> same seed.** Changing the precision changes every step slightly. The seed in
+> a recipe is a promise within one precision, which is why the app records the
+> quantisation next to it.
+
+**Time grows with the square of the megapixels, not with the megapixels.**
+Attention cost rises with the square of the token count, so going from 1 MP to
+4 MP is nearly five times the wait rather than four.
 
 **Why a hosted turbo demo is faster, counted rather than guessed.** The Viggle
 Space runs the same adapter this app carries, and it is not one thing:
 
 | | there | here | ours to take? |
 |---|---|---|---|
-| steps | 4 | 16 | only by giving up detail |
-| CFG | off | on, ×2 | the same trade |
+| steps | 4 | 28 with a face, 16 without | only by giving up the likeness |
+| guidance | off | on, ×2 | the same trade |
 | offload | none | model | 27%, measured |
 | references | capped at 1 MP | were uncapped | **taken** |
 | GPU | large, resident | 24 GB laptop | no |
 
-Sixteen steps with the detail pass is thirty-two transformer passes against
-their four, before hardware enters into it. Two of those five rows are choices
-about quality, one is not available, and two were worth taking.
+Twenty-eight steps with guidance is fifty-six transformer passes against their
+four, before hardware enters into it. Two of those five rows are choices about
+quality, one is not available, and two were worth taking. Reaching for the
+adapter collapses the first two rows to theirs -- seven steps and no guidance,
+because a distilled model is trained without it -- which is most of where the
+five-fold speed-up comes from.
 
 The reference cap is taken and free: their code encodes every conditioning
 image at 1024-area, "as in distillation", and this app was passing whatever
@@ -804,9 +874,10 @@ than in quality. Capped, that same photo now peaks at 11.1 GB, the same as a
 1 MP one.
 
 The offload is a trade rather than a win: warm at 1 MP it is 26 s with the
-model offload and 19 s without, but the 1.6 GB of resident weights mean 2.25 MP
-with a reference no longer fits under the ceiling. It ships as a setting with
-both numbers on it, defaulting to the one that keeps the sizes.
+model offload and 19 s without, but the 1.6 GB of resident weights come
+straight off the top of what a reference-bearing job can ask for, and with one
+reference the whole allowance is 2.30 MP. It ships as a setting with both
+numbers on it, defaulting to the one that keeps the sizes.
 
 > **Sequential offload does not work with nf4 weights.** Reproduced at 0.5 MP
 > and 8 steps: `NotImplementedError: Cannot copy out of meta tensor`. accelerate
@@ -817,6 +888,78 @@ both numbers on it, defaulting to the one that keeps the sizes.
 > load with a line in the log rather than that message about meta tensors.
 > Whether the model offload is enough on an 8 GB card is untested: there is no
 > such card here to test it with.
+
+### Editing ran without guidance, for as long as there has been editing
+
+`true_cfg_scale` does nothing on its own. The pipeline says so, in a warning
+nobody read: *"true_cfg_scale is passed as 4.0, but classifier-free guidance
+is not enabled since no negative_prompt is provided."* Guidance needs both
+halves -- a scale above one **and** something to steer away from -- and the
+generating path passed both while the editing path passed a hardcoded 1.0 and
+no negative prompt at all.
+
+Measured on one source at one seed, whole frame, twenty-eight steps:
+
+| guidance | speckle | moved from the source |
+|---|---|---|
+| 1.0 | 2.51 | 20.7 |
+| 2.5 | 2.51 | 20.7 |
+| 4.0 | 2.51 | 20.7 |
+| **4.0 with a negative prompt** | **1.33** | **17.5** |
+
+The three identical rows are the whole argument: without the second half the
+scale is not doing anything, and the app had been shipping the first half
+alone. What it cost was not subtle -- a smooth concrete wall came back mottled
+and harsh, and a black-and-white look came back in colour, the effect ignored
+entirely. It costs a second forward pass: 47 s becomes 87 at 1 MP.
+
+It hid for so long because every edit path except this one works on a crop
+around a mask and pastes it back, so whatever drifted was thrown away with the
+rest of the frame. Whole-frame instruction editing was added the week this was
+found, and it is the first thing that ever showed it.
+
+**Guidance costs a second pass, so a guided edit is a smaller picture.**
+This path is already the most expensive there is: it holds the picture being
+edited at full size *and* produces one, because the reference cap deliberately
+does not apply to the thing you are editing. Walked down on a portrait,
+releasing the card between cells so no measurement pays for the one before it:
+
+| | |
+|---|---|
+| 2.30 MP · 1344×1792 | out of memory |
+| 2.00 MP · 1248×1664 | out of memory |
+| 1.75 MP · 1184×1568 | out of memory |
+| **1.50 MP · 1088×1440** | **150 s** |
+| 1.25 MP · 992×1312 | 117 s |
+
+So whole-frame editing is capped at **1.50 MP** where generating with one
+reference gets 2.30. Ask for more and the app scales the frame down rather
+than failing halfway through.
+
+**With the adapter, editing is unguided, and that is the one place the adapter
+should not be used for a picture you are keeping.** The adapter's weights sit
+on top of the second pass and the two together do not fit -- `turbo guided`
+ran out of memory at a size `base guided` handled -- so turning it on turns
+guidance off. Measured at the same size and seed: 3.38 of speckle against
+2.50. It stays useful for finding the framing; the version you keep is the
+unhurried one.
+
+**Guided and at that size, it does what it is told.** *Change the jacket to
+a bright red one* returns a bright red jacket, with the room, the light, the
+shadows across the wall and the face all still there. The version of this
+paragraph written two hours earlier said the opposite -- that the framing
+drifted and a specific instruction might simply not happen -- and it was
+describing the path with guidance on and the size not yet brought down to
+what guidance costs. At 2.41 MP that is what happens; at 1.50 it is not.
+
+What remains true is narrower: this path regenerates the whole frame, so
+everything outside the change is *re-drawn to look the same* rather than
+carried across untouched. A masked edit is the one that guarantees the rest of
+the picture is identical, pixel for pixel, because it only ever replaces what
+is under the mask. Use the mask when the change is bounded and you care about
+the rest; use the whole frame when the change is not bounded, or when a mask
+would cut through something the model needs to see.
+
 
 **ComfyUI is still faster for the same image**, and it is worth being precise
 about why, because the obvious answer turned out to be wrong. The PR that added
@@ -994,12 +1137,18 @@ they taught, both worth the regeneration they cost:
   the effect is worse than no thumbnail, so Photographic now starts from a
   drawing and Deblur and More detail from that same photo broken on purpose.
 
-**Rescaling to 2K is back in the interface.** The technique always worked — the
-image goes back in as its own reference and the model redraws it larger, which
-recovers real detail instead of interpolating pixels — but under bf16 it took
-**754 seconds** for 775×1024 → 1792×2048, and twelve minutes for one upscale is
-not a feature. With nf4 and VAE tiling the same job is **156 seconds** at a
-18.2 GB peak. The button came back when the number did.
+**Rescaling is in the interface because it got fast enough to be.** The
+technique always worked — the image goes back in as its own reference and the
+model redraws it larger, which recovers real detail instead of interpolating
+pixels — but under bf16 it took **754 seconds**, and twelve minutes for one
+upscale is not a feature. Quantised it is **132 seconds** at twenty-eight steps
+and **97** with the adapter.
+
+It asks for the whole allowance, which is why it was the first path to find
+that the ceiling is an area: it wanted a square at the ceiling side, 3.21 MP
+with the source in front of the model, and that could not have worked on any
+day. It now lands at 1536 × 1536 from a square source, and keeps the source's
+shape when it is not square.
 
 ---
 
@@ -1112,10 +1261,21 @@ profile; the profile changes how it is loaded.
 | VRAM (CUDA) | quant | offload | alone | one reference | several | allocator ceiling |
 |---|---|---|---|---|---|---|
 | ≥ 40 GB | — | — | 2048 | 2048 | 1536 | card − 4 GB |
-| 20–40 | nf4 | model | 2048 | 1536 | 1024 | card − 4 GB |
+| 20–40 | int8 | model | 2048 | 1792 | 1024 | card − 4 GB |
 | 12–20 | nf4 | model | 2048 | 1024 | 1024 | card − 15% |
-| 8–12 | nf4 | sequential | 1536 | 1024 | 1024 | card − 15% |
-| < 8 | nf4 | sequential | 1024 | 1024 | 1024, and the puppy | card − 1.5 GB |
+| 8–12 | nf4 | model | 1536 | 1024 | 1024 | card − 15% |
+| < 8 | nf4 | model | 1024 | 1024 | 1024, and the puppy | card − 1.5 GB |
+
+Those are sides; what a job actually spends is area, and with exactly one
+reference the allowance is the area of a 3:4 frame at that side rather than
+the square. On this card that is 2.30 MP. The table above is the ladder, and
+[What it costs, measured](#what-it-costs-measured) has the areas and the
+measurements behind them.
+
+Every quantised profile uses the **model** offload. Sequential offload cannot
+move layer by layer what bitsandbytes has already quantised, so the two
+smallest profiles used to carry a combination that could not produce a single
+image.
 
 The sizes are advisory and the last column is not. A size can be wrong by a
 gigabyte and the worst that happens is a sentence on screen; before the

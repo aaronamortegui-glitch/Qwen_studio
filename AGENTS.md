@@ -135,12 +135,21 @@ CUDA profiles:
 | VRAM | level | quantisation | offload | res / ref / multi |
 |---|---|---|---|---|
 | ≥ 40 GB | XL | none (bf16) | none | 2048 / 2048 / 1536 |
-| ≥ 20 GB | L | nf4 | model | 2048 / 1536 / 1024 |
+| ≥ 20 GB | L | **int8** | model | 2048 / **1792** / 1024 |
 | ≥ 12 GB | M | nf4 | model | 2048 / 1024 / 1024 |
 | ≥ 8 GB | S | nf4 | model | 1536 / 1024 / 1024 |
 | < 8 GB | MINIMO | nf4 | model | 1024 / 1024 / 1024 |
 
-Three things about this table are load-bearing:
+**Those are sides, and what the card actually spends is area.** The side for
+one reference was measured on a 3:4 frame, and a square at the same side is a
+third more pixels: with one reference 1600x1600 (2.40 MP) fits and 1651x1651
+(2.60 MP) does not. So the allowance with exactly one reference is the area of
+a 3:4 frame at that side -- 2.30 MP on the L profile -- and the app refuses
+anything larger rather than letting it fail halfway. The smaller profiles keep
+the full square, because there the one-reference side equals the
+several-reference one and *that* was measured square.
+
+Four things about this table are load-bearing:
 
 - **`vram_limite_gb` is not advisory.** It is applied with
   `torch.cuda.set_per_process_memory_fraction`, so an over-large request raises
@@ -158,9 +167,29 @@ Three things about this table are load-bearing:
   how the conditioning was distilled. Measured: 0.26, 0.92 and 2.0 MP gave
   identical output. The image *being edited* is never capped.
 
-nf4 is not a compromise here — on a 24 GB card it is both faster than bf16
-(56 s against 73 s at 1 MP) and half the memory, and it is the only way to
-reach 2K at all.
+- **An out-of-memory error hands the card back before returning.** It used to
+  keep the failed allocation's blocks -- 18.4 GB reserved with nothing running
+  -- so the request after a refused one failed for the previous one's reason.
+  If you catch an error about size, the next call is safe to make.
+
+**int8 on a card with room for it, nf4 below.** This file used to argue that
+nf4 was not a compromise, from a measurement of speed, memory and texture.
+Against a *face* int8 is the better of the two, which is why the 20 GB profile
+changed. nf4 stays on the smaller profiles: 10.1 GB fits on a 12 GB card and
+12.1 does not.
+
+**Editing needs both halves of guidance or neither.** `true_cfg_scale` above
+1.0 does nothing unless a negative prompt comes with it -- the pipeline warns
+about exactly this -- and the editing paths used to pass the scale alone,
+hardcoded at 1.0. Every edit ran with no guidance, which on a whole frame
+repaints it: mottled concrete where the source was smooth, and a
+black-and-white look that came back in colour. The app now passes both from
+settings on the whole-frame path. If you call the engine directly, pass both
+or expect that.
+
+**With the adapter, guidance stays off.** It is distilled without
+classifier-free guidance and its card says so. `_cfg()` already returns
+`(1.0, "")` when turbo is on; do not override it.
 
 ---
 

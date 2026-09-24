@@ -142,6 +142,35 @@ def _tope(refs: int) -> int:
     return tope
 
 
+def _tope_area(refs: int) -> int:
+    """The ceiling in pixels. The side alone is not enough to keep memory safe.
+
+    `_tope` returns a side, and every caller used to square it. But the side in
+    the profile was measured on a 3:4 frame, and a square at that side is a
+    third more pixels. Measured 2026-09-24 with one reference on the 24 GB
+    card: 1600x1600, 2.40 MP, fits; 1651x1651, 2.60 MP, reaches 20.2 GB and
+    fails against the 20.3 ceiling. A 3:4 frame at the full 1792 is 2.30 MP and
+    peaks at 17.0. So with a reference in front of the model the allowance is
+    the area of a 3:4 frame at the ceiling side, which is the shape the number
+    was measured on -- and asking for it as a square is what the enlarge path
+    did, at 3.21 MP, on a path that could not have worked on any day.
+
+    With no reference there is nothing to encode and the full square is real:
+    2048x2048, 4.19 MP, runs.
+
+    The three-quarters only applies where the one-reference side was raised
+    above the several-reference one, which is exactly where it came from a 3:4
+    measurement. On a profile where the two are equal -- twelve and eight
+    gigabyte cards both sit at 1024 either way -- that side was measured as a
+    square and still costs what it costs, so shrinking it here would take away
+    a size that works on the evidence of a card that has more memory, not less.
+    """
+    lado = _tope(refs)
+    if refs == 1 and lado > int(cfg.get("res_max_multi", lado)):
+        return int(lado * lado * 0.75)
+    return lado * lado
+
+
 def leer_ajustes() -> dict:
     a = dict(AJUSTES_DEF)
     # the profile's ceiling, resolved here so it is not repeated at every call
@@ -208,6 +237,21 @@ def _mensaje(e: Exception) -> str:
     """
     nombre = type(e).__name__
     if "OutOfMemory" in nombre or "out of memory" in str(e).lower():
+        # Hand the reservation back. Every failing path passes through here,
+        # and a failed allocation keeps its blocks: measured, the card sat at
+        # 18.4 GB with nothing running, and the next large request died in
+        # four seconds for the previous one's reason rather than its own.
+        #
+        # The traceback goes first. It holds the frames, the frames hold every
+        # tensor that was alive at the moment the allocation failed, and a
+        # collector cannot free what something still points at. With the
+        # collect alone the card stayed at 20.9 GB and the next two requests
+        # inherited the problem.
+        try:
+            e.__traceback__ = None
+            M.vaciar_cache()
+        except Exception:
+            pass
         techo = cfg.get("vram_limite_gb")
         return ("That was too large for this card. Ask for a smaller size, or "
                 "remove one of the reference images: each one costs memory on "
@@ -273,6 +317,12 @@ def _cfg(b: dict) -> tuple[float, str]:
 # euler", the most-shared workflow ships 25-27, and the turbo adapter's card
 # describes itself as five passes "instead of 40".
 PASOS_PERSONA = 28
+
+# What a whole-frame edit may ask for when guidance is on. Two forward passes
+# against one, on the path that also holds the source at full size. Walked
+# down on a portrait on 2026-09-24: 2.30, 2.00 and 1.75 MP all out of memory,
+# 1.50 fine at 150 s, 1.25 fine at 117.
+EDICION_GUIADA_MP = 1.5
 
 
 def _pasos(b: dict) -> int:
@@ -746,7 +796,7 @@ class Handler(BaseHTTPRequestHandler):
             r = P.ruta(b["pose_lib"])
             pose = Image.open(r).convert("RGB") if r else None
 
-        mp = min(float(b.get("megapixeles", 1)), (_tope(1) ** 2) / (1024 * 1024))
+        mp = min(float(b.get("megapixeles", 1)), _tope_area(1) / (1024 * 1024))
         res = int((mp * 1024 * 1024) ** 0.5)
         ratio = b.get("ratio", "auto")
         ancho, alto = (None, None) if ratio == "auto" else M.dimensiones(ratio, mp)
@@ -896,7 +946,7 @@ class Handler(BaseHTTPRequestHandler):
             return {"error": _mensaje(e), "carpeta": SALIDAS}
 
     def _editar_entero(self, img, texto, b, lora=None, fuerza=1.0, escala=1.0,
-                       referencias=None, modo="material"):
+                       referencias=None, modo="material", guia=True):
         """Edit the whole frame: no mask, no crop, the original as reference.
 
         `escala` multiplies each side of the output. The aspect ratio always
@@ -909,9 +959,25 @@ class Handler(BaseHTTPRequestHandler):
         motor.ajustar_muestreo("turbo" if _turbo(b) else
                                str(b.get("muestreo") or leer_ajustes()["muestreo"]))
 
-        tope = _tope(1 + len(referencias or []))
-        aw = max(256, min(tope, round(img.width * escala / 32) * 32))
-        ah = max(256, min(tope, round(img.height * escala / 32) * 32))
+        # One factor for both sides, against the side ceiling and the area
+        # ceiling at once. Clipping each side on its own turned a 3:4 frame
+        # into a square -- measured, a 1344x1792 edit with one reference came
+        # back 1024x1024 -- and it also keeps more pixels than scaling both,
+        # so it asked for more memory than the cap implied.
+        n = 1 + len(referencias or [])
+        tope, area = _tope(n), _tope_area(n)
+        # Guidance runs the transformer twice, and this is already the most
+        # expensive path there is: it carries the picture being edited at full
+        # size as well as producing one. Measured on a portrait, releasing the
+        # card between cells: 1.75 MP will not fit and 1.50 will. With the
+        # adapter there is no second pass and this does not apply.
+        escala_cfg, negativo_cfg = _cfg(b) if guia else (1.0, "")
+        if escala_cfg > 1.0 and negativo_cfg.strip():
+            area = min(area, int(EDICION_GUIADA_MP * 1024 * 1024))
+        aw, ah = img.width * escala, img.height * escala
+        f = min(1.0, tope / max(aw, ah), (area / (aw * ah)) ** 0.5)
+        aw = max(256, round(aw * f / 32) * 32)
+        ah = max(256, round(ah * f / 32) * 32)
 
         with _lock:
             motor.usar_offload(leer_ajustes().get("offload") or cfg["offload"])
@@ -922,7 +988,8 @@ class Handler(BaseHTTPRequestHandler):
                                        steps=_pasos(b),
                                        seed=int(b.get("seed", 0)) or int(time.time()) % 100000,
                                        res=int(math.sqrt(aw * ah)), ancho=aw, alto=ah,
-                                       referencias=referencias or [], modo=modo)
+                                       referencias=referencias or [], modo=modo,
+                                       cfg=escala_cfg, negativo=negativo_cfg)
             if lora:                       # a look does not leave its LoRA mounted
                 motor.aplicar_lora(None, 1.0, turbo=_turbo(b))
         return (gen, prompt), None
@@ -975,7 +1042,7 @@ class Handler(BaseHTTPRequestHandler):
         if err:
             return None, err
 
-        mp = min(float(b.get("megapixeles", 1)), (_tope(1) ** 2) / (1024 * 1024))
+        mp = min(float(b.get("megapixeles", 1)), _tope_area(1) / (1024 * 1024))
         res = int((mp * 1024 * 1024) ** 0.5)
         caja, crop, mcrop = IN.recorte(img, m, padding=float(b.get("padding", 0.35)))
         ratio = (caja[2] - caja[0]) / max(1, (caja[3] - caja[1]))
@@ -1075,8 +1142,11 @@ class Handler(BaseHTTPRequestHandler):
         texto = (b.get("prompt") or "").strip()
         if not texto:
             return {"error": "say what to change"}
-        if not refs:
-            return {"error": "add at least one reference picture"}
+        # No requirement here any more. "Remove the object on the table",
+        # "change the background to a sunset beach" -- the model card's own
+        # editing example -- need no second picture, and two of the starting
+        # points this path offers are exactly that shape. The stress test
+        # found the app refusing to run the instructions it was suggesting.
         t0 = time.time()
         res, err = self._editar_entero(img, texto, b, referencias=refs, modo="libre")
         if err:
@@ -1169,7 +1239,11 @@ class Handler(BaseHTTPRequestHandler):
             "composition, lighting and atmosphere. Keep the original style, whether it is "
             "a photograph or an illustration.")
         t0 = time.time()
-        res, err = self._editar_entero(img, texto, b, escala=escala)
+        # No guidance here. There is nothing to steer toward -- the prompt is
+        # "preserve the composition, lighting and atmosphere" -- and what
+        # guidance costs is the size, which is the entire point of this path:
+        # with it on, the cap brought a 1536 upscale down to 1248.
+        res, err = self._editar_entero(img, texto, b, escala=escala, guia=False)
         if err:
             return {"error": err}
         gen, prompt = res
@@ -1230,7 +1304,7 @@ class Handler(BaseHTTPRequestHandler):
         mp = float(b.get("megapixeles", 1))
         n_refs = (len(personas) + (escena is not None) + (estilo is not None)
                   + (pose is not None))
-        tope_mp = (_tope(n_refs) ** 2) / (1024 * 1024)
+        tope_mp = _tope_area(n_refs) / (1024 * 1024)
         mp = min(mp, tope_mp)
         ratio = b.get("ratio", "1:1")
         if ratio == "auto":

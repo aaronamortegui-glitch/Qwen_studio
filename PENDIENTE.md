@@ -268,6 +268,53 @@ a watch movement and a hand.
   which photograph is the target rather than on the wording. Every phrasing
   tried moved which direction worked without removing the problem.
 
+
+## The night the editing was found to have no guidance
+
+Four bugs came out of running every path at what the profile allows, twice,
+and then *looking at the pictures* instead of counting the rows that came back
+without an error. The suite had been green through all four.
+
+| | what it did | how it was found |
+|---|---|---|
+| each side clipped against the ceiling on its own | a 1344x1792 edit came back 1024x1024, a square | a size in a table that was not the shape that went in |
+| the ceiling read as a side and squared | enlarging asked for 3.21 MP with a reference and could not have worked on any day | it was the only path that asks for the whole allowance |
+| a failed allocation kept its blocks | 18.4 GB reserved with nothing running, and the next large request died in four seconds for the previous one's reason | a control that failed faster than it could possibly have run |
+| `true_cfg_scale` passed without a negative prompt | **every edit this app ever made ran with no guidance**: whole frames repainted, and a black-and-white look that came back in colour | the eye, on a contact sheet |
+
+The fourth is the one worth remembering. diffusers prints a warning saying
+exactly what is wrong -- *"true_cfg_scale is passed as 4.0, but
+classifier-free guidance is not enabled since no negative_prompt is
+provided"* -- and it had been scrolling past on every edit for as long as
+there has been editing here. The README had the same sentence about the
+generating path, written weeks ago, and nobody carried it across.
+
+It hid because every other edit path crops around a mask and pastes the crop
+back, so whatever drifted was thrown away with the rest of the frame.
+Whole-frame instruction editing was added days before this, and it was the
+first thing that ever showed it.
+
+**And a lesson about the instrument.** A speckle number -- the picture against
+a median of itself -- was invented that night to turn "it looks wrong" into
+something sortable. It found the damage, and then it flagged a stack of linen
+and a brick wall at 6.8 and 8.1 that were perfect, and cleared a
+black-and-white look at 5.6 that was the best result of the run. It is a
+texture detector. It is useful for *noticing that something changed* and it
+cannot be a pass mark, which is the same mistake as measuring a likeness with
+mean pixel difference, made again three weeks later with a different number.
+
+**Still open after that night:**
+
+- Whole-frame editing regenerates the whole frame. With guidance it keeps the
+  framing and does what it is told, but "everything else is unchanged" means
+  redrawn to look the same, not carried across. Only the masked paths can
+  promise the second thing.
+- With the adapter there is no guidance -- the two together do not fit -- so
+  editing with turbo on is measurably worse. It is a preview, not a delivery.
+- The guided whole-frame ceiling, 1.50 MP, is measured on this card at int8
+  and inherited by everything else by the same rule as the other ceilings.
+  Nobody has run it on a card that does not have 24 GB.
+
 ## Documentation debt
 
 - The memory table and the measured times belong in the README, the PDF **and

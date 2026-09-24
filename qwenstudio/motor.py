@@ -984,7 +984,8 @@ class Motor:
         return self._cb
 
     def editar(self, *, imagen, texto, steps, seed, res=1024,
-               referencias=None, ancho=None, alto=None, modo="material"):
+               referencias=None, ancho=None, alto=None, modo="material",
+               cfg=1.0, negativo=""):
         """Plain edit of one image: no identity scaffolding.
 
         Used by the inpainting path, where `imagen` is already the crop around
@@ -1013,6 +1014,13 @@ class Motor:
                       + (f"{prompt} " if prompt else "")
                       + f"The result shows what <image1> shows, made the way {extras} was "
                       f"made.")
+        elif modo == "libre" and len(refs) == 1:
+            # An instruction and nothing else. Same shape as the clause
+            # below -- operation first, preservation after and generic --
+            # minus the sentence about reference material, which would
+            # otherwise name an <image2> that is not there.
+            prompt = (f"Edit <image1>. {prompt} "
+                      f"Everything else in <image1> is unchanged.")
         elif len(refs) > 1 and modo == "libre":
             # Instruction editing, which is what this model can do and this app
             # was not using: every other path crops a region and pastes it back.
@@ -1070,7 +1078,17 @@ class Motor:
         self._baldosas(ancho, alto, res)
         gen = torch.Generator(device="cpu").manual_seed(int(seed))
         kw = dict(prompt=prompt, image=refs, num_inference_steps=int(steps),
-                  true_cfg_scale=1.0, generator=gen, output_resolution=int(res))
+                  true_cfg_scale=float(cfg), generator=gen,
+                  output_resolution=int(res))
+        # Both halves or neither. The scale on its own does nothing -- the
+        # pipeline says so in a warning -- and this path used to pass the
+        # scale alone, hardcoded at 1.0, which is the same as passing
+        # nothing. Whole-frame editing without guidance repaints the whole
+        # frame: measured, mottled concrete where the source was smooth, and
+        # 2.51 of speckle against 1.33 with guidance on.
+        if float(cfg) > 1.0 and negativo.strip():
+            kw["negative_prompt"] = negativo.strip()
+        kw.update(self._horario(steps))
         if ancho and alto:
             kw["width"], kw["height"] = int(ancho), int(alto)
         if self._admite_callback():
